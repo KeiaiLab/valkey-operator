@@ -17,7 +17,10 @@ pre-commit:
       run: go vet ./...
     golangci-lint:
       glob: "*.go"
-      run: ./bin/golangci-lint run --new-from-rev=HEAD~1 {staged_files}
+      # 여러 디렉터리에 걸친 staged files 를 하나의 인자로 넘기면 golangci-lint
+      # 가 "named files must all be in one directory" 로 실패. 따라서 전체
+      # 패키지 단위로 수행 (--new-from-rev 가 신규 issue 만 출력).
+      run: ./bin/golangci-lint run --new-from-rev=HEAD~1 ./...
       skip:
         - merge
         - rebase
@@ -36,7 +39,7 @@ commit-msg:
       # Conventional Commits 패턴 (standards/commits.md §1).
       # 본 환경 (Korean 본문 허용) 에서는 type 만 강제, subject case 자유.
       run: |
-        msg=$(head -1 "$1")
+        msg=$(head -1 {1})
         if echo "$msg" | grep -qE '^(\[skip-hooks\]|Merge|Revert)' ; then
           exit 0
         fi
