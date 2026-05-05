@@ -12,9 +12,12 @@ package controller
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,7 +168,12 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 9. Replication: primary 가 ready 되면 모든 replica 가 REPLICAOF primary 호출.
 	if v.Spec.Mode == cachev1alpha1.ModeReplication && desiredReplicas(v) > 1 && stsObj.readyReplicas == desiredReplicas(v) {
-		if err := r.ensureReplication(ctx, v, password); err != nil {
+		tlsCfg, tlsErr := r.tlsConfigForValkey(ctx, v)
+		if tlsErr != nil {
+			logger.Info("Replication TLS config pending", "error", tlsErr.Error())
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		if err := r.ensureReplication(ctx, v, password, tlsCfg); err != nil {
 			logger.Info("Replication setup pending", "error", err.Error())
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
@@ -313,9 +321,18 @@ func (r *ValkeyReconciler) fetchSTS(ctx context.Context, key types.NamespacedNam
 
 // ensureReplication — replica pod 들이 primary 를 가리키게 한다 (M2).
 // pod-0 = primary, pod-1..N = replica.
-func (r *ValkeyReconciler) ensureReplication(ctx context.Context, v *cachev1alpha1.Valkey, password string) error {
-	primaryAddr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, 0, v.Namespace), resources.PortClient)
-	primary := vk.NewSingleClient(vk.DialOptions{Address: primaryAddr, Password: password})
+//
+// TLS 활성 (tlsCfg != nil) 시 control-plane 통신 은 tls-port (6380) 사용.
+// Valkey 자체 의 replication 은 tls-replication 설정 (configmap) 으로 cluster bus
+// 와 무관 — primary host:6379 또는 :6380 어느 쪽으로 REPLICAOF 해도 server 가
+// 자체 결정. 본 함수는 *operator → 각 노드* 의 명령 채널 을 TLS 로 보장.
+func (r *ValkeyReconciler) ensureReplication(ctx context.Context, v *cachev1alpha1.Valkey, password string, tlsCfg *tls.Config) error {
+	port := int32(resources.PortClient)
+	if tlsCfg != nil {
+		port = resources.PortTLS
+	}
+	primaryAddr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, 0, v.Namespace), port)
+	primary := dialValkey(primaryAddr, password, tlsCfg)
 	if err := vk.PromoteToPrimary(ctx, primary); err != nil {
 		_ = primary.Close()
 		return fmt.Errorf("promote primary: %w", err)
@@ -324,15 +341,79 @@ func (r *ValkeyReconciler) ensureReplication(ctx context.Context, v *cachev1alph
 
 	primaryHost := resources.PodFQDN(v.Name, 0, v.Namespace)
 	for i := int32(1); i < v.Spec.Replicas; i++ {
-		addr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, int(i), v.Namespace), resources.PortClient)
-		c := vk.NewSingleClient(vk.DialOptions{Address: addr, Password: password})
-		err := vk.EnsureReplicaOf(ctx, c, primaryHost, resources.PortClient)
+		addr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, int(i), v.Namespace), port)
+		c := dialValkey(addr, password, tlsCfg)
+		err := vk.EnsureReplicaOf(ctx, c, primaryHost, int(port))
 		_ = c.Close()
 		if err != nil {
 			return fmt.Errorf("ensure replicaof %s: %w", addr, err)
 		}
 	}
 	return nil
+}
+
+// dialValkey — TLS 적용 가능한 redis client 빌더 (cluster controller 의 dialPod 와 같음).
+func dialValkey(addr, password string, tlsCfg *tls.Config) *redis.Client {
+	opts := vk.DialOptions{Address: addr, Password: password}
+	if tlsCfg != nil {
+		opts.UseTLS = true
+		opts.TLSConf = tlsCfg
+	}
+	return vk.NewSingleClient(opts)
+}
+
+// tlsConfigForValkey — ValkeyClusterReconciler.tlsConfigForCluster 와 동일 로직.
+// CustomCert > CertManager 우선순위. 둘 다 ca.crt 미준비 → InsecureSkipVerify fallback.
+func (r *ValkeyReconciler) tlsConfigForValkey(ctx context.Context, v *cachev1alpha1.Valkey) (*tls.Config, error) {
+	if v.Spec.TLS == nil || !v.Spec.TLS.Enabled {
+		return nil, nil
+	}
+	cfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		ServerName: resources.HeadlessServiceName(v.Name) + "." + v.Namespace + ".svc",
+	}
+	loadAndAttach := func(secretName string) (bool, error) {
+		s := &corev1.Secret{}
+		if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: v.Namespace}, s); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		caBytes, ok := s.Data["ca.crt"]
+		if !ok || len(caBytes) == 0 {
+			return false, nil
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(caBytes) {
+			return false, fmt.Errorf("invalid PEM in %s/%s/ca.crt", v.Namespace, secretName)
+		}
+		cfg.RootCAs = pool
+		if crt, hasCrt := s.Data["tls.crt"]; hasCrt {
+			if key, hasKey := s.Data["tls.key"]; hasKey && len(crt) > 0 && len(key) > 0 {
+				if pair, err := tls.X509KeyPair(crt, key); err == nil {
+					cfg.Certificates = []tls.Certificate{pair}
+				}
+			}
+		}
+		return true, nil
+	}
+	if v.Spec.TLS.CustomCert != nil && v.Spec.TLS.CustomCert.SecretName != "" {
+		if ok, err := loadAndAttach(v.Spec.TLS.CustomCert.SecretName); err != nil {
+			return nil, err
+		} else if ok {
+			return cfg, nil
+		}
+	}
+	if v.Spec.TLS.CertManager != nil && v.Spec.TLS.CertManager.IssuerRef.Name != "" {
+		if ok, err := loadAndAttach(resources.CertificateSecretName(v.Name)); err != nil {
+			return nil, err
+		} else if ok {
+			return cfg, nil
+		}
+	}
+	cfg.InsecureSkipVerify = true
+	return cfg, nil
 }
 
 func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -85,6 +85,8 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 | replica scale down (5→2) | 잉여 pod 정리 | 기존 데이터 유지 |
 | ValkeyCluster shard pod kill | cluster_state=ok 유지 (replica 가 즉시 take over) | 모든 슬롯 보존 |
 | TLS+mTLS ValkeyCluster (cert-manager) | Phase=Running, slots=16384, 데이터 plane SET/GET ✓ | — |
+| TLS+mTLS Valkey Standalone (cert-manager) | Phase=Running, ping/set/get on 6380 ✓ | — |
+| TLS+mTLS Valkey Replication (3 replicas) | master_link_status:up, write propagation 모든 replica ✓ | — |
 | NetworkPolicy 리소스 생성 | selfPeer + 6379(/16379) ingress + ownerReferences | (CNI 의존) |
 | operator metrics endpoint (HTTPS:8443) | controller_runtime_* + valkey_cluster_* 노출 | — |
 
@@ -96,10 +98,9 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 - **ValkeyBackup 은 Phase 전이만 수행** (M2). 실제 BGSAVE / BGREWRITEAOF +
   PVC RDB 복사 + TTL 정리 는 M3 미구현. 코드 주석 (
   `internal/controller/valkeybackup_controller.go::ValkeyBackupReconciler`) 참고.
-- **Replication 모드 + TLS 미구현** (ADR-0014 AI-007). standalone (replicas=1) +
-  TLS 는 동작하지만 replication 의 `ensureReplication` 이 plain port 사용 →
-  tlsConfigForValkey + port routing 추가 필요. Standalone TLS 만 필요하면
-  현재 동작.
+- ~~Replication 모드 + TLS 미구현~~ → **iter 9 에서 구현 완료** (ADR-0014 AI-007):
+  `tlsConfigForValkey` + `dialValkey` 추가 + `tls-replication yes` 디렉티브.
+  3-replica + cert-manager 검증 통과 (master_link_status:up, write propagation).
 - **NetworkPolicy 강제 동작 검증 부재**: 리소스 정의 정합성만 확인.
   Calico / Cilium 등 NP-enforcing CNI 클러스터 에서 별도 검증 필요.
 

@@ -85,8 +85,10 @@ vc-tls   3        Running   ok        16384   8.1.6
 - [x] AI-005: ValkeyController 의 TLS 통합 (`BuildCertificateForValkey` 추가)
 - [x] AI-006: standalone Valkey TLS 동작 — vk-tls-std (mode=Standalone, replicas=1) 으로
       Phase=Running + TLS PING/SET/GET 검증.
-- [ ] AI-007: replication 모드 + TLS — ensureReplication 의 dial 이 plain port 사용,
-      tlsConfigForValkey 추가 + port routing 필요 (별도 PR).
+- [x] AI-007: replication 모드 + TLS — `tlsConfigForValkey` 추가 + ensureReplication
+      의 port 가 TLS 시 6380 사용. `tls-replication yes` 디렉티브 추가 (replica →
+      master REPLICAOF 채널 도 TLS). vk-tls-rep (3 replicas, cert-manager) 검증:
+      master_link_status:up + write propagation 정상.
 - [ ] AI-008: `test/e2e/tls_test.go` 자동화 (현재는 수동 검증)
 
 Refs: ADR-0008, ADR-0010
