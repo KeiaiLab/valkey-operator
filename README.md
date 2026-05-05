@@ -93,6 +93,14 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 - `Spec.Auth.Enabled=false` 가 무시됨 — ADR-0013 옵션 A. operator 항상 auth 강제.
 - IPv6-only 환경 미테스트 (CLUSTER MEET 의 IPv4 prefer, ADR-0012).
 - `cluster-announce-hostname` 미사용 (필요 시 별도 RFC 검토).
+- **ValkeyBackup 은 Phase 전이만 수행** (M2). 실제 BGSAVE / BGREWRITEAOF +
+  PVC RDB 복사 + TTL 정리 는 M3 미구현. 코드 주석 (
+  `internal/controller/valkeybackup_controller.go::ValkeyBackupReconciler`) 참고.
+- **standalone Valkey 의 TLS 통합 미구현** (ADR-0014 AI-005). ValkeyCluster
+  컨트롤러만 cert-manager Certificate 자동 생성. Valkey 단일 인스턴스 mTLS 가
+  필요하면 사용자가 직접 Secret + Spec.TLS.CustomCert.SecretName 지정.
+- **NetworkPolicy 강제 동작 검증 부재**: 리소스 정의 정합성만 확인.
+  Calico / Cilium 등 NP-enforcing CNI 클러스터 에서 별도 검증 필요.
 
 ### To Uninstall
 **Delete the instances (CRs) from the cluster:**
