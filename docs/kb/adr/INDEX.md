@@ -12,3 +12,5 @@
 | [0008](0008-tls-ca-bundle-loading.md) | TLS RootCAs from Spec.TLS.CustomCert.SecretName | Accepted | 2026-05-05 |
 | [0009](0009-webhook-validation-defaulting.md) | Validating + Mutating Webhook (supersedes 0001) | Accepted | 2026-05-05 |
 | [0010](0010-cert-manager-auto-discovery.md) | cert-manager Certificate auto-discovery | Accepted | 2026-05-05 |
+| [0011](0011-required-fields-webhook-defaulting.md) | Required 필드는 mutating webhook 에서 직접 default 채움 | Accepted | 2026-05-05 |
+| [0012](0012-cluster-meet-requires-ip.md) | CLUSTER MEET 는 hostname 미지원 → DNS 해석 후 IP 사용 | Accepted | 2026-05-05 |
