@@ -8,7 +8,37 @@
 
 ## [Unreleased]
 
-### Added
+### Added (iter 7+ — 부트스트랩·검증 사이클)
+- README quickstart (kind 기반): 5 단계 부트스트랩 + 데이터 plane smoke + 운영 시나리오 매트릭스. [iter 6]
+- ADR-0011: Required 필드 (omitempty 부재) 의 mutating webhook defaulting 패턴. [iter 4]
+- ADR-0012: CLUSTER MEET hostname 미지원 → DNS 해석 후 IP 사용. [iter 4]
+- ADR-0013: Auth.Enabled 강제 true (옵션 A 채택). [iter 5]
+- `internal/valkey/cluster.go::resolveAddrIP`: hostname → IP 정규화 (IPv4 prefer).
+- `internal/webhook/v1alpha1/valkey_webhook.go`: Version + Auth.Enabled 정규화.
+- `internal/webhook/v1alpha1/valkeycluster_webhook.go`: Shards/ReplicasPerShard/Version/Auth defaulting.
+- `api/v1alpha1/common_types.go`: `DefaultValkeyVersion` / `DefaultValkeyImage` 상수.
+- `internal/controller/valkeycluster_controller.go`: pods RBAC 추가 (status reconciliation).
+- `config/samples/cache_v1alpha1_valkeybackup.yaml`: 의미있는 ClusterRef 채움.
+- `.dockerignore`: `*.tmpl`, `*.lua`, `*.sh` 패턴 — embed 자산 보존.
+- lefthook 활성화 (pre-commit + pre-push + commit-msg) + Conventional Commits 패턴.
+
+### Fixed (iter 7+)
+- ValkeyBackup controller 테스트 fixture 의 ClusterRef 누락 (webhook validation 통과 못함).
+- ValkeyCluster bootstrap 무한 retry: CLUSTER MEET 가 hostname 거부 → DNS 해석.
+- defaulting webhook 이 required 필드 (Version/Shards/ReplicasPerShard) 채우지 않아 무한 reconcile 루프.
+- pods RBAC 누락으로 ValkeyCluster status 갱신 불가.
+- lefthook commit-msg 가 `$1` 대신 `{1}` 사용.
+- lefthook golangci-lint cross-directory staged files 오류.
+
+### Verified (iter 7+ 실측)
+- e2e suite: 5/5 PASS (manager 시작, metrics endpoint, cert-manager, mutating/validating webhook CA injection).
+- integration test: 14 케이스 PASS (실 valkey:8 컨테이너 + 6노드 클러스터 부트스트랩).
+- unit test: 4 패키지 PASS (`internal/{controller,resources,valkey,webhook}`).
+- 회복성: primary pod force kill → STS 재생성 → operator 재 promote → 데이터 보존 (canary `preserved`).
+- scale up/down: 3→5→2, master_link_status:up, 데이터 보존.
+- 클러스터 모드: 3 shards × 2 instances, cluster_state:ok, slots:16384/16384 OK.
+
+### Added (iter 1-6 — 이전 사이클)
 - ValkeyCluster Reconcile 14 단계 구현 (cluster mode CRD bootstrap → CLUSTER MEET / ADDSLOTS / REPLICATE → status polling). [iter 1]
 - `internal/valkey/cluster.go`: `CreateCluster` 단계별 멱등 분리 (`ensureMeet` / `ensureSlots` / `ensureReplicas`). partial-state 회복 가능. [iter 2]
 - `internal/valkey/nodes.go`: `CLUSTER NODES` 응답 파서 (`NodeView`, `SlotRange`). [iter 2]
