@@ -162,6 +162,16 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		ClusterMode:  true,
 		Pod:          vc.Spec.Pod,
 	}
+	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
+		// CertManager 와 CustomCert 둘 다 동일 secret 마운트 — webhook 이 둘 중 하나만
+		// 활성 보장 (validateClusterSpec). 우선순위: CustomCert > CertManager.
+		switch {
+		case vc.Spec.TLS.CustomCert != nil && vc.Spec.TLS.CustomCert.SecretName != "":
+			stsParams.TLSSecretName = vc.Spec.TLS.CustomCert.SecretName
+		case vc.Spec.TLS.CertManager != nil && vc.Spec.TLS.CertManager.IssuerRef.Name != "":
+			stsParams.TLSSecretName = resources.CertificateSecretName(vc.Name)
+		}
+	}
 	if vc.Spec.Monitoring != nil && vc.Spec.Monitoring.Enabled {
 		stsParams.ExporterImg = exporterImage(vc.Spec.Monitoring)
 	}
@@ -680,10 +690,17 @@ func (r *ValkeyClusterReconciler) queryAnyNode(
 // pod ordinal 0..shards-1 을 primary 로 둔다 (round-robin 분배).
 func podAddresses(vc *cachev1alpha1.ValkeyCluster) []string {
 	total := int(vc.Spec.TotalNodes())
+	port := resources.PortClient
+	// TLS 활성 시 plain 6379 대신 tls-port 6380 사용 — operator 가 TLS handshake 를
+	// plain port 에 시도하면 server 가 즉시 close 하고 timeout. 본 차이는
+	// `port` 와 `tls-port` 가 별도라는 Valkey 의 모델 (6379 평문 / 6380 TLS) 에서 비롯.
+	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
+		port = resources.PortTLS
+	}
 	out := make([]string, 0, total)
 	for i := 0; i < total; i++ {
 		out = append(out, fmt.Sprintf("%s:%d",
-			resources.PodFQDN(vc.Name, i, vc.Namespace), resources.PortClient))
+			resources.PodFQDN(vc.Name, i, vc.Namespace), port))
 	}
 	return out
 }

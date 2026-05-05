@@ -15,3 +15,4 @@
 | [0011](0011-required-fields-webhook-defaulting.md) | Required 필드는 mutating webhook 에서 직접 default 채움 | Accepted | 2026-05-05 |
 | [0012](0012-cluster-meet-requires-ip.md) | CLUSTER MEET 는 hostname 미지원 → DNS 해석 후 IP 사용 | Accepted | 2026-05-05 |
 | [0013](0013-auth-always-enabled.md) | Auth.Enabled 필드 가 무시되고 사실상 항상 enabled (옵션 A) | Accepted | 2026-05-05 |
+| [0014](0014-tls-volume-mount-and-port-routing.md) | TLS Secret STS 마운트 + operator 가 6380 (TLS port) 로 control-plane | Accepted | 2026-05-05 |

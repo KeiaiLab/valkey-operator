@@ -30,6 +30,9 @@ type STSParams struct {
 	ClusterMode  bool
 	ExporterImg  string // 비어 있으면 sidecar 없음
 	Pod          *cachev1alpha1.PodSpec
+	// TLSSecretName — 비어 있지 않으면 해당 Secret (kubernetes.io/tls + ca.crt) 을
+	// `/tls` 에 readOnly 마운트. configmap 의 tls-* 디렉티브 가 이 경로 를 참조.
+	TLSSecretName string
 }
 
 // BuildStatefulSet — Valkey 데이터 STS.
@@ -77,10 +80,10 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			},
 			Env:       envFromPassword,
 			Resources: p.Resources,
-			VolumeMounts: []corev1.VolumeMount{
+			VolumeMounts: append([]corev1.VolumeMount{
 				{Name: "data", MountPath: DataDir},
 				{Name: "config", MountPath: ConfigMapMountPath},
-			},
+			}, tlsVolumeMounts(p.TLSSecretName)...),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler:        corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: append([]string{"sh"}, pingArgs...)}},
 				InitialDelaySeconds: 20,
@@ -115,18 +118,21 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		})
 	}
 
-	podSpec := corev1.PodSpec{
-		Containers: containers,
-		Volumes: []corev1.Volume{
-			{
-				Name: "config",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: ConfigMapName(p.CRName)},
-					},
+	volumes := []corev1.Volume{
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: ConfigMapName(p.CRName)},
 				},
 			},
 		},
+	}
+	volumes = append(volumes, tlsVolumes(p.TLSSecretName)...)
+
+	podSpec := corev1.PodSpec{
+		Containers: containers,
+		Volumes:    volumes,
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: ptrBool(true),
 			RunAsUser:    ptrInt64(999),
@@ -184,3 +190,27 @@ func ptrInt64(i int64) *int64 { return &i }
 
 // PortIntOrString — helper for Probe/Service ports.
 func PortIntOrString(p int32) intstr.IntOrString { return intstr.FromInt(int(p)) }
+
+// tlsVolumeMounts / tlsVolumes — TLSSecretName 이 비어 있지 않을 때만 활성화.
+// /tls 에 readOnly 로 cert-manager 가 발급한 Secret 마운트.
+func tlsVolumeMounts(secretName string) []corev1.VolumeMount {
+	if secretName == "" {
+		return nil
+	}
+	return []corev1.VolumeMount{{Name: "tls", MountPath: TLSDir, ReadOnly: true}}
+}
+
+func tlsVolumes(secretName string) []corev1.Volume {
+	if secretName == "" {
+		return nil
+	}
+	return []corev1.Volume{{
+		Name: "tls",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  secretName,
+				DefaultMode: ptrInt32(0o400),
+			},
+		},
+	}}
+}
