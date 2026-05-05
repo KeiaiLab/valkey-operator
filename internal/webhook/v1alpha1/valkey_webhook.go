@@ -57,6 +57,10 @@ func (d *ValkeyCustomDefaulter) Default(_ context.Context, obj *cachev1alpha1.Va
 	if obj.Spec.Version.Image == "" {
 		obj.Spec.Version.Image = cachev1alpha1.DefaultValkeyImage
 	}
+	// Auth.Enabled 는 omitempty 부재로 zero value 가 false 로 직렬화 → CRD
+	// schema default=true 가 skip 된다. 본 operator 는 ADR-0013 옵션 A 에 따라
+	// 항상 auth 를 강제하므로 webhook 에서 true 로 정규화한다.
+	obj.Spec.Auth.Enabled = true
 	return nil
 }
 

@@ -80,6 +80,8 @@ func (d *ValkeyClusterCustomDefaulter) Default(_ context.Context, obj *cachev1al
 	if obj.Spec.Version.Image == "" {
 		obj.Spec.Version.Image = cachev1alpha1.DefaultValkeyImage
 	}
+	// Auth.Enabled — ADR-0013 옵션 A: 항상 강제 (보안 기본값).
+	obj.Spec.Auth.Enabled = true
 	return nil
 }
 

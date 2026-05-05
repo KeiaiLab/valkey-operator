@@ -1,7 +1,7 @@
 # ADR-0013: Auth 는 사실상 항상 enabled — 명시적 false 가 동작하지 않음
 
 - Date: 2026-05-05
-- Status: Proposed
+- Status: Accepted (옵션 A)
 - Authors: @phil
 
 ## Context
