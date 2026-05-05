@@ -96,9 +96,10 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 - **ValkeyBackup 은 Phase 전이만 수행** (M2). 실제 BGSAVE / BGREWRITEAOF +
   PVC RDB 복사 + TTL 정리 는 M3 미구현. 코드 주석 (
   `internal/controller/valkeybackup_controller.go::ValkeyBackupReconciler`) 참고.
-- **standalone Valkey 의 TLS 통합 미구현** (ADR-0014 AI-005). ValkeyCluster
-  컨트롤러만 cert-manager Certificate 자동 생성. Valkey 단일 인스턴스 mTLS 가
-  필요하면 사용자가 직접 Secret + Spec.TLS.CustomCert.SecretName 지정.
+- **Replication 모드 + TLS 미구현** (ADR-0014 AI-007). standalone (replicas=1) +
+  TLS 는 동작하지만 replication 의 `ensureReplication` 이 plain port 사용 →
+  tlsConfigForValkey + port routing 추가 필요. Standalone TLS 만 필요하면
+  현재 동작.
 - **NetworkPolicy 강제 동작 검증 부재**: 리소스 정의 정합성만 확인.
   Calico / Cilium 등 NP-enforcing CNI 클러스터 에서 별도 검증 필요.
 

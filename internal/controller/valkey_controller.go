@@ -102,6 +102,14 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return applyErrorCondition(ctx, r.Client, v, "ClientService", err, r.Recorder)
 	}
 
+	// 6a. TLS Certificate (cert-manager) — Valkey 단일/replication 도 ADR-0014 AI-005
+	//     에 따라 standalone TLS 통합. cert-manager CRD 미설치 시 fail-soft.
+	if cert := resources.BuildCertificateForValkey(v); cert != nil {
+		if err := applyServiceMonitor(ctx, r.Client, r.Scheme, v, cert); err != nil {
+			return applyErrorCondition(ctx, r.Client, v, "Certificate", err, r.Recorder)
+		}
+	}
+
 	// 6. StatefulSet
 	stsParams := resources.STSParams{
 		CRName:       v.Name,
@@ -115,6 +123,14 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		PasswordRef:  secretRef,
 		ClusterMode:  false,
 		Pod:          v.Spec.Pod,
+	}
+	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
+		switch {
+		case v.Spec.TLS.CustomCert != nil && v.Spec.TLS.CustomCert.SecretName != "":
+			stsParams.TLSSecretName = v.Spec.TLS.CustomCert.SecretName
+		case v.Spec.TLS.CertManager != nil && v.Spec.TLS.CertManager.IssuerRef.Name != "":
+			stsParams.TLSSecretName = resources.CertificateSecretName(v.Name)
+		}
 	}
 	if v.Spec.Monitoring != nil && v.Spec.Monitoring.Enabled {
 		stsParams.ExporterImg = exporterImage(v.Spec.Monitoring)

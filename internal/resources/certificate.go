@@ -27,6 +27,55 @@ func CertificateSecretName(crName string) string { return crName + "-tls" }
 // CertificateName — Certificate CR 이름.
 func CertificateName(crName string) string { return crName + "-tls" }
 
+// BuildCertificateForValkey — Valkey 단일 인스턴스 / replication 토폴로지용 Certificate.
+// 미활성 (TLS nil / Enabled=false / CertManager.IssuerRef 누락) 시 nil 반환.
+func BuildCertificateForValkey(v *cachev1alpha1.Valkey) *unstructured.Unstructured {
+	if v.Spec.TLS == nil || !v.Spec.TLS.Enabled || v.Spec.TLS.CertManager == nil {
+		return nil
+	}
+	cm := v.Spec.TLS.CertManager
+	if cm.IssuerRef.Name == "" {
+		return nil
+	}
+
+	dnsNames := []any{
+		ClientServiceName(v.Name) + "." + v.Namespace + ".svc",
+		ClientServiceName(v.Name) + "." + v.Namespace + ".svc.cluster.local",
+		HeadlessServiceName(v.Name) + "." + v.Namespace + ".svc",
+		"*." + HeadlessServiceName(v.Name) + "." + v.Namespace + ".svc",
+	}
+
+	issuerKind := "ClusterIssuer"
+	if cm.IssuerRef.Kind != "" {
+		issuerKind = cm.IssuerRef.Kind
+	}
+
+	spec := map[string]any{
+		"secretName": CertificateSecretName(v.Name),
+		"commonName": ClientServiceName(v.Name) + "." + v.Namespace + ".svc",
+		"dnsNames":   dnsNames,
+		"issuerRef": map[string]any{
+			"name": cm.IssuerRef.Name,
+			"kind": issuerKind,
+		},
+		"usages": []any{"server auth", "client auth"},
+	}
+	if cm.Duration != "" {
+		spec["duration"] = cm.Duration
+	}
+	if cm.RenewBefore != "" {
+		spec["renewBefore"] = cm.RenewBefore
+	}
+
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(CertificateGVK)
+	u.SetName(CertificateName(v.Name))
+	u.SetNamespace(v.Namespace)
+	u.SetLabels(CommonLabels(v.Name, "valkey"))
+	u.Object["spec"] = spec
+	return u
+}
+
 // BuildCertificateForCluster — cert-manager Certificate CR. 미활성 시 nil.
 //
 // commonName / dnsNames 는 valkey 노드의 DNS 표면을 모두 커버:

@@ -82,8 +82,11 @@ vc-tls   3        Running   ok        16384   8.1.6
 - [x] AI-002: 단위 테스트 통과 (`internal/{controller,resources,valkey,webhook}`)
 - [x] AI-003: ServerName FQDN + mTLS client cert
 - [x] AI-004: e2e 검증 (TLS cluster Running + slots 16384)
-- [ ] AI-005: ValkeyController 의 TLS 통합 (별도 PR — `BuildCertificateForValkey` 추가)
-- [ ] AI-006: standalone Valkey TLS 동작 가능하도록 후속 패치
-- [ ] AI-007: `test/e2e/tls_test.go` 자동화 (현재는 수동 검증)
+- [x] AI-005: ValkeyController 의 TLS 통합 (`BuildCertificateForValkey` 추가)
+- [x] AI-006: standalone Valkey TLS 동작 — vk-tls-std (mode=Standalone, replicas=1) 으로
+      Phase=Running + TLS PING/SET/GET 검증.
+- [ ] AI-007: replication 모드 + TLS — ensureReplication 의 dial 이 plain port 사용,
+      tlsConfigForValkey 추가 + port routing 필요 (별도 PR).
+- [ ] AI-008: `test/e2e/tls_test.go` 자동화 (현재는 수동 검증)
 
 Refs: ADR-0008, ADR-0010
