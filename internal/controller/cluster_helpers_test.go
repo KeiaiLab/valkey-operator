@@ -507,8 +507,9 @@ func TestTLSConfigForCluster(t *testing.T) {
 	if got == nil {
 		t.Fatal("enabled TLS → want non-nil")
 	}
-	if got.ServerName != "test-headless" {
-		t.Errorf("ServerName: got %q want test-headless", got.ServerName)
+	wantSN := "test-headless." + vc.Namespace + ".svc"
+	if got.ServerName != wantSN {
+		t.Errorf("ServerName: got %q want %q", got.ServerName, wantSN)
 	}
 	if !got.InsecureSkipVerify {
 		t.Error("no CA bundle → want InsecureSkipVerify fallback")
