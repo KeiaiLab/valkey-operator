@@ -1,0 +1,47 @@
+# lefthook.yml — pre-commit / pre-push 훅 (P0 §1.1).
+#
+# 설치: lefthook install
+# 우회 (자동화 루프 한정): LEFTHOOK=0 환경변수 또는 commit msg 트레일러 [skip-hooks]
+#
+# 본 설정은 standards/enforcement.md §1.1 의 lefthook 표준을 따른다.
+
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -l -w {staged_files}
+      stage_fixed: true
+    govet:
+      glob: "*.go"
+      run: go vet ./...
+    golangci-lint:
+      glob: "*.go"
+      run: ./bin/golangci-lint run --new-from-rev=HEAD~1 {staged_files}
+      skip:
+        - merge
+        - rebase
+
+pre-push:
+  parallel: false
+  commands:
+    unit-test:
+      run: go test -count=1 -timeout=120s ./...
+    full-lint:
+      run: ./bin/golangci-lint run
+
+commit-msg:
+  commands:
+    conventional:
+      # Conventional Commits 패턴 (standards/commits.md §1).
+      # 본 환경 (Korean 본문 허용) 에서는 type 만 강제, subject case 자유.
+      run: |
+        msg=$(head -1 "$1")
+        if echo "$msg" | grep -qE '^(\[skip-hooks\]|Merge|Revert)' ; then
+          exit 0
+        fi
+        if ! echo "$msg" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|ci|build|perf|revert)(\([^)]+\))?!?: .+' ; then
+          echo "Commit message must follow Conventional Commits: <type>(<scope>): <subject>"
+          echo "Got: $msg"
+          exit 1
+        fi

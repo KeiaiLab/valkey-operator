@@ -1,0 +1,59 @@
+# valkey.conf — operator 가 ConfigMap 으로 렌더하여 /etc/valkey/valkey.conf 마운트.
+# Bitnami valkey-cluster 차트의 templates/scripts-configmap.yaml 의 핵심 directive 만 추림.
+
+bind 0.0.0.0
+port 6379
+protected-mode no
+dir {{ .DataDir }}
+{{- if .RequirePass }}
+requirepass {{ .RequirePass }}
+masterauth {{ .RequirePass }}
+{{- end }}
+
+# Persistence
+{{- if eq .PersistenceMode "RDB" }}
+save {{ .RDBSchedule }}
+appendonly no
+{{- else if eq .PersistenceMode "AOF" }}
+save ""
+appendonly yes
+appendfsync {{ .AOFFsync }}
+{{- else if eq .PersistenceMode "Both" }}
+save {{ .RDBSchedule }}
+appendonly yes
+appendfsync {{ .AOFFsync }}
+{{- else }}
+save ""
+appendonly no
+{{- end }}
+
+{{- if .ClusterEnabled }}
+# Cluster mode
+cluster-enabled yes
+cluster-config-file /data/nodes.conf
+cluster-node-timeout {{ .ClusterNodeTimeout }}
+cluster-require-full-coverage no
+cluster-migration-barrier 1
+{{- if .ClusterReplicaNoFailover }}
+# Spec.AutoFailover=false → replica 가 failover 시도 안 함.
+cluster-replica-no-failover yes
+{{- end }}
+{{- end }}
+
+{{- if .TLSEnabled }}
+tls-port 6380
+tls-cert-file /tls/tls.crt
+tls-key-file /tls/tls.key
+tls-ca-cert-file /tls/ca.crt
+tls-auth-clients yes
+tls-cluster {{ if .ClusterEnabled }}yes{{ else }}no{{ end }}
+{{- end }}
+
+# Default tunings (Bitnami chart defaults)
+maxmemory-policy noeviction
+timeout 0
+tcp-keepalive 300
+
+{{- range $k, $v := .Extra }}
+{{ $k }} {{ $v }}
+{{- end }}

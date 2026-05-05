@@ -1,0 +1,12 @@
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyBackup
+metadata:
+  labels:
+    app.kubernetes.io/name: valkey-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: valkeybackup-sample
+spec:
+  clusterRef:
+    kind: Valkey
+    name: valkey-sample
+  type: RDB

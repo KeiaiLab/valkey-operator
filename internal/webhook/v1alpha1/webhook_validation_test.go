@@ -1,0 +1,213 @@
+/*
+Copyright 2026 Keiailab.
+
+직접 호출 단위테스트 — Ginkgo BDD 의 ValkeyCluster Webhook describe 와 별도.
+함수 단위 검증 으로 빠른 실행 + 명확한 실패 위치.
+*/
+
+package v1alpha1
+
+import (
+	"context"
+	"testing"
+
+	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+)
+
+func TestValkeyClusterValidate_AutoFailover_requires_replicas(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.AutoFailover = true
+	vc.Spec.ReplicasPerShard = 0 // 모순 — autoFailover 가 replica 없이 동작 불가.
+	vc.Spec.Version.Version = "8.1.6"
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for AutoFailover=true + ReplicasPerShard=0")
+	}
+}
+
+func TestValkeyClusterValidate_total_node_limit(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 50
+	vc.Spec.ReplicasPerShard = 5 // 50 * 6 = 300 > 100.
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for total > 100")
+	}
+}
+
+func TestValkeyClusterValidate_TLS_requires_certManager_or_customCert(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true} // 둘 다 미명시.
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for TLS Enabled without CA")
+	}
+}
+
+func TestValkeyClusterValidate_TLS_mutually_exclusive(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled:     true,
+		CertManager: &cachev1alpha1.CertManagerSpec{IssuerRef: cachev1alpha1.CertIssuerRef{Name: "issuer"}},
+		CustomCert:  &cachev1alpha1.CustomCertSpec{SecretName: "ca"},
+	}
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for both certManager + customCert")
+	}
+}
+
+func TestValkeyClusterValidate_Auth_users_requires_enabled(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.Auth = cachev1alpha1.AuthSpec{
+		Enabled: false,
+		Users: []cachev1alpha1.ValkeyUser{
+			{Name: "alice"},
+		},
+	}
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for users without Auth.Enabled")
+	}
+}
+
+func TestValkeyClusterValidate_Update_storageClass_immutable(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	old := &cachev1alpha1.ValkeyCluster{}
+	old.Spec.Shards = 3
+	old.Spec.ReplicasPerShard = 1
+	old.Spec.Storage.StorageClassName = "fast-ssd"
+	new := old.DeepCopy()
+	new.Spec.Storage.StorageClassName = "slow-hdd"
+
+	if _, err := v.ValidateUpdate(context.Background(), old, new); err == nil {
+		t.Fatal("expected validation error for storageClassName change")
+	}
+}
+
+func TestValkeyClusterValidate_Update_tlsToggle_immutable(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	old := &cachev1alpha1.ValkeyCluster{}
+	old.Spec.Shards = 3
+	old.Spec.ReplicasPerShard = 1
+	old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
+	new := old.DeepCopy()
+	new.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled:    true,
+		CustomCert: &cachev1alpha1.CustomCertSpec{SecretName: "ca"},
+	}
+
+	if _, err := v.ValidateUpdate(context.Background(), old, new); err == nil {
+		t.Fatal("expected validation error for TLS toggle")
+	}
+}
+
+func TestValkeyClusterValidate_valid_passes(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.AutoFailover = true
+	vc.Spec.Version.Version = "8.1.6"
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err != nil {
+		t.Fatalf("valid spec should pass: %v", err)
+	}
+}
+
+// Defaulter — SlotMigration 빈 → Auto.
+func TestValkeyClusterDefaulter_slotMigration(t *testing.T) {
+	d := &ValkeyClusterCustomDefaulter{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	if err := d.Default(context.Background(), vc); err != nil {
+		t.Fatalf("default: %v", err)
+	}
+	if vc.Spec.SlotMigration != cachev1alpha1.SlotMigrationAuto {
+		t.Errorf("SlotMigration: got %q want Auto", vc.Spec.SlotMigration)
+	}
+}
+
+func TestValkeyClusterDefaulter_preserve_explicit_slotMigration(t *testing.T) {
+	d := &ValkeyClusterCustomDefaulter{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.SlotMigration = cachev1alpha1.SlotMigrationManual
+	_ = d.Default(context.Background(), vc)
+	if vc.Spec.SlotMigration != cachev1alpha1.SlotMigrationManual {
+		t.Errorf("explicit Manual should be preserved: got %q", vc.Spec.SlotMigration)
+	}
+}
+
+// Valkey webhook — Mode immutable.
+func TestValkey_Validate_Mode_immutable(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	old := &cachev1alpha1.Valkey{}
+	old.Spec.Mode = cachev1alpha1.ModeStandalone
+	old.Spec.Replicas = 1
+	old.Spec.Version.Version = "8.1.6"
+	new := old.DeepCopy()
+	new.Spec.Mode = cachev1alpha1.ModeReplication
+	new.Spec.Replicas = 3
+
+	if _, err := v.ValidateUpdate(context.Background(), old, new); err == nil {
+		t.Fatal("expected validation error for Mode change")
+	}
+}
+
+func TestValkey_Validate_Standalone_replicas_eq_1(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeStandalone
+	vc.Spec.Replicas = 3 // 모순.
+	vc.Spec.Version.Version = "8.1.6"
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for Standalone + Replicas > 1")
+	}
+}
+
+func TestValkey_Validate_Replication_replicas_min_2(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeReplication
+	vc.Spec.Replicas = 1 // 모순.
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
+		t.Fatal("expected validation error for Replication + Replicas < 2")
+	}
+}
+
+// Defaulter — Standalone 강제 Replicas=1.
+func TestValkeyDefaulter_standalone_replicas_forced(t *testing.T) {
+	d := &ValkeyCustomDefaulter{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeStandalone
+	vc.Spec.Replicas = 5
+	_ = d.Default(context.Background(), vc)
+	if vc.Spec.Replicas != 1 {
+		t.Errorf("Standalone should force Replicas=1, got %d", vc.Spec.Replicas)
+	}
+}
+
+// Defaulter — Replication + Replicas<2 → 2.
+func TestValkeyDefaulter_replication_min_2(t *testing.T) {
+	d := &ValkeyCustomDefaulter{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeReplication
+	vc.Spec.Replicas = 1
+	_ = d.Default(context.Background(), vc)
+	if vc.Spec.Replicas != 2 {
+		t.Errorf("Replication should default Replicas=2, got %d", vc.Spec.Replicas)
+	}
+}
