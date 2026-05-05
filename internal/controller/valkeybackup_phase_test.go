@@ -69,31 +69,22 @@ func TestBackup_phase_transition_pending_inProgress_completed(t *testing.T) {
 		t.Errorf("phase 1: %s", got.Status.Phase)
 	}
 
-	// 2차: Pending → InProgress + StartedAt.
+	// 2차: Pending → BGSAVE 발행 시도 → 테스트 환경 (실 valkey 미연결) 에서 dial
+	// 실패 → Failed phase. M3 구현 후 본 unit test 는 *실패 경로* 를 검증.
+	// (정상 BGSAVE → InProgress → LASTSAVE 폴링 → Completed 흐름은 envtest /
+	// integration 으로 검증 — 별도 PR.)
 	if _, err := r.Reconcile(ctx, req); err != nil {
 		t.Fatalf("reconcile 2: %v", err)
 	}
 	_ = r.Get(ctx, req.NamespacedName, got)
-	if got.Status.Phase != cachev1alpha1.BackupPhaseInProgress {
-		t.Errorf("phase 2: %s", got.Status.Phase)
-	}
-	if got.Status.StartedAt == nil {
-		t.Error("StartedAt should be set after InProgress")
-	}
-
-	// 3차: InProgress → Completed + CompletedAt.
-	if _, err := r.Reconcile(ctx, req); err != nil {
-		t.Fatalf("reconcile 3: %v", err)
-	}
-	_ = r.Get(ctx, req.NamespacedName, got)
-	if got.Status.Phase != cachev1alpha1.BackupPhaseCompleted {
-		t.Errorf("phase 3: %s", got.Status.Phase)
+	if got.Status.Phase != cachev1alpha1.BackupPhaseFailed {
+		t.Errorf("phase 2: want Failed (no valkey to dial), got %s", got.Status.Phase)
 	}
 	if got.Status.CompletedAt == nil {
-		t.Error("CompletedAt should be set")
+		t.Error("CompletedAt should be set after Failed")
 	}
 	if !got.IsTerminal() {
-		t.Error("IsTerminal should be true after Completed")
+		t.Error("IsTerminal should be true after Failed")
 	}
 
 	// 4차 (terminal): no-op.
