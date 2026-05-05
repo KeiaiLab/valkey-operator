@@ -87,6 +87,7 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 | TLS+mTLS ValkeyCluster (cert-manager) | Phase=Running, slots=16384, 데이터 plane SET/GET ✓ | — |
 | TLS+mTLS Valkey Standalone (cert-manager) | Phase=Running, ping/set/get on 6380 ✓ | — |
 | TLS+mTLS Valkey Replication (3 replicas) | master_link_status:up, write propagation 모든 replica ✓ | — |
+| ValkeyBackup (RDB) | Pending → InProgress → Completed, /data/dump.rdb 89 bytes 생성 | — |
 | NetworkPolicy 리소스 생성 | selfPeer + 6379(/16379) ingress + ownerReferences | (CNI 의존) |
 | operator metrics endpoint (HTTPS:8443) | controller_runtime_* + valkey_cluster_* 노출 | — |
 
@@ -95,9 +96,9 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 - `Spec.Auth.Enabled=false` 가 무시됨 — ADR-0013 옵션 A. operator 항상 auth 강제.
 - IPv6-only 환경 미테스트 (CLUSTER MEET 의 IPv4 prefer, ADR-0012).
 - `cluster-announce-hostname` 미사용 (필요 시 별도 RFC 검토).
-- **ValkeyBackup 은 Phase 전이만 수행** (M2). 실제 BGSAVE / BGREWRITEAOF +
-  PVC RDB 복사 + TTL 정리 는 M3 미구현. 코드 주석 (
-  `internal/controller/valkeybackup_controller.go::ValkeyBackupReconciler`) 참고.
+- **ValkeyBackup 은 BGSAVE 발행 + LASTSAVE 폴링까지 동작** (M3, iter 10).
+  pod 의 `/data/dump.rdb` 실제 파일 생성 확인. **PVC 외부 복사 + TTL 정리 는 M3.5
+  미구현** — 사용자 가 dump.rdb 를 활용 하려면 별도 Job 또는 `kubectl cp` 필요.
 - ~~Replication 모드 + TLS 미구현~~ → **iter 9 에서 구현 완료** (ADR-0014 AI-007):
   `tlsConfigForValkey` + `dialValkey` 추가 + `tls-replication yes` 디렉티브.
   3-replica + cert-manager 검증 통과 (master_link_status:up, write propagation).
