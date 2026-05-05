@@ -84,6 +84,9 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 | replica scale up (3→5) | 새 replica 가 자동으로 master link up | — |
 | replica scale down (5→2) | 잉여 pod 정리 | 기존 데이터 유지 |
 | ValkeyCluster shard pod kill | cluster_state=ok 유지 (replica 가 즉시 take over) | 모든 슬롯 보존 |
+| TLS+mTLS ValkeyCluster (cert-manager) | Phase=Running, slots=16384, 데이터 plane SET/GET ✓ | — |
+| NetworkPolicy 리소스 생성 | selfPeer + 6379(/16379) ingress + ownerReferences | (CNI 의존) |
+| operator metrics endpoint (HTTPS:8443) | controller_runtime_* + valkey_cluster_* 노출 | — |
 
 ## 잠재적 운영 이슈 (현재 알려진 한계)
 

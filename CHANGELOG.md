@@ -37,6 +37,9 @@
 - 회복성: primary pod force kill → STS 재생성 → operator 재 promote → 데이터 보존 (canary `preserved`).
 - scale up/down: 3→5→2, master_link_status:up, 데이터 보존.
 - 클러스터 모드: 3 shards × 2 instances, cluster_state:ok, slots:16384/16384 OK.
+- TLS+mTLS 클러스터 (cert-manager + selfsigned ClusterIssuer): Phase=Running, slots=16384/16384 OK, 데이터 plane SET/GET 성공 (cluster mode -c, 다중 shard 분산).
+- NetworkPolicy 리소스 정합성: deny-by-default + selfPeer ingress (6379) + ownerReferences (Standalone). cluster mode 시 16379 추가. 강제 동작 검증은 Calico/Cilium CNI 필요 (kindnet 미지원).
+- operator metrics endpoint (HTTPS:8443, ServiceAccount 토큰 인증): controller_runtime_* 메트릭 정상 노출. 커스텀 valkey_cluster_* 메트릭은 ValkeyCluster reconcile 시 emit.
 
 ### Added (iter 1-6 — 이전 사이클)
 - ValkeyCluster Reconcile 14 단계 구현 (cluster mode CRD bootstrap → CLUSTER MEET / ADDSLOTS / REPLICATE → status polling). [iter 1]
