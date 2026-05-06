@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 10 완료)
+**최종 갱신**: 2026-05-06 (cycle 11 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50% + Track F **OTEL tracer infrastructure**.
+진행 + Track E 50% + Track F **OTEL tracer infrastructure + manual span**.
 
 ---
 
@@ -163,6 +163,28 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 12. Cycle 11 추가분 (1 commit — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 60 | `6f75ba1` | `feat(observability): 5 reconcilers 의 manual reconcile span 추가 — Track F AI-005` | StartReconcileSpan helper + 5 reconcilers 동일 패턴 적용. zero overhead default. |
+
+**Track F 진척**: ADR-0025 AI-005 완료. 5 reconcilers (Valkey, ValkeyCluster,
+ValkeyBackup, ValkeyRestore, ValkeyBackupTarget) 모두 trace span 발행 — kind /
+namespace / name attributes 표준화.
+
+Day-N₁ 관측성 게이트:
+- ✅ Prometheus alert rules 6건 (cycle 4)
+- ✅ NetworkPolicy CNI 검증 매니페스트 (cycle 4)
+- ✅ OTEL tracer infrastructure (cycle 10)
+- ✅ Manual reconcile span (cycle 11)
+
+**다음 cycle 진입 권고**:
+- Conversion webhook (v1alpha1 → v1beta1 준비) — 큰 작업, 단독 가능
+- e2e 실측 (`make test-e2e` — kind cluster + cert-manager 5분+)
+- Reconcile path 의 child span (controller 호출 시점별 — INFO replication,
+  PromoteToPrimary, FPut/FGet 등)
 
 ## 11. Cycle 10 추가분 (2 commits — 본 세션)
 
