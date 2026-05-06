@@ -524,6 +524,102 @@ func TestRestore_mountingTargetRef_createsPVCAndJob(t *testing.T) {
 	}
 }
 
+// === ValkeyCluster mode 시나리오 ===
+
+func standaloneCluster(name, ns string, shards, repsPerShard int32) *cachev1alpha1.ValkeyCluster {
+	return &cachev1alpha1.ValkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Spec: cachev1alpha1.ValkeyClusterSpec{
+			Shards:           shards,
+			ReplicasPerShard: repsPerShard,
+		},
+	}
+}
+
+// freshClusterRestoreCR — Kind=ValkeyCluster CR (Source.PVC + ShardLayout).
+func freshClusterRestoreCR(name, ns, target string) *cachev1alpha1.ValkeyRestore {
+	r := freshRestoreCR(name, ns, target)
+	r.Spec.ClusterRef.Kind = "ValkeyCluster"
+	return r
+}
+
+// 18. Pending: Kind=ValkeyCluster + Source.PVC ROX → Mounting.
+func TestRestore_pendingValkeyClusterROXSource_OK(t *testing.T) {
+	rest := freshClusterRestoreCR("r1", "ns", "vc")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	vc := standaloneCluster("vc", "ns", 3, 1)
+	roxPVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "backup-pvc", Namespace: "ns"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadOnlyMany},
+		},
+	}
+	r := fakeRestoreReconciler(rest, vc, roxPVC)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseMounting {
+		t.Fatalf("expected Mounting, got %s", got.Status.Phase)
+	}
+}
+
+// 19. Pending: Kind=ValkeyCluster + Source.PVC RWO → Failed (ROX 강제).
+func TestRestore_pendingValkeyClusterRWO_Fails(t *testing.T) {
+	rest := freshClusterRestoreCR("r1", "ns", "vc")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	vc := standaloneCluster("vc", "ns", 3, 1)
+	rwoPVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "backup-pvc", Namespace: "ns"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+		},
+	}
+	r := fakeRestoreReconciler(rest, vc, rwoPVC)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed (RWO not allowed for ValkeyCluster), got %s", got.Status.Phase)
+	}
+}
+
+// 20. Pending: Kind=Unknown → Failed.
+func TestRestore_pendingUnknownKind(t *testing.T) {
+	rest := freshRestoreCR("r1", "ns", "vc")
+	rest.Spec.ClusterRef.Kind = "UnknownKind"
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	r := fakeRestoreReconciler(rest)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed, got %s", got.Status.Phase)
+	}
+}
+
+// 21. parseShardLayout: 다양한 key 형식 인식.
+func TestParseShardLayout_keyFormats(t *testing.T) {
+	in := map[string]string{
+		"0":       "a/dump.rdb",
+		"shard-1": "b/dump.rdb",
+		"shard2":  "c/dump.rdb",
+		"foo":     "ignored",
+	}
+	out := parseShardLayout(in)
+	if got, want := len(out), 3; got != want {
+		t.Fatalf("expected %d valid entries, got %d (out=%v)", want, got, out)
+	}
+	if out[0] != "a/dump.rdb" || out[1] != "b/dump.rdb" || out[2] != "c/dump.rdb" {
+		t.Fatalf("parsed map mismatch: %v", out)
+	}
+}
+
 // 11. Deletion: finalizer cleanup — STS 원복 + paused 제거 (best-effort).
 func TestRestore_deletion_cleansUp(t *testing.T) {
 	rest := freshRestoreCR("r1", "ns", "vk")

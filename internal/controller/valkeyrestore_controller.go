@@ -14,6 +14,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -151,14 +153,14 @@ func (r *ValkeyRestoreReconciler) transitionToPending(
 
 // handlePending — ClusterRef + Source 검증 → Mounting.
 //
-// 본 commit 의 제한: ClusterRef.Kind=="Valkey" + Mode=Standalone.
-// Source 는 PVC | TargetRef 둘 중 하나 (XOR).
+// 지원: ClusterRef.Kind ∈ {Valkey, ValkeyCluster}. Source 는 PVC | TargetRef
+// 둘 중 하나 (XOR). multi-pod 모드 (Replication / Cluster) 시 ROX source 강제.
 func (r *ValkeyRestoreReconciler) handlePending(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
-	if rest.Spec.ClusterRef.Kind != "Valkey" {
+	if rest.Spec.ClusterRef.Kind != "Valkey" && rest.Spec.ClusterRef.Kind != "ValkeyCluster" {
 		return r.markFailed(ctx, rest, "UnsupportedClusterKind",
-			fmt.Sprintf("kind=%s — only Valkey (Standalone) supported in this version",
+			fmt.Sprintf("kind=%s — Valkey 또는 ValkeyCluster 만 지원",
 				rest.Spec.ClusterRef.Kind))
 	}
 	hasPVC := rest.Spec.Source.PVC != nil
@@ -186,22 +188,21 @@ func (r *ValkeyRestoreReconciler) handlePending(
 		}
 	}
 
-	// 대상 Valkey 가 Standalone 인지 확인.
-	v := &cachev1alpha1.Valkey{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      rest.Spec.ClusterRef.Name,
-		Namespace: rest.Namespace,
-	}, v); err != nil {
+	// 대상 CR 의 multi-pod 여부 결정.
+	multiPod, err := r.isMultiPodTarget(ctx, rest)
+	if err != nil {
 		if errors.IsNotFound(err) {
 			return r.markFailed(ctx, rest, "TargetNotFound",
-				fmt.Sprintf("Valkey/%s/%s not found", rest.Namespace, rest.Spec.ClusterRef.Name))
+				fmt.Sprintf("%s/%s/%s not found",
+					rest.Spec.ClusterRef.Kind, rest.Namespace, rest.Spec.ClusterRef.Name))
 		}
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
-	// Replication mode (replicas>1) 시 source PVC 가 ROX 인지 검증.
-	// RWO source 는 multi-pod 동시 mount 불가 — init container 가 첫 pod 에서만
-	// 실행 후 attach 끊어지지 않아 다음 pod ContainerCreating 무한 대기.
-	if v.Spec.Replicas > 1 {
+	// multi-pod (Replication replicas>1 또는 ValkeyCluster) 시 source PVC 가
+	// ROX 인지 검증. RWO source 는 multi-pod 동시 mount 불가 — init container
+	// 가 첫 pod 에서만 실행 후 attach 끊어지지 않아 다음 pod ContainerCreating
+	// 무한 대기.
+	if multiPod {
 		if rest.Spec.Source.PVC != nil {
 			// Source.PVC 시 사전 PVC 의 accessMode 검증.
 			sourcePVC := &corev1.PersistentVolumeClaim{}
@@ -217,8 +218,8 @@ func (r *ValkeyRestoreReconciler) handlePending(
 				}
 				if !rox {
 					return r.markFailed(ctx, rest, "SourcePVCNotROX",
-						fmt.Sprintf("replicas=%d 시 Source.PVC %s 가 ReadOnlyMany 필요 (RWO 는 multi-pod mount 불가)",
-							v.Spec.Replicas, rest.Spec.Source.PVC.Name))
+						fmt.Sprintf("multi-pod target 에서 Source.PVC %s 가 ReadOnlyMany 필요 (RWO 는 multi-pod mount 불가)",
+							rest.Spec.Source.PVC.Name))
 				}
 			}
 			// Get 실패 시 (NotFound) 는 후속 handleMounting 에서 처리.
@@ -227,8 +228,7 @@ func (r *ValkeyRestoreReconciler) handlePending(
 		if rest.Spec.Source.TargetRef != nil {
 			if rest.Spec.SourcePVCAccessMode != cachev1alpha1.SourcePVCAccessModeROX {
 				return r.markFailed(ctx, rest, "SourcePVCAccessModeRequired",
-					fmt.Sprintf("replicas=%d + Source.TargetRef → Spec.SourcePVCAccessMode=ReadOnlyMany 명시 필수",
-						v.Spec.Replicas))
+					"multi-pod target + Source.TargetRef → Spec.SourcePVCAccessMode=ReadOnlyMany 명시 필수")
 			}
 		}
 	}
@@ -432,6 +432,65 @@ func (r *ValkeyRestoreReconciler) operatorImage() string {
 	return "controller:latest"
 }
 
+// isMultiPodTarget — 대상 CR 의 pod 수가 1 초과인지.
+//   - Valkey: replicas > 1 (Mode=Replication)
+//   - ValkeyCluster: 항상 multi-pod (shards × (1 + replicasPerShard) ≥ 3)
+func (r *ValkeyRestoreReconciler) isMultiPodTarget(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) (bool, error) {
+	switch rest.Spec.ClusterRef.Kind {
+	case "Valkey":
+		v := &cachev1alpha1.Valkey{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace,
+		}, v); err != nil {
+			return false, err
+		}
+		return v.Spec.Replicas > 1, nil
+	case "ValkeyCluster":
+		vc := &cachev1alpha1.ValkeyCluster{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace,
+		}, vc); err != nil {
+			return false, err
+		}
+		_ = vc // existence 만 검증 — 항상 multi-pod.
+		return true, nil
+	}
+	return false, fmt.Errorf("unsupported kind %q", rest.Spec.ClusterRef.Kind)
+}
+
+// shardCountForTarget — ValkeyCluster.Spec.Shards. Kind=Valkey 시 0 (cluster
+// 모드 init container 미사용).
+func (r *ValkeyRestoreReconciler) shardCountForTarget(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) (int32, error) {
+	if rest.Spec.ClusterRef.Kind != "ValkeyCluster" {
+		return 0, nil
+	}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	if err := r.Get(ctx, types.NamespacedName{
+		Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace,
+	}, vc); err != nil {
+		return 0, err
+	}
+	return vc.Spec.Shards, nil
+}
+
+// parseShardLayout — Spec.Source.PVC.ShardLayout 의 string key → int 매핑.
+// "0" / "shard-0" / "shard0" 모두 허용. 파싱 실패 line 은 skip.
+func parseShardLayout(input map[string]string) map[int]string {
+	out := map[int]string{}
+	for k, v := range input {
+		cleaned := strings.TrimPrefix(k, "shard-")
+		cleaned = strings.TrimPrefix(cleaned, "shard")
+		if i, err := strconv.Atoi(cleaned); err == nil {
+			out[i] = v
+		}
+	}
+	return out
+}
+
 // === 데이터 plane 검증 (Verifying phase 의 INFO keyspace) helpers ===
 // 패턴은 valkeybackup_controller.go 의 dialBackupTarget / tlsConfigForBackupTarget
 // / fetchBackupTargetPassword 와 동등. ClusterRef 만 ValkeyRestoreSpec 에서 가져옴.
@@ -491,7 +550,7 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 	srcPath := sourceRDBPath(rest)
 	srcPVC := sourcePVCName(rest)
 
-	// 멱등 inject.
+	// 멱등 inject — Kind 별 분기.
 	hadRestoreContainer := false
 	for _, c := range sts.Spec.Template.Spec.InitContainers {
 		if c.Name == resources.RestoreInitContainerName {
@@ -499,7 +558,20 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 			break
 		}
 	}
-	resources.InjectRestoreIntoPodSpec(&sts.Spec.Template.Spec, srcPath, srcPVC)
+	if rest.Spec.ClusterRef.Kind == "ValkeyCluster" {
+		shards, err := r.shardCountForTarget(ctx, rest)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		var layout map[int]string
+		if rest.Spec.Source.PVC != nil {
+			layout = parseShardLayout(rest.Spec.Source.PVC.ShardLayout)
+		}
+		resources.InjectRestoreIntoPodSpecForCluster(
+			&sts.Spec.Template.Spec, shards, layout, srcPVC)
+	} else {
+		resources.InjectRestoreIntoPodSpec(&sts.Spec.Template.Spec, srcPath, srcPVC)
+	}
 	if !hadRestoreContainer {
 		if err := r.Update(ctx, sts); err != nil {
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
