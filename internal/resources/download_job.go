@@ -35,8 +35,16 @@ func RestoreLabels(restoreName string) map[string]string {
 }
 
 // BuildRestoreSourcePVC — ValkeyRestore 가 외부에서 다운로드한 RDB 를 보존
-// 할 임시 PVC. 8Gi RWO. 첫 commit 은 size 고정 — 추후 Spec.SourcePVCSize 추가.
-func BuildRestoreSourcePVC(restoreName, namespace string) *corev1.PersistentVolumeClaim {
+// 할 임시 PVC.
+//
+// Standalone: ReadWriteOnce. Replication / Cluster (multi-pod 동시 mount):
+// ReadOnlyMany 필수 — storage class 가 ROX 지원 해야.
+//
+// 8Gi 고정 크기. Spec.SourcePVCSize 옵션 은 추후.
+func BuildRestoreSourcePVC(
+	restoreName, namespace string,
+	accessMode corev1.PersistentVolumeAccessMode,
+) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      RestoreSourcePVCName(restoreName),
@@ -44,7 +52,7 @@ func BuildRestoreSourcePVC(restoreName, namespace string) *corev1.PersistentVolu
 			Labels:    RestoreLabels(restoreName),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			AccessModes: []corev1.PersistentVolumeAccessMode{accessMode},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: resource.MustParse("8Gi"),

@@ -165,9 +165,57 @@ func TestRestore_pendingTargetNotFound(t *testing.T) {
 	}
 }
 
-// 4. Pending: Mode=Replication → Failed.
-func TestRestore_pendingUnsupportedMode(t *testing.T) {
+// 4. Pending: Replication mode + Source.PVC RWO → Failed (SourcePVCNotROX).
+func TestRestore_pendingReplicationRequiresROXSource(t *testing.T) {
 	rest := freshRestoreCR("r1", "ns", "vk")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	v := standaloneValkey("vk", "ns")
+	v.Spec.Mode = cachev1alpha1.ModeReplication
+	v.Spec.Replicas = 3
+	rwoSourcePVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "backup-pvc", Namespace: "ns"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+		},
+	}
+	r := fakeRestoreReconciler(rest, v, rwoSourcePVC)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed (RWO not allowed for Replication), got %s", got.Status.Phase)
+	}
+}
+
+// 4b. Pending: Replication mode + Source.PVC ROX → Mounting OK.
+func TestRestore_pendingReplicationROXSource_OK(t *testing.T) {
+	rest := freshRestoreCR("r1", "ns", "vk")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	v := standaloneValkey("vk", "ns")
+	v.Spec.Mode = cachev1alpha1.ModeReplication
+	v.Spec.Replicas = 3
+	roxSourcePVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "backup-pvc", Namespace: "ns"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadOnlyMany},
+		},
+	}
+	r := fakeRestoreReconciler(rest, v, roxSourcePVC)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseMounting {
+		t.Fatalf("expected Mounting (ROX OK), got %s", got.Status.Phase)
+	}
+}
+
+// 4c. Pending: Replication + Source.TargetRef + SourcePVCAccessMode 미명시 → Failed.
+func TestRestore_pendingReplicationTargetRef_requiresROXOption(t *testing.T) {
+	rest := freshTargetRefRestore("r1", "ns", "vk", "tgt", "dump.rdb")
 	rest.Status.Phase = cachev1alpha1.RestorePhasePending
 	v := standaloneValkey("vk", "ns")
 	v.Spec.Mode = cachev1alpha1.ModeReplication
@@ -180,6 +228,25 @@ func TestRestore_pendingUnsupportedMode(t *testing.T) {
 	got := reloadRestore(t, r, "r1", "ns")
 	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
 		t.Fatalf("expected Failed, got %s", got.Status.Phase)
+	}
+}
+
+// 4d. Pending: Replication + Source.TargetRef + SourcePVCAccessMode=ROX → Mounting.
+func TestRestore_pendingReplicationTargetRefROX_OK(t *testing.T) {
+	rest := freshTargetRefRestore("r1", "ns", "vk", "tgt", "dump.rdb")
+	rest.Spec.SourcePVCAccessMode = cachev1alpha1.SourcePVCAccessModeROX
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	v := standaloneValkey("vk", "ns")
+	v.Spec.Mode = cachev1alpha1.ModeReplication
+	v.Spec.Replicas = 3
+	r := fakeRestoreReconciler(rest, v)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseMounting {
+		t.Fatalf("expected Mounting, got %s", got.Status.Phase)
 	}
 }
 

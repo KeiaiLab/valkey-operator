@@ -71,8 +71,6 @@ type RestoreSourcePVC struct {
 }
 
 // RestoreSourceTargetRef — 외부 ValkeyBackupTarget 참조 (ADR-0016 대칭).
-//
-// 본 필드는 *별개 commit* 에서 활성화 — 첫 버전은 PVC 만.
 type RestoreSourceTargetRef struct {
 	// ValkeyBackupTarget CR 이름 (같은 namespace).
 	Name string `json:"name"`
@@ -80,6 +78,21 @@ type RestoreSourceTargetRef struct {
 	// target 내부의 path/prefix. 예: "2026-05-05/dump.rdb".
 	Path string `json:"path"`
 }
+
+// SourcePVCAccessMode — ValkeyRestore 가 자체 임시 PVC (Source.TargetRef 시)
+// 생성할 때 사용할 accessMode.
+//
+// Standalone (replicas=1): ReadWriteOnce 충분.
+// Replication / Cluster (replicas>1): ReadOnlyMany 필수 — multi-pod 동시
+// mount 위해. storage class 가 ROX 지원 해야 (AWS EFS, NFS, GlusterFS).
+//
+// +kubebuilder:validation:Enum=ReadWriteOnce;ReadOnlyMany
+type SourcePVCAccessMode string
+
+const (
+	SourcePVCAccessModeRWO SourcePVCAccessMode = "ReadWriteOnce"
+	SourcePVCAccessModeROX SourcePVCAccessMode = "ReadOnlyMany"
+)
 
 // RestoreSource — PVC 또는 외부 target 중 하나.
 //
@@ -97,12 +110,20 @@ type ValkeyRestoreSpec struct {
 	// 대상 Valkey 또는 ValkeyCluster CR (같은 namespace).
 	ClusterRef ClusterReference `json:"clusterRef"`
 
-	// 복원 source — PVC (즉시 사용 가능) 또는 TargetRef (S3, 별개 commit).
+	// 복원 source — PVC (즉시 사용 가능) 또는 TargetRef (S3 등 외부).
 	Source RestoreSource `json:"source"`
 
 	// +kubebuilder:default="RDB"
 	// +optional
 	RestoreType RestoreType `json:"restoreType,omitempty"`
+
+	// SourcePVCAccessMode — Source.TargetRef 시 자체 임시 PVC 의 accessMode.
+	// 미명시 시 default ReadWriteOnce (Standalone). Replication / Cluster
+	// (replicas>1) 시 ReadOnlyMany 명시 필요.
+	//
+	// +kubebuilder:default="ReadWriteOnce"
+	// +optional
+	SourcePVCAccessMode SourcePVCAccessMode `json:"sourcePVCAccessMode,omitempty"`
 }
 
 // ValkeyRestoreStatus — 진행 상황.

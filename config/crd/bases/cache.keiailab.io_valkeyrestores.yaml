@@ -81,7 +81,7 @@ spec:
                 - AOF
                 type: string
               source:
-                description: 복원 source — PVC (즉시 사용 가능) 또는 TargetRef (S3, 별개 commit).
+                description: 복원 source — PVC (즉시 사용 가능) 또는 TargetRef (S3 등 외부).
                 properties:
                   pvc:
                     description: |-
@@ -109,10 +109,8 @@ spec:
                     - name
                     type: object
                   targetRef:
-                    description: |-
-                      RestoreSourceTargetRef — 외부 ValkeyBackupTarget 참조 (ADR-0016 대칭).
-
-                      본 필드는 *별개 commit* 에서 활성화 — 첫 버전은 PVC 만.
+                    description: RestoreSourceTargetRef — 외부 ValkeyBackupTarget 참조
+                      (ADR-0016 대칭).
                     properties:
                       name:
                         description: ValkeyBackupTarget CR 이름 (같은 namespace).
@@ -125,6 +123,16 @@ spec:
                     - path
                     type: object
                 type: object
+              sourcePVCAccessMode:
+                default: ReadWriteOnce
+                description: |-
+                  SourcePVCAccessMode — Source.TargetRef 시 자체 임시 PVC 의 accessMode.
+                  미명시 시 default ReadWriteOnce (Standalone). Replication / Cluster
+                  (replicas>1) 시 ReadOnlyMany 명시 필요.
+                enum:
+                - ReadWriteOnce
+                - ReadOnlyMany
+                type: string
             required:
             - clusterRef
             - source

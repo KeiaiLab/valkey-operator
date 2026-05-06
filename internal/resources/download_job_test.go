@@ -12,8 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestBuildRestoreSourcePVC_basic(t *testing.T) {
-	pvc := BuildRestoreSourcePVC("vkr", "ns")
+func TestBuildRestoreSourcePVC_RWO(t *testing.T) {
+	pvc := BuildRestoreSourcePVC("vkr", "ns", corev1.ReadWriteOnce)
 	if pvc.Name != "vkr-source" {
 		t.Fatalf("expected name=vkr-source, got %s", pvc.Name)
 	}
@@ -26,6 +26,13 @@ func TestBuildRestoreSourcePVC_basic(t *testing.T) {
 	got := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 	if got.String() != "8Gi" {
 		t.Fatalf("size=%s, want 8Gi", got.String())
+	}
+}
+
+func TestBuildRestoreSourcePVC_ROX(t *testing.T) {
+	pvc := BuildRestoreSourcePVC("vkr", "ns", corev1.ReadOnlyMany)
+	if pvc.Spec.AccessModes[0] != corev1.ReadOnlyMany {
+		t.Fatalf("expected ROX, got %v", pvc.Spec.AccessModes)
 	}
 }
 

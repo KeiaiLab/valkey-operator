@@ -200,13 +200,39 @@ func (r *ValkeyRestoreReconciler) handlePending(
 		}
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
-	if v.Spec.Mode != "" && v.Spec.Mode != cachev1alpha1.ModeStandalone {
-		return r.markFailed(ctx, rest, "UnsupportedMode",
-			fmt.Sprintf("Valkey.Spec.Mode=%s — only Standalone supported in this version", v.Spec.Mode))
-	}
+	// Replication mode (replicas>1) 시 source PVC 가 ROX 인지 검증.
+	// RWO source 는 multi-pod 동시 mount 불가 — init container 가 첫 pod 에서만
+	// 실행 후 attach 끊어지지 않아 다음 pod ContainerCreating 무한 대기.
 	if v.Spec.Replicas > 1 {
-		return r.markFailed(ctx, rest, "UnsupportedReplicas",
-			fmt.Sprintf("Valkey replicas=%d — only single-pod Standalone supported", v.Spec.Replicas))
+		if rest.Spec.Source.PVC != nil {
+			// Source.PVC 시 사전 PVC 의 accessMode 검증.
+			sourcePVC := &corev1.PersistentVolumeClaim{}
+			if err := r.Get(ctx, types.NamespacedName{
+				Name: rest.Spec.Source.PVC.Name, Namespace: rest.Namespace,
+			}, sourcePVC); err == nil {
+				rox := false
+				for _, mode := range sourcePVC.Spec.AccessModes {
+					if mode == corev1.ReadOnlyMany {
+						rox = true
+						break
+					}
+				}
+				if !rox {
+					return r.markFailed(ctx, rest, "SourcePVCNotROX",
+						fmt.Sprintf("replicas=%d 시 Source.PVC %s 가 ReadOnlyMany 필요 (RWO 는 multi-pod mount 불가)",
+							v.Spec.Replicas, rest.Spec.Source.PVC.Name))
+				}
+			}
+			// Get 실패 시 (NotFound) 는 후속 handleMounting 에서 처리.
+		}
+		// Source.TargetRef 시: SourcePVCAccessMode 가 ROX 인지 검증.
+		if rest.Spec.Source.TargetRef != nil {
+			if rest.Spec.SourcePVCAccessMode != cachev1alpha1.SourcePVCAccessModeROX {
+				return r.markFailed(ctx, rest, "SourcePVCAccessModeRequired",
+					fmt.Sprintf("replicas=%d + Source.TargetRef → Spec.SourcePVCAccessMode=ReadOnlyMany 명시 필수",
+						v.Spec.Replicas))
+			}
+		}
 	}
 
 	// → Mounting.
@@ -332,8 +358,12 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 		return res, false, err
 	}
 
-	// 2. 임시 source PVC 보장.
-	pvc := resources.BuildRestoreSourcePVC(rest.Name, rest.Namespace)
+	// 2. 임시 source PVC 보장. Replication mode 시 ROX 필요.
+	accessMode := corev1.ReadWriteOnce
+	if rest.Spec.SourcePVCAccessMode == cachev1alpha1.SourcePVCAccessModeROX {
+		accessMode = corev1.ReadOnlyMany
+	}
+	pvc := resources.BuildRestoreSourcePVC(rest.Name, rest.Namespace, accessMode)
 	if err := controllerutil.SetControllerReference(rest, pvc, r.Scheme); err != nil {
 		res, err := r.markFailed(ctx, rest, "PVCOwnerRef", err.Error())
 		return res, false, err
