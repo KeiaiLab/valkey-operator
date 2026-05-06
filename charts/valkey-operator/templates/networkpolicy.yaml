@@ -76,6 +76,17 @@ spec:
         - protocol: TCP
           port: 4318  # OTLP HTTP default.
     {{- end }}
+    {{- if .Values.features.backup.enabled }}
+    # cycle 89: ValkeyBackupTarget 의 S3 endpoint Reachable check (외부 AWS S3
+    # / cluster-internal MinIO). cycles 16 (BackupTarget) + 72 cross-feature
+    # — features.backup.enabled 시 외부 HTTPS (443) egress 필수. 사용자가
+    # *internal-only S3* 강제 시 networkPolicy.egress 으로 더 좁게 override.
+    - ports:
+        - protocol: TCP
+          port: 443  # AWS S3 / HTTPS 표준.
+        - protocol: TCP
+          port: 9000  # MinIO 기본 port (alternative).
+    {{- end }}
     {{- with .Values.networkPolicy.egress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

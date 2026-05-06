@@ -58,3 +58,17 @@ func TestNetworkPolicyTracingEgressPresent(t *testing.T) {
 		t.Error("networkpolicy.yaml tracing 분기 안에 OTLP port (4317 gRPC / 4318 HTTP) egress rule 없음")
 	}
 }
+
+// TestNetworkPolicyBackupEgressPresent — features.backup.enabled 시 외부 S3
+// (AWS S3 / MinIO) egress 허용. cycle 89 cross-feature — backup+networkPolicy
+// 결합 silent fail 차단 (BackupTarget Reachable 검증 실패 → 영구 Pending).
+func TestNetworkPolicyBackupEgressPresent(t *testing.T) {
+	repo := findRepoRoot(t)
+	npPath := filepath.Join(repo, "charts/valkey-operator/templates/networkpolicy.yaml")
+	raw, _ := os.ReadFile(npPath)
+	body := string(raw)
+
+	if !strings.Contains(body, ".Values.features.backup.enabled") {
+		t.Error("networkpolicy.yaml 에 .Values.features.backup.enabled 분기 없음 — backup 활성 시 S3 외부 endpoint 차단 → BackupTarget 영구 Pending")
+	}
+}
