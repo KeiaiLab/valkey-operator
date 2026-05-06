@@ -301,7 +301,8 @@ audit: ## govulncheck + gosec + trivy fs — RFC 0002 L3 security 게이트.
 	@command -v $(LOCALBIN)/gosec >/dev/null 2>&1 || GOBIN=$(LOCALBIN) go install github.com/securego/gosec/v2/cmd/gosec@latest
 	$(LOCALBIN)/gosec -quiet -severity high ./internal/... || true
 	@echo "=== trivy fs (lockfile + base CVE) ==="
-	@command -v trivy >/dev/null 2>&1 && trivy fs --exit-code 1 --severity HIGH,CRITICAL --quiet --skip-dirs vendor . || echo "trivy not installed (brew install trivy)"
+	@command -v trivy >/dev/null 2>&1 || { echo "[error] trivy not installed: brew install trivy"; exit 1; }
+	trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --skip-dirs vendor,bin,tmp .
 
 .PHONY: gate
 gate: lint test helm-lint helm-template audit ## RFC 0002 L3 종합 게이트 (lint+test+helm+audit).
