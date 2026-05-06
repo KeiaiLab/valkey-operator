@@ -441,6 +441,34 @@ the '--force' flag and manually ensure that any custom configuration
 previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
 is manually re-applied afterwards.
 
+## Roadmap
+
+본 섹션은 *현재 알려진 우선순위* 를 표시 — 일정 확약 아님 (시간 기반 일정
+대신 *완성도 + 영향도* 기반). 자세한 계획은 `docs/plans/` 참조.
+
+### 진행 중 / 완료 (alpha 단계)
+
+- ✅ Standalone / Replication / ValkeyCluster 모드 (Track A 100%)
+- ✅ Backup → PVC / S3 (`ValkeyBackupTarget` CRD)
+- ✅ Restore (init container 패턴, ADR-0015)
+- ✅ Replication 자동 Failover (replica with largest offset, ADR-0017)
+- ✅ Prometheus Alerts 10건 + runbook §9 + ServiceMonitor 자동화
+- ✅ OTEL Tracing 22 spans
+- ✅ Helm Chart + ArtifactHub publish (ADR-0024)
+- ✅ Supply Chain: SBOM (syft SPDX) + trivy scan + helm-docs
+
+### 다음 단계 (예정)
+
+- [ ] **e2e 자동화** — kind + MinIO 환경에서 Backup/Restore/Cluster 실측.
+- [ ] **ValkeyCluster 자동 resharding** — 슬롯 배치 + ASKING 처리 (ADR-0018 결정 필요).
+- [ ] **HPA 통합** — Replication 모드 only, operator-managed (ADR-0027 deferred — v1alpha1 stable 후).
+- [ ] **Conversion Webhook** — v1beta1 도입 시 (ADR-0026 deferred).
+- [ ] **첫 v0.1.0 GA release** — Track A/B/E 안정 + 24h soak test 후.
+
+상세 결정 근거: [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md). 신규 기능 요청은
+[Issues](https://github.com/keiailab/valkey-operator/issues) 또는 GitHub
+Discussions 에서.
+
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md) 참조 — 환경 요구사항, PR 절차,
