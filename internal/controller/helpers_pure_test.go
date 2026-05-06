@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -164,4 +165,44 @@ func TestSetBuildInfo(t *testing.T) {
 			}
 		})
 	}
+}
+
+// filterConditionsByType — applyErrorCondition 의 helper. 특정 type 의 condition
+// 만 제거 (ReconcileError 갱신 전 cleanup 패턴).
+func TestFilterConditionsByType(t *testing.T) {
+	t.Parallel()
+	makeConds := func() []metav1.Condition {
+		return []metav1.Condition{
+			{Type: "Ready", Status: metav1.ConditionTrue},
+			{Type: "ReconcileError", Status: metav1.ConditionTrue},
+			{Type: "Available", Status: metav1.ConditionFalse},
+			{Type: "ReconcileError", Status: metav1.ConditionFalse}, // 중복 — filter 로 모두 제거.
+		}
+	}
+	t.Run("removes matching type", func(t *testing.T) {
+		t.Parallel()
+		got := filterConditionsByType(makeConds(), "ReconcileError")
+		if len(got) != 2 {
+			t.Errorf("expected 2 (Ready + Available), got %d", len(got))
+		}
+		for _, c := range got {
+			if c.Type == "ReconcileError" {
+				t.Errorf("ReconcileError 잔존: %v", c)
+			}
+		}
+	})
+	t.Run("non-matching type leaves intact", func(t *testing.T) {
+		t.Parallel()
+		got := filterConditionsByType(makeConds(), "Unknown")
+		if len(got) != 4 {
+			t.Errorf("expected 4 (no removal), got %d", len(got))
+		}
+	})
+	t.Run("empty input", func(t *testing.T) {
+		t.Parallel()
+		got := filterConditionsByType(nil, "ReconcileError")
+		if len(got) != 0 {
+			t.Errorf("expected 0, got %d", len(got))
+		}
+	})
 }
