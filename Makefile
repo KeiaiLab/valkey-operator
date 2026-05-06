@@ -46,6 +46,9 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@echo "=== chart CRD 사본 자동 sync (TestCRDBaseChartSync 게이트 충족) ==="
+	@cp config/crd/bases/*.yaml charts/valkey-operator/crds/
+	@echo "✓ charts/valkey-operator/crds/ ← config/crd/bases/ 동기 완료"
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
