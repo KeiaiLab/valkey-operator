@@ -192,8 +192,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	v.Status.ReadyReplicas = stsObj.readyReplicas
 	v.Status.Version = v.Spec.Version.Version
 	v.Status.Endpoint = fmt.Sprintf("%s.%s.svc:%d", resources.ClientServiceName(v.Name), v.Namespace, resources.PortClient)
-	primary := fmt.Sprintf("%s-0", v.Name)
-	v.Status.CurrentPrimary = primary
+	v.Status.CurrentPrimary = r.determinePrimary(v)
 
 	switch {
 	case stsObj.readyReplicas == 0:
@@ -242,6 +241,20 @@ func (r *ValkeyReconciler) applyDefaults(v *cachev1alpha1.Valkey) {
 }
 
 func desiredReplicas(v *cachev1alpha1.Valkey) int32 { return v.Spec.Replicas }
+
+// determinePrimary — primary pod 결정 (ADR-0017).
+//
+// 본 commit (Track B AI-001) 의 첫 cut: 항상 `<name>-0` 반환 (기존 동작 보존).
+//
+// 별개 commit (AI-002, AI-003) 보강:
+//   - Status.CurrentPrimary 기존 값이 있으면 보존 (failover 후 다음 reconcile
+//     이 pod-0 으로 되돌리지 않도록).
+//   - Ready 검증 — primary 가 NotReady 30s+ 면 reconcileFailover 분기.
+//
+// 본 helper 는 향후 확장의 *추출 점* — 호출 site 통일로 변경 영향 최소화.
+func (r *ValkeyReconciler) determinePrimary(v *cachev1alpha1.Valkey) string {
+	return fmt.Sprintf("%s-0", v.Name)
+}
 
 func imageOrDefault(vv cachev1alpha1.ValkeyVersion) string {
 	if vv.Image != "" && vv.Version != "" {
