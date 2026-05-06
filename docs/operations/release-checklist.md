@@ -51,6 +51,9 @@ push 도 동일 통과 필수.
 | 24 | `TestIssueTemplateReadmeAnchorsExist` | issue template 의 README anchor 실존 |
 | 25 | `TestWebhookSetupFunctionsRegisteredInMain` | webhook setup 함수 ↔ main.go 등록 |
 | 26 | `TestReconcilerTypesRegisteredInMain` | Reconciler 타입 ↔ main.go 인스턴스화 |
+| 27 | `TestRBACRoleResourcesInMarker` | role.yaml 의 resource → kubebuilder:rbac 마커 (orphan rule 차단) |
+| 28 | `TestInstallYAMLStructure` | dist/install.yaml 구조 검증 (5 CRD + Deployment + RBAC + Webhook + Service) |
+| 29 | `TestKustomizeManifestLabelChainSync` | pod labels ⊇ Deployment selector ⊇ Service selector + ServiceMonitor selector ⊆ Service metadata.labels |
 
 검증 명령: `go test ./internal/observability/`
 
@@ -95,7 +98,7 @@ push 도 동일 통과 필수.
 ```bash
 # 1. 본 체크리스트의 1-6 자동 게이트 통과 확인
 make gate                                # = lint + test + helm + audit
-go test ./internal/observability/        # 26 SSOT 게이트
+go test ./internal/observability/        # 29 SSOT 게이트
 bash scripts/release-smoke-test.sh vX.Y.Z  # 6단계 (image+chart 미배포 시 skip)
 
 # 2. release.sh 수동 실행
