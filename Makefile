@@ -354,12 +354,18 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 	@PREFLAG=""; case "$(VERSION)" in *alpha*|*beta*|*rc*) PREFLAG="--prerelease";; esac; \
 	mkdir -p "$(RELEASE_TMP)"; \
 	helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	if command -v git-cliff >/dev/null 2>&1; then \
+		git-cliff --strip all --tag "$(VERSION)" --unreleased > "/tmp/release-notes-$(VERSION).md" 2>/dev/null && \
+			NOTES_FLAG="--notes-file /tmp/release-notes-$(VERSION).md"; \
+	else \
+		NOTES_FLAG="--notes \"Release $(VERSION). 변경 내역은 CHANGELOG.md 참조.\""; \
+	fi; \
 	if gh release view "$(VERSION)" -R keiailab/valkey-operator >/dev/null 2>&1; then \
 		echo "WARN- GH release $(VERSION) 이미 존재 — skip"; \
 	else \
-		gh release create "$(VERSION)" -R keiailab/valkey-operator $$PREFLAG \
+		eval gh release create "$(VERSION)" -R keiailab/valkey-operator $$PREFLAG \
 			--title "$(VERSION)" \
-			--notes "Release $(VERSION). 변경 내역은 CHANGELOG.md 참조." \
+			$$NOTES_FLAG \
 			"$(RELEASE_TMP)/valkey-operator-$$(echo "$(VERSION)" | sed 's/^v//').tgz"; \
 	fi
 	@rm -rf "$(RELEASE_TMP)"
@@ -374,12 +380,31 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 	@echo "  - Helm Repo: helm repo update && helm search repo keiailab/valkey-operator"
 	@echo "  - ArtifactHub 은 ~30분 내 인덱스 자동 갱신"
 
+# PGP signing 옵션 — HELM_SIGN=1 시 helm package --sign 으로 .prov 파일 자동 생성.
+# HELM_GPG_KEY 가 GnuPG keyring 에 import 되어 있어야 함 (private key, 비공개).
+# 미설정 시 .prov 없이 chart 만 publish (기본 동작).
+HELM_SIGN     ?= 0
+HELM_GPG_KEY  ?= 89A409476828CB992338C378651E51AF520BCB78
+HELM_KEYRING  ?= $(HOME)/.gnupg/secring.gpg
+
+.PHONY: release-notes
+release-notes: ## git-cliff 로 release notes 자동 생성 — 출력 파일 /tmp/release-notes-$(VERSION).md.
+	@command -v git-cliff >/dev/null 2>&1 || { echo "[error] git-cliff not installed: brew install git-cliff"; exit 1; }
+	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION 필수"; exit 1; fi
+	git-cliff --strip all --tag "$(VERSION)" --unreleased > "/tmp/release-notes-$(VERSION).md"
+	@echo "✓ release notes: /tmp/release-notes-$(VERSION).md"
+
 .PHONY: helm-publish
-helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 로컬 자동화). gh-pages 부재 시 auto-orphan.
+helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 로컬 자동화). gh-pages 부재 시 auto-orphan. HELM_SIGN=1 시 PGP .prov 동반.
 	@echo "=== helm package ==="
 	@rm -rf "$(RELEASE_TMP)" "$(GHPAGES_TMP)"
 	@mkdir -p "$(RELEASE_TMP)"
-	helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"
+	@if [ "$(HELM_SIGN)" = "1" ]; then \
+		echo "INFO- chart 서명 활성 (PGP key $(HELM_GPG_KEY))"; \
+		helm package --sign --key "$(HELM_GPG_KEY)" --keyring "$(HELM_KEYRING)" "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	else \
+		helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	fi
 	@echo "=== gh-pages worktree (auto-orphan if branch missing) ==="
 	@if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then \
 		git clone --branch gh-pages --single-branch "$$(git remote get-url origin)" "$(GHPAGES_TMP)"; \
@@ -390,6 +415,7 @@ helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 
 	fi
 	@echo "=== copy chart + regen index ==="
 	cp "$(RELEASE_TMP)"/valkey-operator-*.tgz "$(GHPAGES_TMP)/"
+	@cp "$(RELEASE_TMP)"/valkey-operator-*.tgz.prov "$(GHPAGES_TMP)/" 2>/dev/null || true
 	cp "$(HELM_CHART)/../artifacthub-repo.yml" "$(GHPAGES_TMP)/" 2>/dev/null || true
 	@if [ -f "$(GHPAGES_TMP)/index.yaml" ]; then \
 		cd "$(GHPAGES_TMP)" && helm repo index . --merge index.yaml --url "$(HELM_REPO_URL)"; \
