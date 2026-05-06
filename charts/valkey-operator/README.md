@@ -162,3 +162,8 @@ kubectl describe valkey my-valkey -n cache
 - Source: https://github.com/keiailab/valkey-operator
 - Valkey project: https://valkey.io/
 - Issues: https://github.com/keiailab/valkey-operator/issues
+
+## Values
+
+<!-- helm-docs 가 본 section 을 자동 갱신: `make helm-docs` 또는 `helm-docs --chart-search-root charts/valkey-operator`. values.yaml 의 `# --` 주석을 추출. -->
+

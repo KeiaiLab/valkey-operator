@@ -360,13 +360,20 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 	else \
 		NOTES_FLAG="--notes \"Release $(VERSION). 변경 내역은 CHANGELOG.md 참조.\""; \
 	fi; \
+	SBOM_ASSET=""; \
+	if command -v syft >/dev/null 2>&1; then \
+		echo "=== syft SBOM 생성 ==="; \
+		syft scan ghcr.io/keiailab/valkey-operator:$(VERSION) -o spdx-json -q > "/tmp/valkey-operator-$(VERSION).spdx.json" 2>/dev/null && \
+			SBOM_ASSET="/tmp/valkey-operator-$(VERSION).spdx.json"; \
+	fi; \
 	if gh release view "$(VERSION)" -R keiailab/valkey-operator >/dev/null 2>&1; then \
 		echo "WARN- GH release $(VERSION) 이미 존재 — skip"; \
 	else \
 		eval gh release create "$(VERSION)" -R keiailab/valkey-operator $$PREFLAG \
 			--title "$(VERSION)" \
 			$$NOTES_FLAG \
-			"$(RELEASE_TMP)/valkey-operator-$$(echo "$(VERSION)" | sed 's/^v//').tgz"; \
+			"$(RELEASE_TMP)/valkey-operator-$$(echo "$(VERSION)" | sed 's/^v//').tgz" \
+			$$SBOM_ASSET; \
 	fi
 	@rm -rf "$(RELEASE_TMP)"
 	@echo ""
@@ -393,6 +400,21 @@ release-notes: ## git-cliff 로 release notes 자동 생성 — 출력 파일 /t
 	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION 필수"; exit 1; fi
 	git-cliff --strip all --tag "$(VERSION)" --unreleased > "/tmp/release-notes-$(VERSION).md"
 	@echo "✓ release notes: /tmp/release-notes-$(VERSION).md"
+
+.PHONY: sbom
+sbom: ## syft 로 SBOM (SPDX-2.3) 생성 — image 의 binary + Go modules. SLSA / EU CRA 표준.
+	@command -v syft >/dev/null 2>&1 || { echo "[error] syft not installed: brew install syft"; exit 1; }
+	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION 필수"; exit 1; fi
+	@echo "=== syft scan ghcr.io/keiailab/valkey-operator:$(VERSION) ==="
+	syft scan ghcr.io/keiailab/valkey-operator:$(VERSION) -o spdx-json -q > "/tmp/valkey-operator-$(VERSION).spdx.json"
+	@SIZE=$$(wc -c < "/tmp/valkey-operator-$(VERSION).spdx.json" | tr -d ' '); \
+	echo "✓ SBOM: /tmp/valkey-operator-$(VERSION).spdx.json ($$SIZE bytes)"
+
+.PHONY: helm-docs
+helm-docs: ## helm-docs 로 chart README 의 values 표 자동 생성 (values.yaml `--` 주석 → MD).
+	@command -v helm-docs >/dev/null 2>&1 || { echo "[error] helm-docs not installed: brew install norwoodj/tap/helm-docs"; exit 1; }
+	helm-docs --chart-search-root "$(HELM_CHART)" --template-files=README.md.gotmpl 2>/dev/null || helm-docs --chart-search-root "$(HELM_CHART)"
+	@echo "✓ chart README values 표 자동 갱신"
 
 .PHONY: helm-publish
 helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 로컬 자동화). gh-pages 부재 시 auto-orphan. HELM_SIGN=1 시 PGP .prov 동반.
