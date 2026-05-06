@@ -5,6 +5,7 @@
 package resources
 
 import (
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -191,6 +192,62 @@ func TestBuildClientService(t *testing.T) {
 	if len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != PortClient {
 		t.Error("client 포트 1개여야 함")
 	}
+}
+
+// BuildConfigMapForValkey 회귀 보호 (cycle 124) — Valkey CR 의 valkey.conf
+// ConfigMap. password injection + persistence mode + TLS 분기.
+func TestBuildConfigMapForValkey(t *testing.T) {
+	t.Parallel()
+	t.Run("default RDB persistence + password", func(t *testing.T) {
+		t.Parallel()
+		vk := &cachev1alpha1.Valkey{}
+		vk.Name = "rs"
+		vk.Namespace = "ns"
+		cm, err := BuildConfigMapForValkey(vk, "secretpass")
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if cm.Name != "rs-config" || cm.Namespace != "ns" {
+			t.Errorf("name/ns: %q/%q", cm.Name, cm.Namespace)
+		}
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "requirepass secretpass") {
+			t.Error("requirepass injection 누락")
+		}
+		if !strings.Contains(conf, "save 3600 1 300 100 60 10000") {
+			t.Error("default RDB schedule 누락")
+		}
+	})
+	t.Run("AOF persistence", func(t *testing.T) {
+		t.Parallel()
+		vk := &cachev1alpha1.Valkey{}
+		vk.Name = "rs"
+		vk.Namespace = "ns"
+		vk.Spec.Persistence = &cachev1alpha1.PersistencePolicy{
+			Mode:           "AOF",
+			AOFAppendFsync: "always",
+		}
+		cm, _ := BuildConfigMapForValkey(vk, "p")
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "appendonly yes") {
+			t.Error("AOF mode → appendonly yes 누락")
+		}
+		if !strings.Contains(conf, "appendfsync always") {
+			t.Error("AOF fsync override 누락")
+		}
+	})
+	t.Run("TLS enabled adds tls config", func(t *testing.T) {
+		t.Parallel()
+		vk := &cachev1alpha1.Valkey{}
+		vk.Name = "rs"
+		vk.Namespace = "ns"
+		vk.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true}
+		cm, _ := BuildConfigMapForValkey(vk, "p")
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "tls-port") {
+			t.Error("TLS enabled → tls-port directive 누락")
+		}
+	})
 }
 
 // BuildBackupPVC 회귀 보호 (cycle 123) — ValkeyBackup CR 의 결과 PVC.
