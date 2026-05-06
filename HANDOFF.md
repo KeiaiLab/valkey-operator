@@ -4,11 +4,18 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
-## 현재 상태 (2026-05-06, T06 GitOps deploy overlay)
+## 현재 상태 (2026-05-06, release pipeline 정합 + image ref 버그 수정)
 
-- **T06 완료**: mongodb-operator 패턴 따라 `deploy/overlays/prod/` + `deploy/valkey-cluster.yaml` + `deploy/README.md` 추가. ADR-0029 작성 + INDEX.md 갱신. CHANGELOG [Unreleased] 갱신. `kustomize build deploy/overlays/prod` PASS (Namespace 0). 미커밋 상태.
+- **HEAD `9a93f4c`**: `chore(deploy): image controller tag v0.1.0 → 0.1.0-alpha.1 (실재 GHCR tag 정합)`
+- **HEAD~1 `96f4139`**: `fix(scripts): smoke-test step 번호 [N/5] → [N/6] 정합 + .gitignore (dist/)`
+- **이번 세션 핵심 발견**: 이전 image ref 변경 (`v0.1.0`) 은 GHCR 미존재 tag 였음 — ImagePullBackOff 보장 → 0.1.0-alpha.1 (실재 published tag) 로 정정. postgres 패턴 (no v prefix) 정합.
+- **3-repo smoke-test 강화 정합**: SBOM (SPDX) asset 검증 + trivy image post-publish HIGH/CRITICAL fixed-only scan 추가됐음. valkey 는 step 번호 누락 버그만 본 세션에서 정정 (SBOM+trivy 본체는 이전 commit 에 있음).
+- **다음 단계 (열린 트랙)**: T06 이후 GitOps overlay (`deploy/overlays/prod/` 등) 의 *실 클러스터 적용 검증* 미실시 — `kubectl apply -k deploy/overlays/prod` + ValkeyCluster CR 생성 → Pod Ready / readiness probe smoke 1회 권장. RFC-0004 클러스터 라이브 게이트 발동 영역.
+
+## 이전 상태 (2026-05-06, T06 GitOps deploy overlay — *완료*)
+
+- **T06 머지됨** (어느 PR 인지 git log 로 확인 권장 — `ad9a241` 이전 history).
 - **결정 기록**: patch target name 은 raw `system` (config/manager 직접 import → namePrefix 미적용). ValkeyCluster sample = sharded 3×1, ceph-block, auth.enabled=true (ADR-0013). TLS 블록은 cert-manager 미설정 환경 가정으로 주석 유지.
-- **다음 단계**: 본 변경 commit (`feat(deploy): GitOps overlay + ADR-0029 (3-repo 정합)`) + push.
 
 ## 이전 상태 (2026-05-06)
 
