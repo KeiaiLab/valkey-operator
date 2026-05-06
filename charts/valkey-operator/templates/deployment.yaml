@@ -114,6 +114,14 @@ spec:
             - name: DEFAULT_STORAGE_CLASS
               value: {{ .Values.valkey.storageClassName | quote }}
             {{- end }}
+            {{- if .Values.tracing.endpoint }}
+            # cycle 65: OTEL tracing 활성 (ADR-0025). endpoint 비어있으면
+            # no-op tracer — block 자체가 미렌더.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.tracing.endpoint | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.tracing.serviceName | default "valkey-operator" | quote }}
+            {{- end }}
             {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

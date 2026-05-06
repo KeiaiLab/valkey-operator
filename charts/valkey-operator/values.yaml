@@ -161,6 +161,15 @@ probes:
     # -- Period seconds for readiness probe
     periodSeconds: 10
 
+# -- OpenTelemetry tracing 활성화 (ADR-0025).
+# endpoint 미설정 시 no-op tracer (성능 영향 0). serviceName default "valkey-operator".
+# 활성화 예: tracing.endpoint: "otel-collector.observability.svc:4317"
+tracing:
+  # -- OTLP gRPC endpoint (e.g., otel-collector:4317). 비어있으면 OTEL 비활성.
+  endpoint: ""
+  # -- OTEL service name (Jaeger/Tempo UI 의 service 식별).
+  serviceName: "valkey-operator"
+
 # -- Extra environment variables for the operator
 extraEnvVars: []
 # - name: MY_VAR
