@@ -108,6 +108,11 @@ spec:
             # 는 valkey-operator.image helper 로 자동 주입.
             - name: OPERATOR_IMAGE
               value: {{ include "valkey-operator.image" . | quote }}
+            {{- with .Values.watch.namespaces }}
+            # cycle 74: namespace-scoped watch (cache.DefaultNamespaces).
+            - name: WATCH_NAMESPACES
+              value: {{ join "," . | quote }}
+            {{- end }}
             {{- if .Values.valkey.version }}
             - name: DEFAULT_VALKEY_VERSION
               value: {{ .Values.valkey.version | quote }}

@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -33,6 +34,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
@@ -198,6 +200,22 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
+	// cycle 74: WATCH_NAMESPACES env (chart values.watch.namespaces) — comma-separated.
+	// 미설정 시 cluster-wide watch (default). 설정 시 cache.DefaultNamespaces 으로
+	// 제한 — multi-tenant 또는 RBAC namespaced Role 환경 지원.
+	cacheOptions := cache.Options{}
+	if ns := os.Getenv("WATCH_NAMESPACES"); ns != "" {
+		nsMap := map[string]cache.Config{}
+		for _, n := range strings.Split(ns, ",") {
+			n = strings.TrimSpace(n)
+			if n != "" {
+				nsMap[n] = cache.Config{}
+			}
+		}
+		cacheOptions.DefaultNamespaces = nsMap
+		setupLog.Info("namespace-scoped watch", "namespaces", nsMap)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
@@ -205,6 +223,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "ef6cc5c8.keiailab.io",
+		Cache:                  cacheOptions,
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

@@ -148,11 +148,13 @@ logging:
   # -- Enable development mode logging
   development: false
 
-# Watch configuration — NOT YET IMPLEMENTED (cycle 70).
-# 현재 operator 는 *cluster-wide* watch (모든 namespace). namespace 제한 mode
-# 는 controller-runtime manager.Cache 의 DefaultNamespaces 옵션 + RBAC namespaced
-# Role/RoleBinding 도 필요 — 본 chart 미구현. 향후 cycle 에서 활성화.
+# Watch configuration (cycle 74 implemented).
+# namespaces 빈 list = cluster-wide watch (default). 명시 시 cache.DefaultNamespaces
+# 으로 제한 — multi-tenant 또는 RBAC 제한 환경. RBAC 차원 namespaced
+# Role/RoleBinding 추가 변환 작업 별개 (현재 chart 는 ClusterRole 만 — 사용자가
+# multi-tenant 운영 시 자체 namespaced RBAC 설정 권장).
 watch:
+  # -- Watch namespaces (빈 list = cluster-wide). e.g., ["valkey-prod", "valkey-stage"]
   namespaces: []
 
 # Health probes configuration
