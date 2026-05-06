@@ -11,7 +11,7 @@ A Kubernetes Operator for deploying and managing Valkey instances and Clusters
 - **Authentication**: ACL-based auth with secret-managed credentials
 - **Monitoring**: Native cluster metrics with ServiceMonitor support
 - **Backup/Restore**: S3 / PVC backup targets and point-in-time restore (opt-in)
-- **Auto-scaling**: HPA support for replica counts (opt-in)
+- **Auto-scaling**: HPA — *DEFERRED (ADR-0027)*. RBAC 권한만 부여, 실제 HPA reconciler 미구현. v0.1.0 stable 후 활성 예정.
 - **PodDisruptionBudget**: opt-in disruption guards
 - **NetworkPolicy**: deny-by-default ingress automation
 
@@ -51,8 +51,8 @@ helm install valkey-operator valkey-operator/valkey-operator \
   --namespace valkey-operator-system \
   --create-namespace \
   --set features.cluster.enabled=true \
-  --set features.backup.enabled=true \
-  --set features.autoscaling.enabled=true
+  --set features.backup.enabled=true
+  # features.autoscaling.enabled — ADR-0027 deferred (RBAC 만 부여, 실제 HPA 미구현)
 ```
 
 ## Usage
