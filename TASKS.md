@@ -22,6 +22,7 @@
 | I07 | postgres docker buildx --platform linux/amd64 강제 (글로벌 §2)  | 완료   | 100%   | -    | postgres release | commit 314af15           |
 | I08 | Chart.yaml `artifacthub.io/changes` ↔ CHANGELOG 자동 sync       | 설계   | 10%    | T02  | 모든 release  | release-time hook 도입       |
 | I09 | values.schema.json 정밀 schema (features.cluster/backup/...)    | 설계   | 10%    | F01  | helm install  | 현재 `additionalProperties: true` minimal |
+| T06 | GitOps deploy 오버레이 도입 (3-repo 정합)                       | 완료   | 100%   | -    | 운영 배포     | 2026-05-06. ADR-0029. `deploy/overlays/prod/{kustomization,delete-namespace}.yaml` + `deploy/valkey-cluster.yaml` (db ns, sharded 3×1) + `deploy/README.md`. `kustomize build` PASS, Namespace 0. patch target raw `system`. |
 
 ## 차단됨
 
