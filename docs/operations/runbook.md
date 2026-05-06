@@ -183,6 +183,25 @@ kubectl exec -it <cr-name>-0 -- valkey-cli -a "$PASS"
 - **Events**: `kubectl get events --field-selector involvedObject.kind=Valkey`.
 - **Logs**: 구조화 (zap). `kubectl logs <operator-pod> -f --tail=100`.
 
+### 7.0 Prometheus ServiceMonitor TLS — production 강화 (cycle 100)
+
+**기본 설정**: `config/prometheus/monitor.yaml` 의 ServiceMonitor 가
+`insecureSkipVerify: true` 사용 — kubebuilder default. **production 환경 에서는
+MITM 공격 표면**. 다음 절차 로 cert-manager 검증 모드 활성:
+
+```sh
+# 1. cert-manager 사전 설치 (cluster 차원).
+# 2. config/prometheus/kustomization.yaml 의 patches 블록 uncomment.
+sed -i '' 's|^#patches:|patches:|; s|^#  - path: monitor_tls_patch.yaml|  - path: monitor_tls_patch.yaml|; s|^#    target:|    target:|; s|^#      kind: ServiceMonitor|      kind: ServiceMonitor|' \
+  config/prometheus/kustomization.yaml
+# 3. config/default/kustomization.yaml 의 [METRICS WITH CERTMANAGER] 패치도 uncomment.
+# 4. make build-installer 또는 make deploy 으로 재배포.
+```
+
+검증 후 `monitor_tls_patch.yaml` 가 `insecureSkipVerify: false` + cert-manager
+의 metrics-server-cert Secret reference 로 *신뢰 가능한 mutual TLS*. ADR-0003
+(TLS InsecureSkipVerify temporary) 의 *production 진화 경로*.
+
 ### 7.1 Operator 환경변수 (cycle 80)
 
 운영 시점 *어떤 reconciler 가 동작 중인가* 진단:
