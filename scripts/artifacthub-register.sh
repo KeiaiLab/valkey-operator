@@ -37,13 +37,16 @@ cat <<'EOF'
  ArtifactHub repo 등록 절차 (수동 — UI 만 지원)
 ================================================================================
 
+ ⚠️  Name 충돌: ArtifactHub 에 이미 다른 vendor 의 'valkey-operator' (v0.0.61-chart)
+     가 등록되어 있음. 충돌 회피를 위해 'keiailab-valkey-operator' 권장.
+
  1. 브라우저로 접속:
       https://artifacthub.io/control-panel/repositories
 
- 2. ADD REPOSITORY 클릭. 다음 입력:
+ 2. ADD REPOSITORY 클릭. 다음 입력 (충돌 회피 name 권장):
       Kind:           Helm charts
-      Name:           valkey-operator
-      Display name:   Valkey Operator
+      Name:           keiailab-valkey-operator
+      Display name:   Valkey Operator (Keiailab)
       URL:            https://keiailab.github.io/valkey-operator
       Branch:         (gh-pages — auto-detect)
 
@@ -51,6 +54,9 @@ cat <<'EOF'
 
  4. 본 스크립트에 UUID 입력 (또는 인자로 재실행):
       scripts/artifacthub-register.sh <uuid>
+
+ 5. 등록 후 ArtifactHub URL:
+      https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator
 
 ================================================================================
 EOF
@@ -80,4 +86,4 @@ echo "  git push origin main"
 echo "  make helm-publish    # gh-pages 의 artifacthub-repo.yml 도 갱신"
 echo ""
 echo "검증 (등록 후 ~30분, ArtifactHub polling 완료 시):"
-echo "  curl -s https://artifacthub.io/api/v1/repositories/helm/valkey-operator | jq '.repository_id, .verified_publisher'"
+echo "  curl -s https://artifacthub.io/api/v1/packages/helm/keiailab-valkey-operator/valkey-operator | jq '.name, .version, .repository.repository_id'"

@@ -118,6 +118,19 @@ ArtifactHub publish 모델:
       postgres 패턴 정합, commit a353b44).
 - [x] AI-0024-7: `scripts/artifacthub-register.sh` helper (UUID 검증 + sed 교체 +
       검증 명령 echo, commit a353b44).
+- [x] AI-0024-8: postgres-operator 첫 release v0.3.0-alpha.1 publish (2026-05-06).
+      GHCR sha256:7658a42e + GH Release prerelease + gh-pages orphan (817399a) +
+      Pages built + helm pull 검증 PASS. 3-repo 모두 publish 완료.
+- [x] AI-0024-9: mongodb-operator audit 의 trivy silent-fail 동일 결함 보강
+      (commit 2b7c44a) — postgres 패턴 정합. 3-repo audit gate 통일.
+- [x] AI-0024-10: 3-repo 동일 `renovate.json` 추가 (RFC 0002 §7 예외) —
+      자동 CVE 감지 + k8s/otel group + vulnerabilityAlerts (security/p0).
+      commits: valkey 2869b93, mongodb bf772ce, postgres 0ab83ef.
+- [x] AI-0024-11: helper 의 name 충돌 회피 안내 — ArtifactHub 의 다른 vendor
+      'valkey-operator' (v0.0.61-chart) 와 충돌. 등록 시 name 권장:
+      `keiailab-valkey-operator` (path: /packages/helm/keiailab-valkey-operator/valkey-operator).
 - [ ] AI-0024-1: **ArtifactHub UI 에서 valkey-operator repo 신규 등록** (수동) →
       `scripts/artifacthub-register.sh <uuid>` 로 placeholder 교체 후 follow-up
       commit + `make helm-publish` 재실행. 자동화 불가 (UI 만 지원).
+      **postgres-operator 도 ~30분 polling 후 ArtifactHub 인덱싱 자동 완료** (이미
+      등록된 repositoryID e7f6b661-... 보유, 별도 등록 작업 불필요).

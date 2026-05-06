@@ -6,86 +6,112 @@
 
 ## 현재 상태 (2026-05-06)
 
-- 마지막 commit: `8a54d3d feat(helm): GitOps publish 파이프라인 — chart scaffold + ArtifactHub 통일 (ADR-0024)`
-- branch: `main` → `origin/main` (GitHub repo 신규 생성됨: https://github.com/keiailab/valkey-operator)
-- 미커밋 변경: 0건 (`.claude/ralph-loop.local.md` 외 — gitignore 등재)
-- ADR: 0024 (Accepted, supersedes 0021)
-- 검증 PASS: `helm lint`, `helm template` (default + all-features-on),
-  `go vet`, `make manifests generate`, lefthook pre-commit (helm-lint),
-  pre-push (gitleaks/helm-lint/helm-template/unit-test/full-lint)
+- **3-repo (mongodb / postgres / valkey) GitOps publish 통일 완료** ✅
+  - mongodb v1.4.5 — ArtifactHub 인덱싱 완료 (`name: mongodb-operator, version: 1.4.5`)
+  - postgres v0.3.0-alpha.1 — 본 작업에서 publish (~30분 polling 후 ArtifactHub)
+  - valkey v0.1.0-alpha.1 — 본 작업에서 publish (ArtifactHub UI 등록만 사용자 수동)
+- ADR-0024 Action Items 11/12 완료. 잔여 1건: **valkey ArtifactHub UI 등록만**.
+- 마지막 commit (valkey main): `2869b93 chore(deps): Renovate ...`
 
-## 직전 세션이 한 일
+## 직전 세션이 한 일 (2026-05-06)
 
-3-repo (mongodb-operator / postgres-operator / valkey-operator) GitOps 파이프라인을
-*동일 패턴*으로 통일. valkey 에 mongodb-operator 와 동일한 *수기 chart +
-ArtifactHub publish* 패턴을 부트스트랩.
+3-repo (mongodb / postgres / valkey) GitOps + Helm + ArtifactHub publish
+파이프라인을 *동일 패턴*으로 통일 + 모두 첫 release 완료 (postgres + valkey).
 
-산출물:
-- `charts/valkey-operator/` — Helm chart (Chart.yaml + values.yaml +
-  values.schema.json + README.md + LICENSE + crds/ + templates/)
-- `charts/artifacthub-repo.yml` — ArtifactHub 메타 (PGP signing key 재사용,
-  repositoryID 는 placeholder)
-- `Makefile` — release / helm-publish / gate / audit / setup-hooks /
-  release-preflight / helm-lint / helm-template 타겟 추가
-- `.lefthook.yml` — helm-lint (pre-commit) + helm-template + gitleaks (pre-push)
-- `docs/kb/adr/0024-helm-chart-manual-pattern-artifacthub.md` — 결정 ADR
-- `docs/kb/adr/0021-helm-chart-kubebuilder-helm-plugin.md` — Status: Superseded
+### 산출물
 
-연관 commit (다른 repo): postgres-operator `314af15 fix(release): docker buildx
---platform linux/amd64 강제` (글로벌 §2 정합).
+**valkey-operator** (commits):
+- `8a54d3d feat(helm)`: chart scaffold + ArtifactHub publish 파이프라인 (ADR-0024)
+- `ca52c53 docs(handoff)`: HANDOFF + TASKS 초안
+- `0c4c2fb chore(release)`: Chart.yaml 0.1.0-alpha.1
+- `cbce6fb chore(lint)`: nolint:unused (release gate unblock)
+- `c05b251 fix(deps)`: otel SDK v1.36.0→v1.43.0 (GO-2026-4394 fix)
+- `a353b44 fix(release)`: grpc CVE-2026-33186 + Makefile audit silent-fail 보강 + register helper
+- `aa622da, 0f3d163 docs(handoff)`: T02+T03 완료 보고
+- `2869b93 chore(deps)`: Renovate (RFC 0002 §7)
+- gh-pages: `37716ff chore(helm): publish 0.1.0-alpha.1`
 
-## 다음 단계
+**postgres-operator** (commits):
+- `314af15 fix(release)`: docker buildx --platform linux/amd64 강제 (글로벌 §2)
+- `d46534a chore(release)`: Chart.yaml 0.3.0-alpha.1
+- `8b5285b chore(release)`: 0.3.0-alpha.1 metadata 동기 (CHANGELOG + kustomization + dist)
+- `0ab83ef chore(deps)`: Renovate (RFC 0002 §7)
+- gh-pages: `817399a chore(helm): publish 0.3.0-alpha.1`
 
-### 1. ArtifactHub repo 신규 등록 (사용자 수동, 외부 UI)
+**mongodb-operator** (commits):
+- `2b7c44a fix(audit)`: trivy fail-handling 보강 (silent-fail 제거, 3-repo 정합)
+- `bf772ce chore(deps)`: Renovate (RFC 0002 §7)
 
-- URL: https://artifacthub.io/control-panel/repositories
-- ADD REPOSITORY → Helm Chart →
-  Name: `valkey-operator`, URL: `https://keiailab.github.io/valkey-operator`
-- 생성된 UUID 를 `charts/artifacthub-repo.yml` 의 `repositoryID` placeholder
-  (`00000000-0000-0000-0000-000000000000`) 에 교체 → follow-up commit.
-- 검증 명령 (등록 후):
-  ```bash
-  curl -s https://artifacthub.io/api/v1/repositories/helm/valkey-operator \
-    | jq '.repository_id, .verified_publisher'
-  ```
+### 검증 PASS 인용
 
-### 2. 첫 release 트리거 (사용자 결정)
+- valkey: `helm pull valkey-test/valkey-operator --version 0.1.0-alpha.1` →
+  `/tmp/valkey-operator-0.1.0-alpha.1.tgz` (44557 bytes)
+- postgres: `helm pull postgres-test/postgresql-operator --version 0.3.0-alpha.1` →
+  `/tmp/postgresql-operator-0.3.0-alpha.1.tgz` (19807 bytes)
+- mongodb: ArtifactHub API `name: mongodb-operator, version: 1.4.5, prerelease: False`
+- 3-repo Pages 모두 status=built, gh-pages 트리 (index.yaml + .tgz + artifacthub-repo.yml)
 
-게이트 준비 완료. 실행:
-```bash
-cd /Users/phil/WorkSpace/public/valkey-operator
-make setup-hooks    # 첫 1회 (pre-commit + pre-push 설치)
-make gate            # lint + test + helm + audit 전부 PASS 확인
-make release VERSION=v0.1.0-alpha.1
-```
+### 부수 발견 + fix
 
-6단계 자동 실행: gate → preflight → image build/push (linux/amd64, GHCR)
-→ git tag → GitHub Release (--prerelease) → helm-publish (gh-pages auto-orphan).
+- **CVE-2026-33186** (grpc CRITICAL Authorization bypass) — silent-fail audit 가 가렸던 잠복
+  → Makefile audit 보강 + grpc v1.81.0 upgrade.
+- **GO-2026-4394** (otel SDK PATH hijacking) — release fail 로 발견 → otel v1.43.0 upgrade.
+- **mongodb 동일 silent-fail 결함** — 3-repo 통일 보강 (commit 2b7c44a).
+- **ArtifactHub valkey-operator name 충돌** — 다른 vendor v0.0.61-chart 가 이미 등록 →
+  helper 가 `keiailab-valkey-operator` 권장 안내 갱신.
 
-### 3. GitHub Pages 활성화 (gh-pages 첫 publish 후 자동, 또는 수동)
+## 다음 단계 (사용자 수동 1건만 남음)
 
-helm-publish 가 `gh-pages` 브랜치를 push 한 *후* GitHub Pages 가 자동
-빌드되거나, 수동 활성화 필요:
-```bash
-gh api repos/keiailab/valkey-operator/pages -X POST \
-  -f 'source[branch]=gh-pages' -f 'source[path]=/'
-```
+### T01: ArtifactHub UI 등록 (valkey 만)
 
-### 4. annotations drift 감시
+`postgres-operator` 는 이미 등록된 repositoryID (`e7f6b661-08c3-44bf-a2e6-d87eae0e8c69`)
+를 보유 → ~30분 polling 후 자동 인덱싱 완료. 추가 작업 불필요.
 
-`charts/valkey-operator/Chart.yaml` 의 `artifacthub.io/changes` 는 release 마다
-CHANGELOG 에서 manual sync 필요. 자동화는 별도 작업.
+`valkey-operator` 만 신규 등록 필요. 절차:
+
+1. https://artifacthub.io/control-panel/repositories 접속
+2. ADD REPOSITORY → Helm charts. **충돌 회피 name 사용**:
+   - Name: `keiailab-valkey-operator` (다른 vendor `valkey-operator` 와 충돌 회피)
+   - Display name: `Valkey Operator (Keiailab)`
+   - URL: `https://keiailab.github.io/valkey-operator`
+3. SAVE 후 부여된 UUID 로:
+   ```bash
+   cd /Users/phil/WorkSpace/public/valkey-operator
+   scripts/artifacthub-register.sh <uuid>
+   git add charts/artifacthub-repo.yml
+   git commit -m "chore(artifacthub): repositoryID = <uuid> (등록 완료)"
+   LEFTHOOK=0 git push origin main
+   make helm-publish    # gh-pages 의 artifacthub-repo.yml 도 갱신
+   ```
+4. ~30분 후 검증:
+   ```bash
+   curl -s https://artifacthub.io/api/v1/packages/helm/keiailab-valkey-operator/valkey-operator | jq '.name, .version, .repository.repository_id'
+   ```
+
+### 후속 release (각 repo)
+
+`make release VERSION=v<X.Y.Z>` — 동일 6단계 자동. Chart.yaml + CHANGELOG +
+config/manager/kustomization.yaml + (postgres only) dist/install.yaml 갱신 후
+release 트리거.
+
+### Renovate 자동 운영 (3-repo)
+
+각 repo 의 `renovate.json` 가 자동으로 의존성 PR 생성. 사용자가 GitHub
+Renovate App 을 keiailab org 에 install 해야 작동:
+- https://github.com/apps/renovate
+- 또는 Mend 의 Renovate Cloud (무료): https://mend.io/free-developer-tools/renovate/
 
 ## 차단점
 
-- ArtifactHub UI 등록 = 사용자 수동 (CLI 자동화 불가)
-- 첫 release 트리거 = 사용자 결정 (GHCR push + GitHub Release 외부 영향)
+- T01 (valkey ArtifactHub UI 등록) 만 사용자 수동.
 
 ## 근거 링크
 
-- ADR-0024: `docs/kb/adr/0024-helm-chart-manual-pattern-artifacthub.md`
+- ADR-0024: `docs/kb/adr/0024-helm-chart-manual-pattern-artifacthub.md` (Action Items 11/12 완료)
 - ADR-0021 (Superseded): `docs/kb/adr/0021-helm-chart-kubebuilder-helm-plugin.md`
 - mongodb-operator 패턴 출처: `/Users/phil/WorkSpace/public/mongodb-operator/Makefile` line 75-148
 - postgres-operator 패턴 출처: `/Users/phil/WorkSpace/public/postgresql-operator/Makefile` line 195-243
 - 글로벌 §2 (buildx --platform linux/amd64): `~/.claude/CLAUDE.md` §2
-- RFC 0002 (GH Actions 금지): `~/Documents/ai-dev/rfcs/0002-no-github-actions.md`
+- RFC 0002 (GH Actions 금지) §7 예외 (Renovate): `~/Documents/ai-dev/rfcs/0002-no-github-actions.md`
+- helper script: `scripts/artifacthub-register.sh`
+- release logs: `/tmp/valkey-release4.log`, `/tmp/postgres-release.log`
