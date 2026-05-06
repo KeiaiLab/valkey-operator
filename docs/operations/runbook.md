@@ -178,10 +178,33 @@ kubectl exec -it <cr-name>-0 -- valkey-cli -a "$PASS"
 
 - **Metrics** (subsystem `valkey_cluster_*`): `state_ok`, `assigned_slots`, `shards`,
   `ready_replicas`, `reconcile_total`, `reconcile_errors_total`, `phase`,
-  `backup_total`, `restore_total`, `failover_total`. ServiceMonitor 자동 등록
-  (`Spec.Monitoring.ServiceMonitor.Enabled`).
+  `backup_total`, `restore_total`, `failover_total`, `build_info` (cycle 57).
+  ServiceMonitor 자동 등록 (`Spec.Monitoring.ServiceMonitor.Enabled`).
 - **Events**: `kubectl get events --field-selector involvedObject.kind=Valkey`.
 - **Logs**: 구조화 (zap). `kubectl logs <operator-pod> -f --tail=100`.
+
+### 7.1 Operator 환경변수 (cycle 80)
+
+운영 시점 *어떤 reconciler 가 동작 중인가* 진단:
+
+| Env | 기본 | 동작 |
+|---|---|---|
+| `ENABLE_CLUSTER_RECONCILER` | `true` | `false` 시 ValkeyClusterReconciler skip — chart `features.cluster.enabled=false` 자동 주입. |
+| `ENABLE_BACKUP_RECONCILER` | `true` | `false` 시 ValkeyBackup/BackupTarget/Restore 3 reconciler skip — chart `features.backup.enabled=false` 자동 주입. |
+| `WATCH_NAMESPACES` | (미설정 = cluster-wide) | `ns1,ns2` 형식. cache.DefaultNamespaces 으로 제한 — chart `watch.namespaces` 자동 주입. |
+| `OPERATOR_IMAGE` | `controller:latest` | Upload/Download Job image — chart `valkey-operator.image` helper 자동 주입 (cycle 64). 미설정 시 ImagePullBackOff 위험. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | (미설정 = no-op) | OTLP gRPC endpoint — chart `tracing.endpoint` 주입 (cycle 65). 미설정 시 22 spans 발행 0 (성능 영향 0). |
+
+진단 명령:
+
+```sh
+# 현재 실행 중 env 확인:
+kubectl exec -n valkey-operator-system <operator-pod> -- env | \
+  grep -E "ENABLE_|WATCH_NAMESPACES|OPERATOR_IMAGE|OTEL_"
+
+# 시작 로그 확인 (skipped reconciler / namespace-scoped watch / version):
+kubectl logs -n valkey-operator-system <operator-pod> | head -20
+```
 
 ## 9. Alert 별 대응 (Prometheus 알람 → MTTR)
 
