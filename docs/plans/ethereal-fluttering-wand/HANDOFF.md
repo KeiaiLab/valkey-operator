@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 9 완료)
+**최종 갱신**: 2026-05-06 (cycle 10 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50%.
+진행 + Track E 50% + Track F **OTEL tracer infrastructure**.
 
 ---
 
@@ -163,6 +163,23 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 11. Cycle 10 추가분 (2 commits — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 56 | `25e443f` | `docs: README 운영 시나리오 표 — Track A/B 완성 + e2e 시나리오 반영` | 5 row 추가 (M3.5 + Restore 3 mode + Failover + alerts). |
+| 57 | `e963304` | `feat(observability): OTEL tracer provider — optional OTLP gRPC (ADR-0025)` | Track F 첫 step. internal/observability + cmd/main.go 통합 + 3 단위 테스트. |
+
+**Track F 진입 — OTEL tracer provider infrastructure**:
+- Optional (env OTEL_EXPORTER_OTLP_ENDPOINT 부재 시 noop, zero overhead)
+- 표준 OTEL env 인식 (SERVICE_NAME / RESOURCE_ATTRIBUTES)
+- 사용자 cycle 7 commit c05b251 (otel SDK v1.43.0 CVE 패치) 의존성 활용
+
+**다음 cycle 진입 권고**:
+- Track F 잔여: reconcile path 별 manual tracer.Start span (ADR-0025 AI-005)
+- Track F: Conversion webhook (v1alpha1 → v1beta1 준비)
+- e2e 실측 (`make test-e2e` — kind cluster + cert-manager 5분+)
 
 ## 10. Cycle 9 추가분 (2 commits — 본 세션)
 
