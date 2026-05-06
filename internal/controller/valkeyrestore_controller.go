@@ -262,6 +262,9 @@ func (r *ValkeyRestoreReconciler) handlePending(
 func (r *ValkeyRestoreReconciler) handleMounting(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyRestore/Mounting")
+	defer span.End()
+
 	// Source 확보.
 	if rest.Spec.Source.PVC != nil {
 		if res, ok, err := r.ensurePVCSource(ctx, rest); !ok {
@@ -536,6 +539,9 @@ func (r *ValkeyRestoreReconciler) verifyDataPlane(
 func (r *ValkeyRestoreReconciler) handleRestoring(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyRestore/Restoring")
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 
 	// STS 이름 — Valkey controller 가 spec.clusterRef.name 그대로 STS 이름 사용.
@@ -613,6 +619,9 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 func (r *ValkeyRestoreReconciler) handleVerifying(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyRestore/Verifying")
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 
 	// STS 원복 (init container + source volume 제거).

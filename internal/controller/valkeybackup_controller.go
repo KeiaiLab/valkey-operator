@@ -316,6 +316,9 @@ func (r *ValkeyBackupReconciler) fetchBackupTargetPassword(ctx context.Context, 
 //
 // TargetPVC 명시 시 PVC 생성 skip — 사용자 가 미리 만든 PVC 사용.
 func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (ctrl.Result, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyBackup/Copying")
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 
 	// 1. PVC 보장.
@@ -417,6 +420,9 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 	ctx context.Context, b *cachev1alpha1.ValkeyBackup,
 ) (ctrl.Result, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyBackup/Uploading")
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 
 	if !hasExternalDestination(b) || b.Spec.Destination.TargetRef == nil {
