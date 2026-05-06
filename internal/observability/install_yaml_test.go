@@ -83,3 +83,64 @@ func TestInstallYAMLStructure(t *testing.T) {
 	}
 	t.Logf("dist/install.yaml: %d K8s objects, kinds=%v", parsed, kindCount)
 }
+
+// TestInstallYAMLOperatorImageEnvMatchesContainerImage — dist/install.yaml 의
+// OPERATOR_IMAGE env value ↔ manager 컨테이너 image 일치 검증.
+//
+// 사고 (cycle 64 발견): kustomize image transformer 가 container.image 만 갱신
+// → OPERATOR_IMAGE env 는 placeholder ("controller:latest") 잔재 → Upload/Download
+// Job 이 미존재 image 로 ImagePullBackOff. Makefile build-installer 가 sed 로
+// 양쪽 일괄 갱신 (cycle 64) — 본 게이트가 결과 검증.
+func TestInstallYAMLOperatorImageEnvMatchesContainerImage(t *testing.T) {
+	repo := findRepoRoot(t)
+	path := filepath.Join(repo, "dist/install.yaml")
+	if _, err := os.Stat(path); err != nil {
+		t.Skipf("dist/install.yaml 부재 — skip")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	docs := strings.Split(string(raw), "\n---\n")
+	for _, doc := range docs {
+		body := strings.TrimSpace(doc)
+		if body == "" {
+			continue
+		}
+		var m map[string]any
+		if err := yaml.Unmarshal([]byte(body), &m); err != nil {
+			continue
+		}
+		if k, _ := m["kind"].(string); k != "Deployment" {
+			continue
+		}
+		spec, _ := m["spec"].(map[string]any)
+		tmpl, _ := spec["template"].(map[string]any)
+		podSpec, _ := tmpl["spec"].(map[string]any)
+		containers, _ := podSpec["containers"].([]any)
+		for _, c := range containers {
+			cm, _ := c.(map[string]any)
+			if cm["name"] != "manager" {
+				continue
+			}
+			containerImage, _ := cm["image"].(string)
+			envs, _ := cm["env"].([]any)
+			var operatorImageEnv string
+			for _, e := range envs {
+				em, _ := e.(map[string]any)
+				if em["name"] == "OPERATOR_IMAGE" {
+					operatorImageEnv, _ = em["value"].(string)
+				}
+			}
+			if operatorImageEnv == "" {
+				t.Errorf("dist/install.yaml: OPERATOR_IMAGE env 누락 (manager 컨테이너)")
+				return
+			}
+			if containerImage != operatorImageEnv {
+				t.Errorf("dist/install.yaml: container image=%q ≠ OPERATOR_IMAGE env=%q — Upload/Download Job 이 다른 image 사용 → ImagePullBackOff 위험",
+					containerImage, operatorImageEnv)
+			}
+		}
+	}
+}

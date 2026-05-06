@@ -65,6 +65,15 @@ spec:
           - --health-probe-bind-address=:8081
         image: controller:latest
         name: manager
+        # cycle 64: Upload/Download Job 의 image 결정 — operatorImage() 가 본 env
+        # 우선, 미설정 시 "controller:latest" fallback (production 에서 미존재
+        # → ImagePullBackOff). kustomize image transformer 가 OPERATOR_IMAGE
+        # value 도 자동 갱신하도록 config/default/manager_metrics_patch 등에서
+        # patch 또는 사용자가 release 시 sed 처리. 본 placeholder ↔ image: 필드
+        # 일치 강제 (cycle 64 게이트).
+        env:
+        - name: OPERATOR_IMAGE
+          value: controller:latest
         ports:
         - containerPort: 8081
           name: health

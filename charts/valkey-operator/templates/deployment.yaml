@@ -100,6 +100,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            # cycle 64: Upload/Download Job 의 image 결정 — controller 의
+            # operatorImage() 가 본 env 우선, 미설정 시 "controller:latest"
+            # fallback (production 에서는 미존재 → ImagePullBackOff). chart 사용자
+            # 는 valkey-operator.image helper 로 자동 주입.
+            - name: OPERATOR_IMAGE
+              value: {{ include "valkey-operator.image" . | quote }}
             {{- if .Values.valkey.version }}
             - name: DEFAULT_VALKEY_VERSION
               value: {{ .Values.valkey.version | quote }}

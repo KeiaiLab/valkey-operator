@@ -172,7 +172,12 @@ docker-buildx: ## Build and push multi-arch image. CLAUDE.md §2: default builde
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default > dist/install.yaml
+	# cycle 64: kustomize image transformer 는 container.image 만 갱신 — env
+	# OPERATOR_IMAGE 는 별도 sed. dist/install.yaml 의 OPERATOR_IMAGE value 가
+	# image: 와 동일하도록 강제 (Upload/Download Job 의 image fallback 차단).
+	"$(KUSTOMIZE)" build config/default | \
+		sed -E "s|(- name: OPERATOR_IMAGE\n[[:space:]]+value: )controller:latest|\1${IMG}|; s|value: controller:latest|value: ${IMG}|" \
+		> dist/install.yaml
 
 ##@ Deployment
 
