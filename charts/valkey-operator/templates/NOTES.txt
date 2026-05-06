@@ -70,4 +70,27 @@ Valkey Operator has been installed successfully!
 7. OTEL tracing 활성: endpoint={{ .Values.tracing.endpoint }} (22 spans 발행)
 {{- end }}
 
+8. Production hardening (cycles 72-74 — opt-in):
+
+{{- if not .Values.webhook.enabled }}
+   - Admission webhooks (validation + mutating defaulting):
+     helm upgrade {{ .Release.Name }} {{ .Chart.Name }} --set webhook.enabled=true
+     # cert-manager 클러스터 사전 설치 필수.
+{{- else }}
+   - ✅ Admission webhooks active (validation + mutating defaulting).
+{{- end }}
+{{- if not .Values.networkPolicy.enabled }}
+   - NetworkPolicy (default-deny + 명시 ingress/egress for operator pod):
+     helm upgrade {{ .Release.Name }} {{ .Chart.Name }} --set networkPolicy.enabled=true
+{{- else }}
+   - ✅ NetworkPolicy active (operator pod default-deny).
+{{- end }}
+{{- if not .Values.watch.namespaces }}
+   - Multi-tenant 운영: namespace-scoped watch (RBAC 별도 설정 권장):
+     helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+       --set 'watch.namespaces={valkey-prod,valkey-stage}'
+{{- else }}
+   - ✅ Namespace-scoped watch: {{ join ", " .Values.watch.namespaces }}
+{{- end }}
+
 For more information, visit: https://github.com/keiailab/valkey-operator
