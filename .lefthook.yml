@@ -50,6 +50,24 @@ pre-push:
     gitleaks:
       # 시크릿 누출 차단 — RFC 0002 L2 + standards/enforcement.md §1.5.
       run: command -v gitleaks >/dev/null 2>&1 && gitleaks protect --staged --no-banner || echo "gitleaks not installed (brew install gitleaks)"
+    go-mod-tidy:
+      # go.mod direct/indirect drift 차단 (cycle 46 발견). go mod tidy 후 변경
+      # 발생하면 push 차단 — 의존성 그래프 정확성 보장 (security audit false
+      # negative 방지).
+      run: |
+        # 임시 백업 → tidy → diff → 복원.
+        cp go.mod /tmp/.go.mod.lefthook.bak
+        cp go.sum /tmp/.go.sum.lefthook.bak
+        go mod tidy
+        if ! diff -q go.mod /tmp/.go.mod.lefthook.bak >/dev/null 2>&1 || ! diff -q go.sum /tmp/.go.sum.lefthook.bak >/dev/null 2>&1; then
+          # 복원 후 fail.
+          cp /tmp/.go.mod.lefthook.bak go.mod
+          cp /tmp/.go.sum.lefthook.bak go.sum
+          rm -f /tmp/.go.mod.lefthook.bak /tmp/.go.sum.lefthook.bak
+          echo "❌ go.mod / go.sum drift — 'go mod tidy' 후 commit 필요"
+          exit 1
+        fi
+        rm -f /tmp/.go.mod.lefthook.bak /tmp/.go.sum.lefthook.bak
 
 commit-msg:
   commands:
