@@ -90,3 +90,84 @@ func TestValidateValkeySpec(t *testing.T) {
 		}
 	})
 }
+
+// validateClusterSpec 회귀 보호 (cycle 131).
+func TestValidateClusterSpec(t *testing.T) {
+	t.Parallel()
+	t.Run("autoFailover=true + replicasPerShard=0 → error", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Spec.Shards = 3
+		vc.Spec.ReplicasPerShard = 0
+		vc.Spec.AutoFailover = true
+		errs := validateClusterSpec(vc)
+		if len(errs) == 0 {
+			t.Error("autoFailover=true + replicasPerShard=0 → expected error")
+		}
+	})
+	t.Run("totalNodes > 100 → error", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Spec.Shards = 50
+		vc.Spec.ReplicasPerShard = 1 // total = 50 * 2 = 100, OK.
+		errs := validateClusterSpec(vc)
+		if len(errs) > 0 {
+			t.Errorf("100 nodes → expected ok, got %v", errs)
+		}
+		vc.Spec.ReplicasPerShard = 2 // total = 50 * 3 = 150, error.
+		errs = validateClusterSpec(vc)
+		var hasOver100 bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "must not exceed 100") {
+				hasOver100 = true
+			}
+		}
+		if !hasOver100 {
+			t.Errorf("150 nodes → expected 'must not exceed 100' error, got %v", errs)
+		}
+	})
+	t.Run("TLS dual-source mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Spec.Shards = 3
+		vc.Spec.ReplicasPerShard = 1
+		vc.Spec.TLS = &cachev1alpha1.TLSSpec{
+			Enabled:     true,
+			CertManager: &cachev1alpha1.CertManagerSpec{IssuerRef: cachev1alpha1.CertIssuerRef{Name: "ca"}},
+			CustomCert:  &cachev1alpha1.CustomCertSpec{SecretName: "user-cert"},
+		}
+		errs := validateClusterSpec(vc)
+		var hasMutex bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "mutually exclusive") {
+				hasMutex = true
+			}
+		}
+		if !hasMutex {
+			t.Error("certManager + customCert → mutually exclusive error 누락")
+		}
+	})
+	t.Run("auth.users without auth.enabled → error", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Spec.Shards = 3
+		vc.Spec.ReplicasPerShard = 1
+		vc.Spec.Auth.Enabled = false
+		vc.Spec.Auth.Users = []cachev1alpha1.ValkeyUser{{Name: "alice"}}
+		errs := validateClusterSpec(vc)
+		if len(errs) == 0 {
+			t.Error("auth.users with auth.enabled=false → expected error")
+		}
+	})
+	t.Run("valid spec → no error", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Spec.Shards = 3
+		vc.Spec.ReplicasPerShard = 1
+		vc.Spec.AutoFailover = true
+		errs := validateClusterSpec(vc)
+		if len(errs) > 0 {
+			t.Errorf("valid 3-shard cluster → expected no error, got %v", errs)
+		}
+	})
+}
