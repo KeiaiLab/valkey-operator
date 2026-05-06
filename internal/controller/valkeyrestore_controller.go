@@ -338,6 +338,9 @@ func (r *ValkeyRestoreReconciler) ensurePVCSource(
 func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, bool, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyRestore/EnsureTargetRefSource")
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 
 	// 1. ValkeyBackupTarget Get + Reachable 검증.
@@ -517,6 +520,9 @@ func (r *ValkeyRestoreReconciler) dialValkey(
 func (r *ValkeyRestoreReconciler) verifyDataPlane(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyRestore/VerifyDataPlane")
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 	c, err := r.dialValkey(ctx, rest)
 	if err != nil {
