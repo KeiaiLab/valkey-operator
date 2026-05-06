@@ -1,0 +1,177 @@
+name: Bug report
+about: Create a report to help us improve the Valkey Operator
+title: '[BUG] '
+labels: ['bug', 'triage']
+assignees: ''
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+        Before creating an issue, please search existing issues to avoid duplicates.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues
+          required: true
+        - label: I can reproduce this issue in a clean environment
+          required: true
+        - label: This is not a security vulnerability (use [SECURITY.md](https://github.com/keiailab/valkey-operator/blob/main/SECURITY.md) for security issues)
+
+  - type: dropdown
+    id: kubernetes_version
+    attributes:
+      label: Kubernetes Version
+      description: Which Kubernetes version are you using?
+      options:
+        - '1.26'
+        - '1.27'
+        - '1.28'
+        - '1.29'
+        - '1.30'
+        - 'Other (specify below)'
+    validations:
+      required: true
+
+  - type: input
+    id: kubernetes_version_other
+    attributes:
+      label: Kubernetes Version (if Other)
+      description: Please specify your Kubernetes version
+      placeholder: e.g., 1.25.0
+
+  - type: dropdown
+    id: valkey_version
+    attributes:
+      label: Valkey Version
+      description: Which Valkey version are you deploying?
+      options:
+        - '8.2'
+        - '8.0'
+        - '7.0'
+        - '6.0'
+        - 'Other (specify below)'
+    validations:
+      required: true
+
+  - type: input
+    id: valkey_version_other
+    attributes:
+      label: Valkey Version (if Other)
+      description: Please specify your Valkey version
+      placeholder: e.g., 5.0.14
+
+  - type: dropdown
+    id: operator_version
+    attributes:
+      label: Valkey Operator Version
+      description: Which version of the Valkey Operator are you using?
+      options:
+        - 'v0.0.5'
+        - 'v0.0.3'
+        - 'Other (specify below)'
+    validations:
+      required: true
+
+  - type: input
+    id: operator_version_other
+    attributes:
+      label: Operator Version (if Other)
+      description: Please specify the operator version
+      placeholder: e.g., v0.0.4, latest, commit hash
+
+  - type: input
+    id: cluster_type
+    attributes:
+      label: Cluster Type
+      description: What kind of Valkey cluster are you deploying?
+      placeholder: e.g., ReplicaSet, Sharded Cluster
+
+  - type: dropdown
+    id: installation_method
+    attributes:
+      label: Installation Method
+      description: How did you install the operator?
+      options:
+        - Helm
+        - Manual (kubectl apply)
+        - Operator Lifecycle Manager (OLM)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Bug
+      description: A clear and concise description of what the bug is
+      placeholder: e.g., The operator fails to initialize the replica set when using TLS...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Install the operator using helm: `helm install ...`
+        2. Create a Valkey ReplicaSet with this YAML...
+        3. Apply the manifest: `kubectl apply -f ...`
+        4. Observe the error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen
+      placeholder: e.g., The replica set should initialize successfully with 3 members
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear description of what actually happened
+      placeholder: e.g., The pods get stuck in Pending state with CrashLoopBackOff
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, Metrics, or Screenshots
+      description: Please provide relevant logs, metrics output, or screenshots to help diagnose the issue
+      placeholder: |
+        - Operator logs: `kubectl logs -n valkey-operator-system deployment/valkey-operator`
+        - Pod logs: `kubectl logs -n <namespace> <pod-name>`
+        - Pod status: `kubectl describe pod <pod-name>`
+        - CR status: `kubectl get valkey <name> -o yaml`
+      render: shell
+
+  - type: textarea
+    id: yaml_config
+    attributes:
+      label: Relevant YAML Configuration
+      description: Provide the Valkey/ValkeySharded/ValkeyBackup resource YAML (remove sensitive data)
+      render: yaml
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: e.g., Running on EKS, using custom storage class, related to scaling operations...
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Note:** Please ensure all sensitive data (passwords, tokens, keys) are redacted before submitting.

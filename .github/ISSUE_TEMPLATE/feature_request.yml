@@ -1,0 +1,130 @@
+name: Feature request
+about: Suggest an idea for the Valkey Operator
+title: '[FEATURE] '
+labels: ['enhancement', 'triage']
+assignees: ''
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in improving the Valkey Operator!
+        Before creating a feature request, please check existing issues and the [roadmap](https://github.com/keiailab/valkey-operator#roadmap).
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues and feature requests
+          required: true
+        - label: This feature request is not already in the roadmap
+          required: true
+
+  - type: textarea
+    id: feature_description
+    attributes:
+      label: Feature Description
+      description: A clear and concise description of the feature you'd like to see
+      placeholder: e.g., Add support for automated Valkey version upgrades
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use Case / Motivation
+      description: Explain why this feature would be useful. What problem does it solve?
+      placeholder: |
+        As a Valkey operator user, I need automatic version upgrades so that I can:
+        - Keep clusters patched with security updates
+        - Reduce manual operational overhead
+        - Avoid downtime during maintenance windows
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like in detail
+      placeholder: |
+        **Implementation approach:**
+        - Add a new field `spec.autoUpgrade.enabled: true` to the Valkey CRD
+        - Add `spec.autoUpgrade.targetVersion: "8.3"` to specify target version
+        - Use rolling update strategy to upgrade one member at a time
+
+        **Configuration example:**
+        ```yaml
+        apiVersion: valkey.keiailab.com/v1alpha1
+        kind: Valkey
+        metadata:
+          name: my-valkey
+        spec:
+          members: 3
+          version:
+            version: "8.2"
+          autoUpgrade:
+            enabled: true
+            targetVersion: "8.3"
+        ```
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: |
+        1. Use external tools like ArgoCD for rolling updates
+        2. Manually update version in CRD and let operator handle StatefulSet rolling update
+        3. Create separate CRD for upgrade jobs
+
+        **Why these alternatives don't work:**
+        - External tools don't understand Valkey-specific upgrade requirements
+        - Manual updates don't validate version compatibility
+        - Separate CRD adds complexity
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request
+      placeholder: |
+        - Valkey documentation on upgrades: https://www.valkey.com/docs/manual/release-notes/
+        - Related issue: #123
+        - Similar feature in Percona Valkey Operator
+      render: markdown
+
+  - type: dropdown
+    id: willing_to_contribute
+    attributes:
+      label: Would you be willing to contribute this feature?
+      description: We welcome community contributions!
+      options:
+        - 'Yes, I can implement this feature'
+        - 'Yes, I can help test this feature'
+        - 'No, but I can provide feedback and testing'
+        - 'No, I just want to use the feature'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Critical (blocks adoption)
+        - High (important for production use)
+        - Medium (nice to have)
+        - Low (minor improvement)
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Note:** Feature requests are evaluated based on alignment with project goals, technical feasibility, and community interest.

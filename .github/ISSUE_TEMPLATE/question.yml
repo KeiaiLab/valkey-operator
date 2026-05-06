@@ -1,0 +1,185 @@
+name: Question
+about: Ask a question about the Valkey Operator
+title: '[QUESTION] '
+labels: ['question']
+assignees: ''
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out!
+        Please ensure you've checked the documentation and existing issues before asking.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have read the [README](https://github.com/keiailab/valkey-operator#readme) documentation
+          required: true
+        - label: I have read the [Contributing Guide](https://github.com/keiailab/valkey-operator/blob/main/CONTRIBUTING.md)
+          required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Question Context
+      description: Provide context about what you're trying to achieve
+      placeholder: |
+        I'm trying to deploy a Valkey sharded cluster with TLS encryption enabled.
+        I'm running Kubernetes 1.29 on EKS and using the operator v0.0.5.
+      render: markdown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kubernetes_version
+    attributes:
+      label: Kubernetes Version
+      description: Which Kubernetes version are you using?
+      options:
+        - '1.26'
+        - '1.27'
+        - '1.28'
+        - '1.29'
+        - '1.30'
+        - 'Other'
+
+  - type: dropdown
+    id: valkey_version
+    attributes:
+      label: Valkey Version
+      description: Which Valkey version are you deploying?
+      options:
+        - '8.2'
+        - '8.0'
+        - '7.0'
+        - '6.0'
+        - 'Other'
+
+  - type: dropdown
+    id: operator_version
+    attributes:
+      label: Valkey Operator Version
+      description: Which version of the Valkey Operator are you using?
+      options:
+        - 'v0.0.5'
+        - 'v0.0.3'
+        - 'Other'
+
+  - type: textarea
+    id: what_tried
+    attributes:
+      label: What Have You Tried?
+      description: Describe what you've already tried to solve your problem
+      placeholder: |
+        1. I tried enabling TLS with cert-manager integration
+        2. I created a ClusterIssuer and referenced it in the Valkey CRD
+        3. The TLS certificates are created, but the Valkey pods fail to start
+        4. I checked the logs and see: "TLS certificate verification failed"
+
+        **Commands I've run:**
+        ```bash
+        kubectl get valkey my-sharded -o yaml
+        kubectl logs -n database my-sharded-configsvr-0
+        kubectl describe certificate my-sharded-tls
+        ```
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration Details
+      description: Provide relevant configuration details (YAML, settings, environment variables)
+      placeholder: |
+        **ValkeySharded CRD:**
+        ```yaml
+        apiVersion: valkey.keiailab.com/v1alpha1
+        kind: ValkeySharded
+        metadata:
+          name: my-sharded
+        spec:
+          version:
+            version: "8.2"
+          tls:
+            enabled: true
+            certManager:
+              issuerRef:
+                name: letsencrypt-prod
+                kind: ClusterIssuer
+        ```
+
+        **Helm values (if applicable):**
+        ```yaml
+        operator:
+          replicas: 2
+        ```
+      render: yaml
+
+  - type: textarea
+    id: specific_question
+    attributes:
+      label: Your Question
+      description: Ask your specific question clearly and concisely
+      placeholder: |
+        How do I configure the operator to properly mount the TLS certificates in the Valkey pods?
+        Do I need to manually create a Secret, or does cert-manager integration handle this automatically?
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_or_behavior
+    attributes:
+      label: Error Messages or Unexpected Behavior (if applicable)
+      description: If you're encountering an error or unexpected behavior, describe it here
+      placeholder: |
+        **Error message:**
+        ```
+        failed to load TLS certificate: open /etc/valkey/tls/tls.crt: no such file or directory
+        ```
+
+        **Pod status:**
+        ```
+        NAME                           READY   STATUS             RESTARTS   AGE
+        my-sharded-configsvr-0         0/1     CrashLoopBackOff   3          5m
+        ```
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs (if applicable)
+      description: Provide relevant logs from the operator or Valkey pods
+      placeholder: |
+        **Operator logs:**
+        ```bash
+        kubectl logs -n valkey-operator-system deployment/valkey-operator
+        ```
+
+        **Valkey pod logs:**
+        ```bash
+        kubectl logs -n database my-sharded-configsvr-0
+        ```
+      render: shell
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other information that might help answer your question
+      placeholder: |
+        - I'm following the TLS configuration from the README
+        - Using self-signed certificates for testing
+        - Certificate is issued correctly per cert-manager logs
+      render: markdown
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Note:** Questions are community-supported and response times may vary. For critical issues requiring immediate attention, please consider [Valkey Support](https://www.valkey.com/docs/manual/support/).
