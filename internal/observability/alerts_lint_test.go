@@ -62,6 +62,7 @@ var registeredAppMetrics = map[string]bool{
 	"valkey_cluster_backup_total":           true,
 	"valkey_cluster_restore_total":          true,
 	"valkey_cluster_failover_total":         true,
+	"valkey_cluster_build_info":             true,
 }
 
 // Prometheus / kube-prometheus-stack 표준 메트릭 화이트리스트.

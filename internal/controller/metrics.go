@@ -126,6 +126,18 @@ var (
 		},
 		labelNamespaceName,
 	)
+
+	// MetricBuildInfo — kube-state-metrics 표준 패턴. {version, commit, date}
+	// 라벨로 운영 중 image 의 정확한 release tag 식별. cycles 53-56 의 ldflags
+	// chain 과 정합 — `kubectl exec ... --version` 의 *Prometheus 등가물*.
+	MetricBuildInfo = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: metricSubsystem,
+			Name:      "build_info",
+			Help:      "Build info gauge (always 1) labeled by version/commit/date — for dashboard display.",
+		},
+		[]string{"version", "commit", "date"},
+	)
 )
 
 func init() {
@@ -140,7 +152,14 @@ func init() {
 		MetricBackupTotal,
 		MetricRestoreTotal,
 		MetricFailoverTotal,
+		MetricBuildInfo,
 	)
+}
+
+// SetBuildInfo — operator 부팅 시 cmd/main.go 가 1회 호출. version/commit/date
+// 모두 ldflags 주입 값 (cycle 53). 미주입 시 default ("dev"/"none"/"unknown").
+func SetBuildInfo(version, commit, date string) {
+	MetricBuildInfo.WithLabelValues(version, commit, date).Set(1)
 }
 
 // SetPhaseMetric — 활성 phase 만 1, 나머지 phase 라벨은 0 으로 설정.

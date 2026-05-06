@@ -126,6 +126,11 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// Prometheus build_info gauge — 운영 dashboard 가 *현재 동작 중 release tag*
+	// 식별. `valkey_cluster_build_info{version,commit,date}` 1 (cycle 57).
+	controller.SetBuildInfo(version, commit, date)
+	setupLog.Info("startup", "version", version, "commit", commit, "date", date)
+
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
 	// prevent from being vulnerable to the HTTP/2 Stream Cancellation and
