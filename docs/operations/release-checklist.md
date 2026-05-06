@@ -59,6 +59,7 @@ push 도 동일 통과 필수.
 | 32 | `TestKustomizeChartSecurityContextInvariants` | Pod Security Standards "restricted" invariant — runAsNonRoot/seccompProfile/allowPrivilegeEscalation=false/readOnlyRootFilesystem/capabilities.drop=ALL 양쪽 모두 적용 |
 | 33 | `TestInstallYAMLOperatorImageEnvMatchesContainerImage` | dist/install.yaml 의 OPERATOR_IMAGE env value ↔ manager 컨테이너 image 일치 (Upload/Download Job ImagePullBackOff 차단) |
 | 34 | `TestChartArgsMatchOperatorFlags` | chart deployment + config/manager 의 args ↔ cmd/main.go flag 정의 (옛 flag 잔재 → CrashLoopBackOff 차단) |
+| 35 | `TestValuesTemplateBindingCoverage` | values.yaml top-level key 가 templates/ 어디에서든 참조됨 (silent ignore value 차단, 미구현 항목은 exempted + values.yaml 에 명시) |
 
 검증 명령: `go test ./internal/observability/`
 

@@ -105,11 +105,13 @@ metrics:
     # -- Relabeling configs
     relabelings: []
 
-# Webhook configuration (for future use)
+# Webhook configuration — NOT YET IMPLEMENTED (cycle 70 정직 표시).
+# 본 chart 는 admission webhook (ValidatingWebhookConfiguration + Mutating-,
+# webhook Service + Certificate) templates 미보유 — Helm 사용자는 *webhook 미적용
+# 상태로 운영*. webhook 필요 시 *kustomize* 사용 (config/webhook/ + config/
+# certmanager/ 활용). 향후 cycle 에서 chart 측 webhook templates 추가 예정.
 webhook:
-  # -- Enable admission webhooks
   enabled: false
-  # -- Webhook service port
   port: 9443
 
 # RBAC configuration
@@ -119,11 +121,12 @@ rbac:
   # -- Use ClusterRole (true) or Role (false)
   clusterScope: true
 
-# CRD configuration
+# CRD configuration — NOT YET HOOKED (cycle 70).
+# 현재 Helm 3 의 *built-in CRD 동작* (crds/ 디렉토리 = install only, never
+# upgrade) 사용. 본 values 는 *future-proofing* — 향후 customizable CRD
+# lifecycle (install/keep/upgrade) 도입 시 활용. 현재는 silent — 변경 무효.
 crds:
-  # -- Install CRDs with the chart
   install: true
-  # -- Keep CRDs on chart uninstall
   keep: true
 
 # Valkey default configuration (used as defaults for Valkey CRs)
@@ -143,9 +146,11 @@ logging:
   # -- Enable development mode logging
   development: false
 
-# Watch configuration
+# Watch configuration — NOT YET IMPLEMENTED (cycle 70).
+# 현재 operator 는 *cluster-wide* watch (모든 namespace). namespace 제한 mode
+# 는 controller-runtime manager.Cache 의 DefaultNamespaces 옵션 + RBAC namespaced
+# Role/RoleBinding 도 필요 — 본 chart 미구현. 향후 cycle 에서 활성화.
 watch:
-  # -- Namespaces to watch (empty = all namespaces)
   namespaces: []
 
 # Health probes configuration
@@ -197,13 +202,14 @@ features:
   autoscaling:
     enabled: false
 
-# Network Policy configuration
+# Network Policy configuration — NOT YET IMPLEMENTED (cycle 70).
+# 본 chart 는 NetworkPolicy template 미보유 — Helm 사용자는 NetworkPolicy
+# 미적용. CR-level (Valkey/ValkeyCluster.Spec.NetworkPolicy) 의 NetworkPolicy
+# (config/samples 참조) 는 정상 작동 — operator 가 직접 생성. 본 *operator
+# 자체* 의 NetworkPolicy (manager pod) 만 chart 미구현.
 networkPolicy:
-  # -- Enable network policy
   enabled: false
-  # -- Ingress rules
   ingress: []
-  # -- Egress rules
   egress: []
 
 # Pod Disruption Budget configuration
