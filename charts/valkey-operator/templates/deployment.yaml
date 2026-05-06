@@ -134,6 +134,14 @@ spec:
             - name: ENABLE_BACKUP_RECONCILER
               value: "false"
             {{- end }}
+            {{- if not .Values.webhook.enabled }}
+            # cycle 111: webhook.enabled=false 시 operator 의 webhook server
+            # startup 자체 skip — controller-runtime 의 self-signed cert
+            # auto-generation + 9443 listen overhead 차단. ValidatingWebhookConfig
+            # 미등록 으로 admission 호출 0 이지만, server startup 부담 없음.
+            - name: ENABLE_WEBHOOKS
+              value: "false"
+            {{- end }}
             {{- if .Values.valkey.version }}
             - name: DEFAULT_VALKEY_VERSION
               value: {{ .Values.valkey.version | quote }}
