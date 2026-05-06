@@ -33,7 +33,14 @@ import (
 
 var (
 	// managerImage is the manager image to be built and loaded for testing.
-	managerImage = "example.com/valkey-operator:v0.0.1"
+	// cycle 99: kubebuilder default placeholder ("example.com/...") → 실제 GHCR
+	// 표준 image. IMG env 로 override 가능 (e.g., local registry test).
+	managerImage = func() string {
+		if v := os.Getenv("IMG"); v != "" {
+			return v
+		}
+		return "ghcr.io/keiailab/valkey-operator:e2e-dev"
+	}()
 	// shouldCleanupCertManager tracks whether CertManager was installed by this suite.
 	shouldCleanupCertManager = false
 )
