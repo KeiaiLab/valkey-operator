@@ -33,7 +33,7 @@ spec:
             description: |
               CLUSTER INFO 의 cluster_state 가 ok 가 아닙니다. slot 분배 또는 quorum
               이슈일 가능성. `valkey-cli cluster info` 로 진단.
-            runbook_url: docs/operations/runbook.md#23-valkeycluster-cluster_statefail
+            runbook_url: docs/operations/runbook.md#91-valkeyclusterstatenotok
 
         # 2. assigned_slots != 16384 5분 지속 → critical.
         - alert: ValkeyClusterSlotsMismatch
@@ -47,6 +47,7 @@ spec:
             description: |
               할당된 hash slot 수가 16384 가 아닙니다. cluster reshard 진행 중이거나
               shard 분실 상태. `valkey-cli cluster nodes` 로 토폴로지 확인.
+            runbook_url: docs/operations/runbook.md#92-valkeyclusterslotsmismatch
 
         # 3. ready_replicas < spec replicas 5분 지속 → warning.
         # 본 alert 는 spec replicas 정보 부재 — 단순히 ready=0 시 critical, ready<2 시 warning.
@@ -61,6 +62,7 @@ spec:
             description: |
               STS 의 readyReplicas=0. PV pending / image pull / liveness probe 실패
               가능성. `kubectl describe sts {{ $labels.name }}` 으로 진단.
+            runbook_url: docs/operations/runbook.md#93-valkeyclusternoreadyreplicas
 
         - alert: ValkeyClusterDegraded
           expr: valkey_cluster_ready_replicas < 2 and valkey_cluster_ready_replicas > 0
@@ -73,6 +75,7 @@ spec:
             description: |
               일부 pod 만 Ready (ready={{ $value }}). HA 정족수 부족 위험.
               `kubectl get pods -l app=valkey-cluster` 로 진단.
+            runbook_url: docs/operations/runbook.md#94-valkeyclusterdegraded
 
         # 4. Phase=Failed 1분 지속 → critical.
         - alert: ValkeyClusterPhaseFailed
@@ -86,6 +89,7 @@ spec:
             description: |
               CR Phase 가 Failed. Status.Conditions 의 Reason/Message 로 원인 분류.
               `kubectl describe vc {{ $labels.name }}` 으로 상세.
+            runbook_url: docs/operations/runbook.md#95-valkeyclusterphasefailed
 
         # 5. reconcile_errors rate > 0.1/s 5분 지속 → warning.
         - alert: ValkeyOperatorReconcileErrorsHigh
@@ -100,6 +104,7 @@ spec:
               {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.component }})
               의 reconcile 실패 rate 가 0.1/s 초과. operator log 점검:
               `kubectl logs -n valkey-operator-system -l control-plane=controller-manager --tail=200`
+            runbook_url: docs/operations/runbook.md#96-valkeyoperatorreconcileerrorshigh
 
     - name: valkey-operator.rules
       interval: 30s
@@ -118,6 +123,7 @@ spec:
               metrics endpoint 도달 불가. controller-manager pod 가 down 또는
               metrics server 가 listen 안 함.
               `kubectl -n valkey-operator-system get pods` 로 확인.
+            runbook_url: docs/operations/runbook.md#97-valkeyoperatordown
 
     - name: valkey-business.rules
       interval: 1m
@@ -136,6 +142,7 @@ spec:
               {{ $labels.namespace }}/{{ $labels.name }} 의 backup 실패율 가
               0.0017/sec (= 0.1/min) 초과 10분 지속.
               `kubectl get valkeybackup -A` + `kubectl describe` 로 진단.
+            runbook_url: docs/operations/runbook.md#98-valkeybackupfailureratehigh
 
         # 8. Restore 실패율 — 1시간 동안 0.1/min 초과 시 warning.
         - alert: ValkeyRestoreFailureRateHigh
@@ -150,6 +157,7 @@ spec:
               {{ $labels.namespace }}/{{ $labels.name }} 의 restore 실패율
               가 임계값 초과. PVC accessMode / Source.TargetRef reachability /
               shard mapping 등 확인.
+            runbook_url: docs/operations/runbook.md#99-valkeyrestorefailureratehigh
 
         # 9. Failover 폭주 — 1시간 1회 이상 = 인스턴스 불안정.
         - alert: ValkeyFailoverHigh
@@ -165,3 +173,4 @@ spec:
               1시간 동안 2회 이상. primary pod 의 안정성 확인 (ResourceQuota /
               OOMKilled / liveness probe).
               `kubectl describe pod {{ $labels.name }}-0` + 로그 점검.
+            runbook_url: docs/operations/runbook.md#910-valkeyfailoverhigh

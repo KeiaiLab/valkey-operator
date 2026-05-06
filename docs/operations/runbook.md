@@ -176,11 +176,84 @@ kubectl exec -it <cr-name>-0 -- valkey-cli -a "$PASS"
 
 ## 7. 관측성 표준
 
-- **Metrics**: Prometheus `valkey_cluster_state_ok`, `valkey_assigned_slots`,
-  `valkey_ready_replicas`, `valkey_reconcile_total`, `valkey_reconcile_errors`,
-  `valkey_phase`. ServiceMonitor 자동 등록 (`Spec.Monitoring.ServiceMonitor.Enabled`).
+- **Metrics** (subsystem `valkey_cluster_*`): `state_ok`, `assigned_slots`, `shards`,
+  `ready_replicas`, `reconcile_total`, `reconcile_errors_total`, `phase`,
+  `backup_total`, `restore_total`, `failover_total`. ServiceMonitor 자동 등록
+  (`Spec.Monitoring.ServiceMonitor.Enabled`).
 - **Events**: `kubectl get events --field-selector involvedObject.kind=Valkey`.
 - **Logs**: 구조화 (zap). `kubectl logs <operator-pod> -f --tail=100`.
+
+## 9. Alert 별 대응 (Prometheus 알람 → MTTR)
+
+각 Alert annotations 의 `runbook_url` 가 본 섹션을 가리킨다. on-call 받자마자
+Trigger → Diagnosis → Mitigation → Escalation 순서로 진행.
+
+### 9.1 ValkeyClusterStateNotOK
+- **Trigger**: `valkey_cluster_state_ok == 0` for 5m. CLUSTER INFO 의 cluster_state ≠ ok.
+- **Diagnosis**: §2.3 ("ValkeyCluster cluster_state=fail") 절차 그대로. slot 분배
+  또는 quorum 이슈.
+- **Mitigation**: 누락된 slot 식별 후 `CLUSTER ADDSLOTS` 또는 operator 가
+  reshard 진행 대기.
+
+### 9.2 ValkeyClusterSlotsMismatch
+- **Trigger**: `valkey_cluster_assigned_slots != 16384` for 5m.
+- **Diagnosis**: `valkey-cli cluster nodes` 로 slot 분배 확인. resharding 진행
+  중일 수 있음 (정상 transient).
+- **Mitigation**: 5분+ 지속 → 수동 `CLUSTER ADDSLOTS` 또는 operator restart.
+
+### 9.3 ValkeyClusterNoReadyReplicas
+- **Trigger**: `valkey_cluster_ready_replicas == 0` for 5m. 모든 pod NotReady.
+- **Diagnosis**: §2.2 (CrashLoopBackOff) + node-level (disk-pressure 등) 확인.
+  `kubectl get pods -l app.kubernetes.io/name=valkey` + describe.
+- **Mitigation**: PVC re-bind, image pull 이슈, OOMKilled 등 근본 원인 별 §2 진행.
+- **Escalation**: 클러스터 노드 다운 시 — node 추가 또는 다른 노드로 reschedule.
+
+### 9.4 ValkeyClusterDegraded
+- **Trigger**: `0 < ready_replicas < 2` for 5m. 일부 pod NotReady.
+- **Diagnosis**: 각 NotReady pod 의 logs + events 확인.
+- **Mitigation**: 보통 §2.2 패턴.
+
+### 9.5 ValkeyClusterPhaseFailed
+- **Trigger**: `valkey_cluster_phase{phase="Failed"} == 1` for 1m.
+- **Diagnosis**: §2.1 ("Phase=Failed CR") 절차. CR conditions 의 LastError 확인.
+- **Mitigation**: error 별 처리 (대부분 admission/RBAC/storage class 이슈).
+
+### 9.6 ValkeyOperatorReconcileErrorsHigh
+- **Trigger**: `rate(valkey_cluster_reconcile_errors_total[5m]) > 0.1` for 5m.
+- **Diagnosis**: operator logs grep `level=error` + kubectl events.
+  RBAC / API server 부하 / CR validation 실패가 일반적.
+- **Mitigation**: 일시적이면 자체 회복. 지속 시 §6.1 (operator 재시작).
+
+### 9.7 ValkeyOperatorDown
+- **Trigger**: `up{job=~"valkey-operator.*"} == 0` for 2m.
+- **Diagnosis**: §6.1 ("Operator manager 강제 재시작"). Deployment Available
+  상태 + Pod 상태 + 노드 상태.
+- **Mitigation**: §6.1 의 rollout restart. ImagePullBackOff 이면 image 확인.
+- **Escalation**: 모든 reconcile 정지 — 신규 CR / Phase 전이 모두 멈춤. SEV-1.
+
+### 9.8 ValkeyBackupFailureRateHigh
+- **Trigger**: `rate(valkey_cluster_backup_total{phase="Failed"}[1h]) > 0.0017`
+  (시간당 ~6건) for 10m.
+- **Diagnosis**: §3 ("Backup / Restore"). Failed ValkeyBackup 의 conditions
+  LastError + Pod logs (Job/upload). 자격증명 / S3 bucket 권한 / 디스크 공간.
+- **Mitigation**: 자격증명 회전 또는 BackupTarget endpoint 변경. 데이터 보존
+  정책 (TTL) 영향 평가 후 재실행.
+
+### 9.9 ValkeyRestoreFailureRateHigh
+- **Trigger**: `rate(valkey_cluster_restore_total{phase="Failed"}[1h]) > 0.0017` for 10m.
+- **Diagnosis**: §3.3 ("Restore"). source RDB 무결성 + init container logs +
+  PVC ROX 마운트 검증.
+- **Mitigation**: §6.2 ("잘못된 ValkeyRestore 중단") 후 재실행. Failed Restore
+  CR 는 finalizer cleanup 후 delete.
+
+### 9.10 ValkeyFailoverHigh
+- **Trigger**: `rate(valkey_cluster_failover_total[1h]) > 0.005`
+  (시간당 ~18건) for 10m.
+- **Diagnosis**: 잦은 failover = primary instability. primary pod 의 OOMKilled,
+  network partition, replication offset lag 확인. `valkey-cli info replication`.
+- **Mitigation**: resource limit 조정, network policy 확인, primary 의 부하
+  이전 (read replica 활용). disk I/O 병목 점검.
+- **Escalation**: split-brain 의심 → §2.3 절차 + ADR-0017 확인.
 
 ## 8. ADR / RFC 참조
 

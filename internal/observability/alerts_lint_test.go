@@ -146,6 +146,9 @@ func TestAlertRulesAllFieldsValid(t *testing.T) {
 				if a.Annotations["description"] == "" {
 					t.Error("annotations.description 누락")
 				}
+				if a.Annotations["runbook_url"] == "" {
+					t.Error("annotations.runbook_url 누락 — on-call MTTR 위해 필수")
+				}
 			})
 		}
 	}
@@ -155,6 +158,79 @@ func TestAlertRulesAllFieldsValid(t *testing.T) {
 	if alertCount < 10 {
 		t.Errorf("alert %d 건 — 10+ 기대 (cluster + operator + business 카테고리)", alertCount)
 	}
+}
+
+// runbook_url 의 anchor 가 실제 runbook.md 에 존재하는지 검증.
+// 섹션 rename 시 silent broken link 차단 (on-call 이 404 페이지 만나는 사고 예방).
+func TestAlertRulesRunbookAnchorsExist(t *testing.T) {
+	f := loadAlertRules(t)
+	// runbook.md 로딩.
+	candidates := []string{
+		"docs/operations/runbook.md",
+		"../../docs/operations/runbook.md",
+		"../../../docs/operations/runbook.md",
+	}
+	var rbPath string
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			rbPath = c
+			break
+		}
+	}
+	if rbPath == "" {
+		t.Fatalf("runbook.md not found in: %v", candidates)
+	}
+	rb, err := os.ReadFile(rbPath)
+	if err != nil {
+		t.Fatalf("read runbook: %v", err)
+	}
+	// runbook.md 의 모든 heading → GitHub anchor 형식 (lowercase, 공백→하이픈, 영숫자/하이픈만).
+	headingRe := regexp.MustCompile(`(?m)^#{1,6}\s+(.+)$`)
+	anchors := map[string]bool{}
+	for _, m := range headingRe.FindAllStringSubmatch(string(rb), -1) {
+		anchors[githubAnchor(m[1])] = true
+	}
+
+	urlRe := regexp.MustCompile(`runbook\.md#([\w-]+)`)
+	for _, g := range f.Spec.Groups {
+		for _, a := range g.Rules {
+			url := a.Annotations["runbook_url"]
+			if url == "" {
+				continue // 별도 테스트가 검증.
+			}
+			match := urlRe.FindStringSubmatch(url)
+			if match == nil {
+				t.Errorf("alert %q: runbook_url=%q 가 'runbook.md#anchor' 형식 아님", a.Alert, url)
+				continue
+			}
+			anchor := match[1]
+			if !anchors[anchor] {
+				t.Errorf("alert %q: runbook_url anchor #%q 가 docs/operations/runbook.md 에 없음", a.Alert, anchor)
+			}
+		}
+	}
+}
+
+// githubAnchor — GitHub markdown 의 heading-to-anchor 변환.
+// "9.1 ValkeyClusterStateNotOK" → "91-valkeyclusterstatenotok".
+func githubAnchor(heading string) string {
+	s := strings.ToLower(heading)
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == ' ' || r == '-' || r == '_':
+			b.WriteRune('-')
+		}
+		// 그 외 (점, 슬래시 등) skip.
+	}
+	// 연속 hyphen → 단일.
+	out := b.String()
+	for strings.Contains(out, "--") {
+		out = strings.ReplaceAll(out, "--", "-")
+	}
+	return strings.Trim(out, "-")
 }
 
 // 코드 (metrics.go) 가 등록한 메트릭과 alert expr 의 동기 검증.
