@@ -325,6 +325,10 @@ helm-template: ## Render chart with default + critical combinations sanity check
 		--set logging.level=debug \
 		--set logging.development=true >/dev/null && \
 		echo "✓ helm template (debug logging) OK"
+	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system \
+		--set webhook.enabled=true \
+		--set networkPolicy.enabled=true >/dev/null && \
+		echo "✓ helm template (webhook + NetworkPolicy enabled, cycles 72/73) OK"
 
 .PHONY: audit
 audit: ## govulncheck + gosec + trivy fs — RFC 0002 L3 security 게이트.

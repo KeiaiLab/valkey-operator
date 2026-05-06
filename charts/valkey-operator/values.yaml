@@ -105,13 +105,15 @@ metrics:
     # -- Relabeling configs
     relabelings: []
 
-# Webhook configuration — NOT YET IMPLEMENTED (cycle 70 정직 표시).
-# 본 chart 는 admission webhook (ValidatingWebhookConfiguration + Mutating-,
-# webhook Service + Certificate) templates 미보유 — Helm 사용자는 *webhook 미적용
-# 상태로 운영*. webhook 필요 시 *kustomize* 사용 (config/webhook/ + config/
-# certmanager/ 활용). 향후 cycle 에서 chart 측 webhook templates 추가 예정.
+# Webhook configuration (cycle 73 implemented).
+# enabled=true → 5 K8s 객체 자동 생성: webhook Service + cert-manager Certificate +
+# selfSigned Issuer + ValidatingWebhookConfiguration + MutatingWebhookConfiguration.
+# *cert-manager 클러스터 차원 사전 설치 필수* (Issuer/Certificate CRD).
 webhook:
+  # -- Enable admission webhooks (cert-manager 의존). Valkey/ValkeyCluster CR 의
+  # admission validation + mutating defaulting (ADR-0009 webhook 정책).
   enabled: false
+  # -- Webhook serving 포트 (operator 컨테이너 listen).
   port: 9443
 
 # RBAC configuration

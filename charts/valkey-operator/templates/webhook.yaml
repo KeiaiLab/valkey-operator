@@ -1,0 +1,140 @@
+{{- /*
+Admission webhooks (cycle 73 implementation — cycle 70 exempted 해결).
+
+Helm 사용자가 .Values.webhook.enabled=true 설정 시:
+1. webhook serving Service (port 443 → 9443).
+2. cert-manager Certificate + Issuer (selfSigned) — 사용자가 cert-manager 설치
+   필수 (필수 의존성). 미설치 시 helm install 통과하지만 webhook 미작동.
+3. ValidatingWebhookConfiguration + MutatingWebhookConfiguration —
+   cert-manager 의 cert-manager.io/inject-ca-from annotation 으로 caBundle 자동
+   주입.
+
+operator manager 컨테이너는 *기본적으로 9443 listen* — webhook 미활성 시에도
+listen 만, K8s admission webhook 미등록 → 호출 0.
+
+WARNING: cert-manager 미설치 시 Certificate/Issuer CR 생성 실패 → 설치 거절.
+*Helm dependencies 으로 cert-manager 자동 설치* 는 cycle 73 scope 외 (사용자
+판단 — 보통 클러스터 차원 cert-manager 1 instance 공유).
+*/}}
+{{- if .Values.webhook.enabled }}
+{{- $serviceName := printf "%s-webhook" (include "valkey-operator.fullname" .) }}
+{{- $certName := printf "%s-webhook-cert" (include "valkey-operator.fullname" .) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $serviceName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: {{ .Values.webhook.port | default 9443 }}
+  selector:
+    {{- include "valkey-operator.selectorLabels" . | nindent 4 }}
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ printf "%s-selfsigned" (include "valkey-operator.fullname" .) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $certName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+    - {{ $serviceName }}.{{ .Release.Namespace }}.svc
+    - {{ $serviceName }}.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ printf "%s-selfsigned" (include "valkey-operator.fullname" .) }}
+  secretName: {{ printf "%s-webhook-server-cert" (include "valkey-operator.fullname" .) }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ printf "%s-mutating" (include "valkey-operator.fullname" .) }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ printf "%s/%s" .Release.Namespace $certName }}
+webhooks:
+  - admissionReviewVersions: [v1]
+    clientConfig:
+      service:
+        name: {{ $serviceName }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate-cache-keiailab-io-v1alpha1-valkey
+    failurePolicy: Fail
+    name: mvalkey-v1alpha1.kb.io
+    rules:
+      - apiGroups: [cache.keiailab.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [valkeys]
+    sideEffects: None
+  - admissionReviewVersions: [v1]
+    clientConfig:
+      service:
+        name: {{ $serviceName }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate-cache-keiailab-io-v1alpha1-valkeycluster
+    failurePolicy: Fail
+    name: mvalkeycluster-v1alpha1.kb.io
+    rules:
+      - apiGroups: [cache.keiailab.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [valkeyclusters]
+    sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ printf "%s-validating" (include "valkey-operator.fullname" .) }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ printf "%s/%s" .Release.Namespace $certName }}
+webhooks:
+  - admissionReviewVersions: [v1]
+    clientConfig:
+      service:
+        name: {{ $serviceName }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate-cache-keiailab-io-v1alpha1-valkey
+    failurePolicy: Fail
+    name: vvalkey-v1alpha1.kb.io
+    rules:
+      - apiGroups: [cache.keiailab.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [valkeys]
+    sideEffects: None
+  - admissionReviewVersions: [v1]
+    clientConfig:
+      service:
+        name: {{ $serviceName }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate-cache-keiailab-io-v1alpha1-valkeycluster
+    failurePolicy: Fail
+    name: vvalkeycluster-v1alpha1.kb.io
+    rules:
+      - apiGroups: [cache.keiailab.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [valkeyclusters]
+    sideEffects: None
+{{- end }}

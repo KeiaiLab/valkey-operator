@@ -65,10 +65,10 @@ func TestValuesTemplateBindingCoverage(t *testing.T) {
 		// alpha 단계: chart 미구현 — values.yaml 에 명시 (NOT YET IMPLEMENTED 주석).
 		// 본 4 항목은 *향후 cycle 에서 chart template 추가 후 exempted 제거*.
 		// values.yaml 에 *명시적 미구현 주석* 가 있으므로 silent ignore 위험 0.
-		"webhook": true, // ValidatingWebhookConfig + MutatingWebhookConfig + Service + Cert 미구현.
-		"crds":    true, // Helm 3 built-in CRD 동작 사용 (crds/ 디렉토리, install only).
-		"watch":   true, // namespace-scoped watch 옵션 — controller-runtime DefaultNamespaces 통합 필요.
+		"crds":  true, // Helm 3 built-in CRD 동작 사용 (crds/ 디렉토리, install only).
+		"watch": true, // namespace-scoped watch 옵션 — controller-runtime DefaultNamespaces 통합 필요.
 		// cycle 72 — networkPolicy chart template 구현 완료. exempted 제거.
+		// cycle 73 — webhook chart template 구현 완료. exempted 제거.
 	}
 
 	for key := range values {
