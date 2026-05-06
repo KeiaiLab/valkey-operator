@@ -47,6 +47,14 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
+// version 정보 — `go build -ldflags "-X main.version=vX.Y.Z -X main.commit=abc"`
+// 으로 release.sh / Dockerfile 에서 주입. unset 시 "dev" — 개발 빌드 식별자.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -61,6 +69,16 @@ func init() {
 
 // nolint:gocyclo
 func main() {
+	// --version / -version 플래그 — 운영 시점 버전 식별. controller-runtime
+	// flag.Parse 진입 전 처리 (manager 부팅 비용 0).
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-version", "version":
+			fmt.Printf("valkey-operator %s (commit %s, built %s)\n", version, commit, date)
+			return
+		}
+	}
+
 	// Sub-command 분기 (ADR-0023). 첫 인자 가 "upload" / "download" 면
 	// internal/cli 로 위임 후 즉시 종료. 그 외 controller manager 진입.
 	if len(os.Args) > 1 && cli.IsKnownSubcommand(os.Args[1]) {

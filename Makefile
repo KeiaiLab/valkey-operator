@@ -116,8 +116,13 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 ##@ Build
 
 .PHONY: build
-build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+build: manifests generate fmt vet ## Build manager binary. VERSION 환경변수로 ldflags 주입.
+	@VERSION_VAL="$${VERSION:-dev}"; \
+	COMMIT_VAL="$$(git rev-parse --short HEAD 2>/dev/null || echo none)"; \
+	DATE_VAL="$$(date -u +%Y-%m-%d)"; \
+	go build -ldflags "-X main.version=$$VERSION_VAL -X main.commit=$$COMMIT_VAL -X main.date=$$DATE_VAL" \
+		-o bin/manager cmd/main.go
+	@echo "✓ bin/manager — `bin/manager --version` 으로 확인"
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
