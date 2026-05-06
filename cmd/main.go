@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -36,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/cli"
 	"github.com/keiailab/valkey-operator/internal/controller"
 	webhookv1alpha1 "github.com/keiailab/valkey-operator/internal/webhook/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -55,6 +59,20 @@ func init() {
 
 // nolint:gocyclo
 func main() {
+	// Sub-command 분기 (ADR-0023). 첫 인자 가 "upload" / "download" 면
+	// internal/cli 로 위임 후 즉시 종료. 그 외 controller manager 진입.
+	if len(os.Args) > 1 && cli.IsKnownSubcommand(os.Args[1]) {
+		ctx := ctrl.SetupSignalHandler()
+		if err := cli.Dispatch(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
+			if !errors.Is(err, cli.ErrUnknown) {
+				fmt.Fprintln(os.Stderr, "subcommand failed:", err)
+				os.Exit(1)
+			}
+		}
+		return
+	}
+	_ = context.Background // 위 ctx 도입으로 import 사용 보장.
+
 	var metricsAddr string
 	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
