@@ -62,13 +62,7 @@ func BuildRestoreInitContainer(srcRelPath string) corev1.Container {
 			{Name: "data", MountPath: "/data"},
 			{Name: RestoreSourceVolumeName, MountPath: RestoreSourceMountPath, ReadOnly: true},
 		},
-		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot: ptrBool(true),
-			RunAsUser:    ptrInt64(999),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-		},
+		SecurityContext: buildRestrictedContainerSecurityContext(),
 	}
 }
 
@@ -130,13 +124,7 @@ echo "restore-init-ok ordinal=$ORDINAL shard=$SHARD_IDX src=$SRC"
 			{Name: "data", MountPath: "/data"},
 			{Name: RestoreSourceVolumeName, MountPath: RestoreSourceMountPath, ReadOnly: true},
 		},
-		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot: ptrBool(true),
-			RunAsUser:    ptrInt64(999),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-		},
+		SecurityContext: buildRestrictedContainerSecurityContext(),
 	}
 }
 

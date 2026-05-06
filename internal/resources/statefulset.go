@@ -188,6 +188,28 @@ func ptrBool(b bool) *bool    { return &b }
 func ptrInt32(i int32) *int32 { return &i }
 func ptrInt64(i int64) *int64 { return &i }
 
+// PodSecurity "restricted" 정책을 만족하는 컨테이너 SecurityContext.
+// restore init container, upload/download job container 등 4 곳에서 동일 정의가
+// 인라인 중복되던 것을 단일 진실원으로 통일. capabilities.drop=[ALL] +
+// seccompProfile.type=RuntimeDefault + AllowPrivilegeEscalation=false +
+// RunAsNonRoot 모두 만족.
+//
+// 회귀 가드: PodSecurity Admission "restricted" 네임스페이스에서
+// pod 가 거부되면 Sharded P0 와 동일한 데이터 가용성 사고 발생 가능.
+func buildRestrictedContainerSecurityContext() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		RunAsNonRoot:             ptrBool(true),
+		RunAsUser:                ptrInt64(999),
+		AllowPrivilegeEscalation: ptrBool(false),
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
 // PortIntOrString — helper for Probe/Service ports.
 func PortIntOrString(p int32) intstr.IntOrString { return intstr.FromInt(int(p)) }
 

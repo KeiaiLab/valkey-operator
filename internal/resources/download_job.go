@@ -127,12 +127,7 @@ func BuildDownloadJob(p DownloadJobParams) *batchv1.Job {
 							// download 는 write 필요 — ReadOnly=false.
 							{Name: "backup", MountPath: BackupVolumeMountPath},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							RunAsNonRoot: ptrBool(true),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{"ALL"},
-							},
-						},
+						SecurityContext: buildRestrictedContainerSecurityContext(),
 					}},
 					Volumes: []corev1.Volume{
 						{Name: "backup", VolumeSource: corev1.VolumeSource{

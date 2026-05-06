@@ -740,3 +740,45 @@ func TestBuildMetricsService(t *testing.T) {
 		t.Error("MetricsServiceLabels 가 svc.Labels 와 동기화되지 않음")
 	}
 }
+
+// TestPodSecurityRestrictedHelper — buildRestrictedContainerSecurityContext()
+// helper 가 PodSecurity "restricted" 정책 4 요건을 모두 만족하는지 회귀 가드.
+// (1) capabilities.drop=[ALL] (2) seccompProfile.type=RuntimeDefault
+// (3) AllowPrivilegeEscalation=false (4) RunAsNonRoot=true.
+//
+// 본 회귀 가드의 motivation: mongodb-operator 의 동일 결함 (4 곳 인라인
+// SecurityContext 의 SeccompProfile 누락) 으로 argos 클러스터에서
+// argos-mongo-cfg StatefulSet pod 가 PodSecurity admission 거부되어
+// 운영 사고 발생 (2026-05-07). valkey-operator 의 restore / upload /
+// download 4 곳 SecurityContext 도 동일 패턴 위반 — fix 적용 + 본 가드.
+func TestPodSecurityRestrictedHelper(t *testing.T) {
+	sc := buildRestrictedContainerSecurityContext()
+	if sc == nil {
+		t.Fatal("SecurityContext nil")
+	}
+	if sc.Capabilities == nil {
+		t.Fatal("Capabilities nil")
+	}
+	hasDropAll := false
+	for _, c := range sc.Capabilities.Drop {
+		if c == "ALL" {
+			hasDropAll = true
+			break
+		}
+	}
+	if !hasDropAll {
+		t.Errorf("Capabilities.Drop must include ALL, got %v", sc.Capabilities.Drop)
+	}
+	if sc.SeccompProfile == nil {
+		t.Fatal("SeccompProfile nil")
+	}
+	if sc.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+		t.Errorf("SeccompProfile.Type: want RuntimeDefault, got %v", sc.SeccompProfile.Type)
+	}
+	if sc.AllowPrivilegeEscalation == nil || *sc.AllowPrivilegeEscalation {
+		t.Error("AllowPrivilegeEscalation: want false")
+	}
+	if sc.RunAsNonRoot == nil || !*sc.RunAsNonRoot {
+		t.Error("RunAsNonRoot: want true")
+	}
+}

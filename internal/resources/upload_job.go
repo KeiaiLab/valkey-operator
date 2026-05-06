@@ -117,12 +117,7 @@ func BuildUploadJob(p UploadJobParams) *batchv1.Job {
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "backup", MountPath: BackupVolumeMountPath, ReadOnly: true},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							RunAsNonRoot: ptrBool(true),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{"ALL"},
-							},
-						},
+						SecurityContext: buildRestrictedContainerSecurityContext(),
 					}},
 					Volumes: []corev1.Volume{
 						{Name: "backup", VolumeSource: corev1.VolumeSource{
