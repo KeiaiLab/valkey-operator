@@ -14,7 +14,7 @@ Valkey Operator has been installed successfully!
      name: my-valkey
      namespace: default
    spec:
-     mode: standalone
+     mode: Standalone
      replicas: 1
      version:
        version: "{{ .Values.valkey.version }}"
