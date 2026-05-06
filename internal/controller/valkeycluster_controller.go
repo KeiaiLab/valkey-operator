@@ -87,6 +87,14 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
+	// 1b. Paused — ValkeyRestore (ADR-0015) 가 STS 를 직접 patch 중일 때
+	//     본 controller 의 reconcile 가 init container 를 제거하지 않도록.
+	if isPaused(vc) {
+		logger.V(1).Info("paused — skipping reconcile (cache.keiailab.io/paused=true)",
+			"name", vc.Name)
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
 	// 2. Defaulting (CRD default 미커버 영역).
 	r.applyDefaults(vc)
 

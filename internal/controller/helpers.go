@@ -161,3 +161,18 @@ func boolToConditionStatus(b bool) metav1.ConditionStatus {
 	}
 	return metav1.ConditionFalse
 }
+
+// PausedAnnotation — set 시 ValkeyController/ValkeyClusterController 의
+// 정상 reconcile 가 no-op. ValkeyRestore (ADR-0015) 가 STS 를 직접 patch 하는
+// 동안 controller 가 init container 를 제거하는 충돌 방지.
+//
+// Deletion 은 paused 와 무관하게 진행 — finalizer cleanup 차단 위험 회피.
+const PausedAnnotation = "cache.keiailab.io/paused"
+
+// isPaused — 객체에 PausedAnnotation="true" 가 있으면 true.
+func isPaused(obj client.Object) bool {
+	if obj == nil {
+		return false
+	}
+	return obj.GetAnnotations()[PausedAnnotation] == "true"
+}
