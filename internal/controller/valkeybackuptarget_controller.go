@@ -200,11 +200,11 @@ func (r *ValkeyBackupTargetReconciler) verifyCredentials(
 
 	accessKey := s3.CredentialsSecretRef.AccessKeyIDKey
 	if accessKey == "" {
-		accessKey = "AWS_ACCESS_KEY_ID"
+		accessKey = "AWS_ACCESS_KEY_ID" // #nosec G101 -- env var key 이름 (자격증명 값 아님).
 	}
 	secretKey := s3.CredentialsSecretRef.SecretAccessKeyKey
 	if secretKey == "" {
-		secretKey = "AWS_SECRET_ACCESS_KEY"
+		secretKey = "AWS_SECRET_ACCESS_KEY" // #nosec G101 -- env var key 이름 (자격증명 값 아님).
 	}
 
 	sec := &corev1.Secret{}

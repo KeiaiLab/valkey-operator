@@ -84,7 +84,11 @@ func parseClusterInfo(s string) *ClusterInfo {
 }
 
 func atoi32(s string) int32 {
-	n, _ := strconv.Atoi(s)
+	// gosec G109/G115 — bitsize 32 명시로 overflow 검출 위임 (실패 시 0).
+	n, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0
+	}
 	return int32(n)
 }
 

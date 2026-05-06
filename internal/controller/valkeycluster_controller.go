@@ -892,7 +892,11 @@ func buildShardStatusFromNodes(nodes []vk.NodeView, addrToPod func(string) strin
 		var assigned int32
 		ranges := make([]string, 0, len(p.Slots))
 		for _, r := range p.Slots {
-			assigned += int32(r.End - r.Start + 1)
+			// valkey 슬롯 범위는 [0, 16383] 도메인 — 차이가 int32 범위를 초과할
+			// 수 없음. gosec G115 (int → int32) 회피를 위해 bound check 명시.
+			if d := r.End - r.Start + 1; d > 0 && d <= 16384 {
+				assigned += int32(d)
+			}
 			ranges = append(ranges, fmt.Sprintf("%d-%d", r.Start, r.End))
 		}
 		primaryPod := p.Addr
