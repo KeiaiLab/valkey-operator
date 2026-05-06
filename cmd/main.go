@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -41,6 +42,7 @@ import (
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/cli"
 	"github.com/keiailab/valkey-operator/internal/controller"
+	"github.com/keiailab/valkey-operator/internal/observability"
 	webhookv1alpha1 "github.com/keiailab/valkey-operator/internal/webhook/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
@@ -257,8 +259,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	// OTEL tracer provider — OTEL_EXPORTER_OTLP_ENDPOINT env 미설정 시 noop.
+	// ADR-0025.
+	signalCtx := ctrl.SetupSignalHandler()
+	shutdownTracing, traceErr := observability.SetupTracing(signalCtx)
+	if traceErr != nil {
+		setupLog.Error(traceErr, "Failed to setup OTEL tracing — proceeding with noop")
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownTracing(shutdownCtx)
+	}()
+
 	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(signalCtx); err != nil {
 		setupLog.Error(err, "Failed to run manager")
 		os.Exit(1)
 	}
