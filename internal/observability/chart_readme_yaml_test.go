@@ -62,7 +62,17 @@ func TestChartReadmeYAMLCodeblocksValid(t *testing.T) {
 
 	yamlBlockRe := regexp.MustCompile("(?s)```yaml\n(.+?)\n```")
 	modeRe := regexp.MustCompile(`(?m)^\s*mode:\s+(\S+)`)
-	checked := 0
+	apiVersionRe := regexp.MustCompile(`(?m)^\s*apiVersion:\s+(\S+)`)
+	kindRe := regexp.MustCompile(`(?m)^\s*kind:\s+(\S+)`)
+
+	// 우리 operator 가 제공하는 CRD apiVersion (cache.keiailab.io/v1alpha1) 과 kind 화이트리스트.
+	validOurAPIVersion := "cache.keiailab.io/v1alpha1"
+	validOurKinds := map[string]bool{
+		"Valkey": true, "ValkeyCluster": true, "ValkeyBackup": true,
+		"ValkeyBackupTarget": true, "ValkeyRestore": true,
+	}
+
+	checkedMode, checkedAV, checkedKind := 0, 0, 0
 	for _, f := range mdFiles {
 		raw, err := os.ReadFile(f)
 		if err != nil {
@@ -70,20 +80,47 @@ func TestChartReadmeYAMLCodeblocksValid(t *testing.T) {
 		}
 		blocks := yamlBlockRe.FindAllStringSubmatch(string(raw), -1)
 		for _, block := range blocks {
-			body := block[1]
-			for _, m := range modeRe.FindAllStringSubmatch(body, -1) {
-				checked++
-				val := strings.Trim(m[1], "\"'")
-				if strings.HasPrefix(val, "{{") {
-					continue
+			rel, _ := filepath.Rel(repo, f)
+			// multi-doc YAML — `---` 로 분리해 각 doc 독립 검증.
+			docs := strings.Split(block[1], "\n---\n")
+			for _, body := range docs {
+				for _, m := range modeRe.FindAllStringSubmatch(body, -1) {
+					checkedMode++
+					val := strings.Trim(m[1], "\"'")
+					if strings.HasPrefix(val, "{{") {
+						continue
+					}
+					if !validSet[val] {
+						t.Errorf("%s: mode: %q ∉ ValkeyMode enum %v — 사용자 카피 시 admission reject",
+							rel, val, validValues)
+					}
 				}
-				if !validSet[val] {
-					rel, _ := filepath.Rel(repo, f)
-					t.Errorf("%s: YAML 블록 mode: %q 가 ValkeyMode enum (%v) 에 없음 — 사용자 카피 시 admission reject",
-						rel, val, validValues)
+				// 본 doc 의 apiVersion 이 cache.keiailab.io 인 경우만 우리 CRD 검증.
+				ourDoc := false
+				for _, m := range apiVersionRe.FindAllStringSubmatch(body, -1) {
+					checkedAV++
+					val := strings.Trim(m[1], "\"'")
+					if strings.HasPrefix(val, "cache.keiailab.io/") {
+						ourDoc = true
+						if val != validOurAPIVersion {
+							t.Errorf("%s: apiVersion=%q (want %q) — 옛 또는 미래 version 참조",
+								rel, val, validOurAPIVersion)
+						}
+					}
+				}
+				if ourDoc {
+					for _, m := range kindRe.FindAllStringSubmatch(body, -1) {
+						checkedKind++
+						val := strings.Trim(m[1], "\"'")
+						if !validOurKinds[val] {
+							t.Errorf("%s: kind: %q 가 우리 CRD 가 아님 (apiVersion=cache.keiailab.io doc) — typo 또는 deprecated kind",
+								rel, val)
+						}
+					}
 				}
 			}
 		}
 	}
-	t.Logf("verified %d 'mode:' literals across %d markdown files", checked, len(mdFiles))
+	t.Logf("verified %d mode: + %d apiVersion: + %d kind: literals across %d markdown files",
+		checkedMode, checkedAV, checkedKind, len(mdFiles))
 }
