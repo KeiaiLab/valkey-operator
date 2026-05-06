@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+### Added (GitOps deploy 정합)
+
+- `deploy/overlays/prod/` GitOps 진입점 — config/{crd,rbac,manager} 를 prod ns 로
+  정렬 + 자동 생성 Namespace 제거. ArgoCD 단방향 동기 전제.
+- `deploy/valkey-cluster.yaml` — production ValkeyCluster sample (db ns,
+  shards=3, replicasPerShard=1, ceph-block, auth.enabled=true).
+- `deploy/README.md` — 운영 런북.
+- ADR-0029 — GitOps deploy 오버레이 도입 (mongodb-operator / postgresql-operator 와 3-repo 정합).
+
 ### Added (cycles 20-90 — Quality systems + production-grade UX)
 
 **Quality 시스템 (39 SSOT 게이트)**:

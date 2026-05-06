@@ -1,0 +1,29 @@
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyCluster
+metadata:
+  name: valkey-cluster
+  namespace: db
+spec:
+  shards: 3
+  replicasPerShard: 1
+  version:
+    image: docker.io/valkey/valkey
+    version: "8.1.6"
+  storage:
+    size: 10Gi
+    storageClassName: ceph-block
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  auth:
+    enabled: true
+  # tls:
+  #   enabled: true
+  #   certManager:
+  #     issuerRef:
+  #       kind: ClusterIssuer
+  #       name: <issuer-name>

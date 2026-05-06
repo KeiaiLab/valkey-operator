@@ -27,3 +27,4 @@
 | [0023](0023-operator-binary-subcommand-upload-download.md) | Operator binary 의 upload/download sub-command — 이미지 통합 | Accepted | 2026-05-06 |
 | [0024](0024-helm-chart-manual-pattern-artifacthub.md) | Helm Chart — 수기 작성 + ArtifactHub publish 패턴 (3-repo 통일, supersedes 0021) | Accepted | 2026-05-06 |
 | [0028](0028-helm-kustomize-parity-invariant.md) | Helm vs Kustomize Parity Invariant — 5 sibling silent failure family 차단 | Accepted | 2026-05-06 |
+| [0029](0029-gitops-deploy-overlay.md) | GitOps deploy 오버레이 도입 (3-repo 정합) | Accepted | 2026-05-06 |
