@@ -54,6 +54,12 @@ spec:
             {{- if .Values.logging.development }}
             - --zap-devel=true
             {{- end }}
+            {{- if .Values.logging.format }}
+            # cycle 69: logging.format silent ignore 수정. zap-encoder 는
+            # controller-runtime/zap.Options 가 정의 — json (production) /
+            # console (development).
+            - --zap-encoder={{ .Values.logging.format }}
+            {{- end }}
             # cycle 68: Feature gates 는 *RBAC 차원* 에서만 작동 (clusterrole.yaml).
             # 옛 `--enable-*-controller=true` flag 는 cmd/main.go 가 parse 안 함
             # → operator immediate exit + CrashLoopBackOff. 본 cycle 에서 제거.
