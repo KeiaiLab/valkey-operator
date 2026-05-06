@@ -7,6 +7,7 @@ package valkey
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/redis/go-redis/v9"
@@ -37,6 +38,35 @@ func PromoteToPrimary(ctx context.Context, c *redis.Client) error {
 		return fmt.Errorf("replicaof no one: %w", err)
 	}
 	return nil
+}
+
+// ParseReplicationOffset — INFO replication 응답에서 master_repl_offset 또는
+// slave_repl_offset 추출. ADR-0017 의 failover 후보 선출에 사용.
+//
+// primary 노드: master_repl_offset 가 *총 commit 시점*. replica 노드:
+// slave_repl_offset 가 *replica 가 받아간* 시점. failover 시 *가장 큰 slave
+// offset* replica 가 가장 latest.
+//
+// 둘 다 부재 또는 invalid 시 0 반환 (보수적 — failover 후보에서 사실상 제외).
+// 첫 valid 매칭만 사용 — replica 노드는 보통 slave_repl_offset 만, primary
+// 는 master_repl_offset 만 가지므로 OR 의미.
+func ParseReplicationOffset(info string) int64 {
+	for _, line := range strings.Split(info, "\n") {
+		line = strings.TrimSpace(line)
+		var raw string
+		switch {
+		case strings.HasPrefix(line, "master_repl_offset:"):
+			raw = strings.TrimPrefix(line, "master_repl_offset:")
+		case strings.HasPrefix(line, "slave_repl_offset:"):
+			raw = strings.TrimPrefix(line, "slave_repl_offset:")
+		default:
+			continue
+		}
+		if n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64); err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 // parseReplicationInfo — INFO replication 응답에서 role / master_host:port 추출.

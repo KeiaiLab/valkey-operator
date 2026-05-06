@@ -6,6 +6,35 @@ package valkey
 
 import "testing"
 
+func TestParseReplicationOffset_master(t *testing.T) {
+	raw := "# Replication\nrole:master\nmaster_repl_offset:12345\nconnected_slaves:1\n"
+	if got := ParseReplicationOffset(raw); got != 12345 {
+		t.Fatalf("expected 12345, got %d", got)
+	}
+}
+
+func TestParseReplicationOffset_replica(t *testing.T) {
+	raw := "# Replication\nrole:slave\nmaster_host:10.0.0.1\nmaster_port:6379\n" +
+		"slave_repl_offset:6789\nconnected_slaves:0\n"
+	if got := ParseReplicationOffset(raw); got != 6789 {
+		t.Fatalf("expected 6789, got %d", got)
+	}
+}
+
+func TestParseReplicationOffset_missing(t *testing.T) {
+	raw := "# Replication\nrole:replica\nmaster_link_status:up\n"
+	if got := ParseReplicationOffset(raw); got != 0 {
+		t.Fatalf("expected 0 (missing offset), got %d", got)
+	}
+}
+
+func TestParseReplicationOffset_invalidNumber(t *testing.T) {
+	raw := "master_repl_offset:abc\nslave_repl_offset:42\n"
+	if got := ParseReplicationOffset(raw); got != 42 {
+		t.Fatalf("expected 42 (skip invalid + take valid), got %d", got)
+	}
+}
+
 func TestParseClusterInfo_ok(t *testing.T) {
 	raw := "cluster_state:ok\r\ncluster_slots_assigned:16384\r\n" +
 		"cluster_slots_ok:16384\r\ncluster_known_nodes:6\r\ncluster_size:3\r\n"
