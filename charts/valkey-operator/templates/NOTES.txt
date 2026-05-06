@@ -52,4 +52,22 @@ Valkey Operator has been installed successfully!
 
    kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "valkey-operator.name" . }}" -f
 
+6. Verify operator version (cycle 53 — `--version` flag):
+
+   kubectl exec -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "valkey-operator.name" . }}" -- /manager --version
+   # → "valkey-operator vX.Y.Z (commit abc1234, built 2026-05-06)"
+   # Prometheus: valkey_cluster_build_info{version="vX.Y.Z",commit="abc1234"} 1
+
+{{- if not .Values.tracing.endpoint }}
+
+7. Optional: Enable OTEL tracing (ADR-0025 — 22 spans, no-op when disabled):
+
+   helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+     --set tracing.endpoint=tempo.observability.svc:4317 \
+     --set tracing.serviceName=valkey-operator
+{{- else }}
+
+7. OTEL tracing 활성: endpoint={{ .Values.tracing.endpoint }} (22 spans 발행)
+{{- end }}
+
 For more information, visit: https://github.com/keiailab/valkey-operator
