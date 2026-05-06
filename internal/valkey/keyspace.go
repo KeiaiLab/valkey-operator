@@ -1,0 +1,66 @@
+/*
+Copyright 2026 Keiailab.
+
+INFO keyspace 호출 + 응답 파싱. ValkeyRestore 의 데이터 plane 검증 (Verifying
+phase) 에서 RestoredKeys 추정에 사용.
+*/
+
+package valkey
+
+import (
+	"context"
+	"strconv"
+	"strings"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// CountKeyspaceKeys — INFO keyspace 호출 후 모든 db 의 keys 합산.
+//
+// 응답 형식 (예시):
+//
+//	# Keyspace
+//	db0:keys=42,expires=0,avg_ttl=0
+//	db1:keys=10,expires=2,avg_ttl=0
+//
+// 위 케이스에서 합산 결과 = 52.
+//
+// 호출 실패 시 0 반환 (caller 가 에러 분기). 빈 keyspace (어떤 db 도 키 없음)
+// 는 정상 — 0 반환.
+func CountKeyspaceKeys(ctx context.Context, c *redis.Client) (int64, error) {
+	info, err := c.Info(ctx, "keyspace").Result()
+	if err != nil {
+		return 0, err
+	}
+	return parseKeyspaceKeys(info), nil
+}
+
+// parseKeyspaceKeys — INFO keyspace 출력에서 모든 db 의 keys 합산.
+//
+// "dbN:keys=M,..." 패턴 line 만 인식. 그 외 line (헤더, 빈 줄) 무시.
+// 정수 파싱 실패 시 해당 line 만 skip — 부분 결과 보존.
+func parseKeyspaceKeys(info string) int64 {
+	var total int64
+	for _, line := range strings.Split(info, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "db") {
+			continue
+		}
+		colon := strings.IndexByte(line, ':')
+		if colon < 0 {
+			continue
+		}
+		fields := strings.Split(line[colon+1:], ",")
+		for _, kv := range fields {
+			kv = strings.TrimSpace(kv)
+			if !strings.HasPrefix(kv, "keys=") {
+				continue
+			}
+			if n, err := strconv.ParseInt(strings.TrimPrefix(kv, "keys="), 10, 64); err == nil {
+				total += n
+			}
+			break
+		}
+	}
+	return total
+}
