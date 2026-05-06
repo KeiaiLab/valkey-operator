@@ -142,6 +142,13 @@ spec:
                 required:
                 - enabled
                 type: object
+              autoFailover:
+                default: true
+                description: |-
+                  AutoFailover — Replication mode 시 primary pod NotReady 30s+ 감지 시
+                  자동 failover (replica with largest master_repl_offset 선출).
+                  ADR-0017. Standalone (replicas=1) 에서는 N/A.
+                type: boolean
               mode:
                 default: Standalone
                 description: ValkeyMode — 단일 인스턴스인지 replication 인지.

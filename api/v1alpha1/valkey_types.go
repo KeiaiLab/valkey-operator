@@ -83,6 +83,23 @@ type ValkeySpec struct {
 	// valkey.conf 의 추가 directive (예: maxmemory: "1gb").
 	// +optional
 	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
+
+	// AutoFailover — Replication mode 시 primary pod NotReady 30s+ 감지 시
+	// 자동 failover (replica with largest master_repl_offset 선출).
+	// ADR-0017. Standalone (replicas=1) 에서는 N/A.
+	//
+	// +kubebuilder:default=true
+	// +optional
+	AutoFailover *bool `json:"autoFailover,omitempty"`
+}
+
+// IsAutoFailoverEnabled — Spec.AutoFailover 가 nil 또는 true 면 true (default
+// enabled). false 명시 시만 disabled.
+func (s *ValkeySpec) IsAutoFailoverEnabled() bool {
+	if s.AutoFailover == nil {
+		return true
+	}
+	return *s.AutoFailover
 }
 
 // ValkeyStatus — observed state.
