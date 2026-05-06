@@ -70,6 +70,8 @@ func TestInstallYAMLStructure(t *testing.T) {
 		"ClusterRole",
 		"ClusterRoleBinding",
 		"Service",
+		"ServiceMonitor", // cycle 102: prometheus 활성 후 필수.
+		"PrometheusRule", // cycle 102: alert rules 자동 설치.
 	}
 	for _, k := range requiredKinds {
 		if kindCount[k] == 0 {

@@ -23,8 +23,11 @@ resources:
 - ../webhook
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
 - ../certmanager
-# [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
-#- ../prometheus
+# cycle 102: PROMETHEUS 활성 — kustomize 사용자 도 ServiceMonitor + PrometheusRule
+# 자동 설치 (cycles 25/85 의 alert SSOT + cycle 26 runbook §9 와 정합).
+# prometheus-operator CRD 미설치 환경 에서는 kubectl apply 가 거절 — 사용자 가
+# *opt-out 원하면* 본 줄 주석 처리.
+- ../prometheus
 # [METRICS] Expose the controller manager metrics service.
 - metrics_service.yaml
 # [NETWORK POLICY] Protect the /metrics endpoint and Webhook Server with NetworkPolicy.
