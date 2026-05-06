@@ -135,7 +135,7 @@ make install && make deploy IMG=valkey-operator:dev
 
 ---
 
-## Quality 시스템 종합 (cycle 97 갱신 — Phase 2 quality 79 commits)
+## Quality 시스템 종합 (cycle 104 갱신 — Phase 2 quality 86 commits / 학습형 immune system)
 
 본 세션 (cycles 20-91) 의 quality 작업이 *체계적 production-grade 시스템* 으로
 정리됨. 상세 inventory: [release-checklist.md §2](../../operations/release-checklist.md).
@@ -155,15 +155,21 @@ make install && make deploy IMG=valkey-operator:dev
 - pre-push hook → go.mod direct/indirect drift 자동 차단 (cycle 47).
 - `make release` → SBOM (syft) + trivy post-scan 자동 첨부 (cycle 6).
 
-### 결함 family progressive completion (6)
+### 결함 family progressive completion (8)
 1. mode/version drift (cycles 36-44) — 4 sibling → 횡단 게이트.
 2. ldflags chain (cycles 53-57) — 5-step end-to-end version traceability.
 3. value↔template binding (cycles 65-70) — 횡단 게이트 + 4 unused values 명시.
 4. features RBAC+reconciler (cycles 80-81) — 3-layer 정합 게이트.
 5. cross-feature interaction (cycles 86-90) — 3 sibling (NetworkPolicy +
    webhook/tracing/backup) + max combination helm-template.
-6. **version sync (cycles 95-97)** — Go (Dockerfile + go.mod + CONTRIBUTING) +
+6. version sync (cycles 95-97) — Go (Dockerfile + go.mod + CONTRIBUTING) +
    K8s (Chart.yaml + README badge + chart README) — 6 sync points 자동 검증.
+7. **kubebuilder boilerplate completion (cycles 70/72-74/82-83/99-101)** —
+   4 unused values 중 3 구현 + autoscaling deferred + e2e managerImage +
+   nodeAffinity (mixed-arch ImagePullBackOff 차단).
+8. **Helm vs kustomize observability parity (cycles 37/102-104)** — CRD chart
+   사본 + kustomize PROMETHEUS 활성 + chart PrometheusRule + chart metrics-auth
+   RBAC. *모든 deploy path × 모든 observability layer* 일관 작동.
 
 ### 발견·수정한 production gap (23건)
 1. cycle 29 — config/samples/ `monitoring.serviceMonitor.enabled` silent ignore.
