@@ -187,6 +187,64 @@ NFS / GlusterFS / Ceph FS 등 file system 기반 storage class 사용. 외부
 저장 (Source.TargetRef) 사용 시 `Spec.SourcePVCAccessMode: ReadOnlyMany`
 명시 필수.
 
+## 관측성 (OTEL Tracing) — 신규 (cycle 10-14)
+
+ADR-0025 채택. *Optional* OTEL tracer provider — `OTEL_EXPORTER_OTLP_ENDPOINT`
+env 미설정 시 noop (zero overhead). 설정 시 OTLP gRPC exporter 로 22 spans
+발행.
+
+### 활성화
+
+operator Deployment 의 env 추가:
+
+```yaml
+env:
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: "tempo.observability.svc:4317"  # Tempo / Jaeger / Honeycomb 호환
+  - name: OTEL_SERVICE_NAME
+    value: "valkey-operator"
+  # 옵션: OTEL_RESOURCE_ATTRIBUTES=env=prod,team=cache
+```
+
+### Trace hierarchy (22 spans)
+
+| Span | 발행 위치 | 목적 |
+|---|---|---|
+| `Valkey/Reconcile` | ValkeyController root | reconcile loop |
+| `ValkeyCluster/Reconcile` | ValkeyClusterController root | reconcile loop |
+| `ValkeyBackup/Reconcile` | ValkeyBackupController root | reconcile loop |
+| `ValkeyRestore/Reconcile` | ValkeyRestoreController root | reconcile loop |
+| `ValkeyBackupTarget/Reconcile` | ValkeyBackupTargetController root | reconcile loop |
+| `Failover/INFO_replication` | reconcileFailover | 모든 replica offset 수집 |
+| `Failover/PromoteToPrimary` | reconcileFailover | REPLICAOF NO ONE |
+| `Failover/EnsureReplicaOf_all` | reconcileFailover | 다른 replicas 새 primary 가리키도록 |
+| `ValkeyBackup/Copying` | reconcileCopyingPhase | Job-based PVC 백업 |
+| `ValkeyBackup/Uploading` | reconcileUploadingPhase | S3 업로드 Job |
+| `ValkeyBackup/TriggerBGSAVE` | triggerBackup | BGSAVE 발행 |
+| `ValkeyBackup/LASTSAVE` | queryLastSave | LASTSAVE 폴링 |
+| `ValkeyRestore/Mounting` | handleMounting | PVC/외부 source 다운로드 |
+| `ValkeyRestore/EnsureTargetRefSource` | ensureTargetRefSource | Download Job spawn |
+| `ValkeyRestore/Restoring` | handleRestoring | STS init container patch + rolling |
+| `ValkeyRestore/Verifying` | handleVerifying | STS 원복 + paused 제거 |
+| `ValkeyRestore/VerifyDataPlane` | verifyDataPlane | INFO keyspace (RestoredKeys) |
+| `ValkeyCluster/EnsureClusterMeet` | ensureClusterMeet | CLUSTER MEET + ADDSLOTS + REPLICATE |
+| `ValkeyCluster/CreateCluster` | (nested in EnsureClusterMeet) | vk.CreateCluster 호출 |
+| `ValkeyCluster/QueryAnyNode` | queryAnyNode | INFO + NODES 폴링 |
+| `ValkeyCluster/GracefulTeardown` | gracefulClusterTeardown | finalizer CLUSTER FORGET |
+| `ValkeyBackupTarget/BucketExists` | verifyEndpoint | S3 reachability ping |
+
+### 운영 활용
+
+- **Latency p95/p99**: span duration 으로 phase 별 SLO 추적
+- **Error rate**: `span.RecordError` 로 critical path 실패 분류
+- **Hierarchy**: trace UI 에서 reconcile loop 의 child span 시간 분포 확인
+  → bottleneck 식별
+
+### 한계
+
+- HTTP exporter 미지원 (gRPC 만). TLS / OAuth 인증 미지원 — 별개 ADR.
+- *Application-level metrics* 는 별개 (controller-runtime 의 metrics 활용).
+
 ## Replication 자동 Failover — 신규 (cycle 7)
 
 ADR-0017 채택. Replication mode (replicas≥2) 에서 primary pod NotReady
