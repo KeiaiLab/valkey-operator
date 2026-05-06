@@ -206,14 +206,17 @@ func main() {
 	cacheOptions := cache.Options{}
 	if ns := os.Getenv("WATCH_NAMESPACES"); ns != "" {
 		nsMap := map[string]cache.Config{}
+		var nsList []string
 		for _, n := range strings.Split(ns, ",") {
 			n = strings.TrimSpace(n)
 			if n != "" {
 				nsMap[n] = cache.Config{}
+				nsList = append(nsList, n)
 			}
 		}
 		cacheOptions.DefaultNamespaces = nsMap
-		setupLog.Info("namespace-scoped watch", "namespaces", nsMap)
+		// nsMap 는 cache.Config 안의 TransformFunc 가 JSON 미직렬화 — keys 만 log.
+		setupLog.Info("namespace-scoped watch", "namespaces", nsList)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
