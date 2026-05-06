@@ -1,0 +1,27 @@
+{{- /*
+metrics-reader ClusterRole (cycle 109) — *cluster admin* 이 Prometheus
+ServiceAccount 같은 *외부 클라이언트* 에 metrics endpoint read 권한 부여 시
+사용 하는 *helper role*. operator 자체 사용 안 함.
+
+config/rbac/metrics_reader_role.yaml 의 chart 이식. cycles 102/103/104 의 Helm
+vs kustomize parity family 의 *5번째 sibling*. kustomize 는 default 포함 (config/
+rbac/kustomization.yaml), chart 는 본 cycle 까지 미포함.
+
+cluster admin 이 활용:
+  kubectl create clusterrolebinding prometheus-metrics-reader \
+    --clusterrole=<release>-metrics-reader \
+    --serviceaccount=<prometheus-ns>:<prometheus-sa>
+*/}}
+{{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "valkey-operator.fullname" . }}-metrics-reader
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+rules:
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+{{- end }}
