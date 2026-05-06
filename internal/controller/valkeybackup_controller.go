@@ -13,7 +13,6 @@ package controller
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"os"
 	"time"
@@ -283,116 +282,19 @@ func (r *ValkeyBackupReconciler) queryLastSave(ctx context.Context, b *cachev1al
 	return vk.LastSaveTime(ctx, c)
 }
 
-// dialBackupTarget — 대상 CR 의 primary 노드 dial. TLS 활성 시 자동 6380 + cert
-// 로딩 (대상 인스턴스 의 cert-manager Secret 또는 CustomCert).
+// dialBackupTarget — dial_helpers.go 의 dialClusterRefTarget thin wrapper.
 func (r *ValkeyBackupReconciler) dialBackupTarget(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (*redis.Client, error) {
-	password, err := r.fetchBackupTargetPassword(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-	tlsCfg, err := r.tlsConfigForBackupTarget(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-	port := int32(resources.PortClient)
-	if tlsCfg != nil {
-		port = resources.PortTLS
-	}
-	addr := fmt.Sprintf("%s:%d",
-		resources.PodFQDN(b.Spec.ClusterRef.Name, 0, b.Namespace),
-		port)
-	opts := vk.DialOptions{Address: addr, Password: password}
-	if tlsCfg != nil {
-		opts.UseTLS = true
-		opts.TLSConf = tlsCfg
-	}
-	return vk.NewSingleClient(opts), nil
+	return dialClusterRefTarget(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
 }
 
-// tlsConfigForBackupTarget — 대상 CR 의 Spec.TLS 를 조회하여 *operator → 노드*
-// control-plane TLS config 구성. ValkeyController / ValkeyClusterController 의
-// 동등 함수 와 같은 우선순위 (CustomCert > CertManager > InsecureSkipVerify).
-//
-// 본 함수 는 대상 CR 의 종류 (Valkey / ValkeyCluster) 별로 TLSSpec / SecretName /
-// CertManager 필드를 조회한다.
+// tlsConfigForBackupTarget — dial_helpers.go 의 tlsConfigForClusterRef thin wrapper.
 func (r *ValkeyBackupReconciler) tlsConfigForBackupTarget(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (*tls.Config, error) {
-	var (
-		tlsSpec  *cachev1alpha1.TLSSpec
-		certName = resources.CertificateSecretName(b.Spec.ClusterRef.Name)
-		nsName   = types.NamespacedName{Name: b.Spec.ClusterRef.Name, Namespace: b.Namespace}
-		headless = resources.HeadlessServiceName(b.Spec.ClusterRef.Name) + "." + b.Namespace + ".svc"
-	)
-	switch b.Spec.ClusterRef.Kind {
-	case "Valkey":
-		obj := &cachev1alpha1.Valkey{}
-		if err := r.Get(ctx, nsName, obj); err != nil {
-			return nil, err
-		}
-		tlsSpec = obj.Spec.TLS
-	case "ValkeyCluster":
-		obj := &cachev1alpha1.ValkeyCluster{}
-		if err := r.Get(ctx, nsName, obj); err != nil {
-			return nil, err
-		}
-		tlsSpec = obj.Spec.TLS
-	}
-	if tlsSpec == nil || !tlsSpec.Enabled {
-		return nil, nil
-	}
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: headless}
-
-	loadAttach := func(secretName string) (bool, error) {
-		s := &corev1.Secret{}
-		if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: b.Namespace}, s); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		caBytes, ok := s.Data["ca.crt"]
-		if !ok || len(caBytes) == 0 {
-			return false, nil
-		}
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(caBytes) {
-			return false, fmt.Errorf("invalid PEM in %s/ca.crt", secretName)
-		}
-		cfg.RootCAs = pool
-		if crt, hasCrt := s.Data["tls.crt"]; hasCrt {
-			if key, hasKey := s.Data["tls.key"]; hasKey && len(crt) > 0 && len(key) > 0 {
-				if pair, err := tls.X509KeyPair(crt, key); err == nil {
-					cfg.Certificates = []tls.Certificate{pair}
-				}
-			}
-		}
-		return true, nil
-	}
-	if tlsSpec.CustomCert != nil && tlsSpec.CustomCert.SecretName != "" {
-		if ok, err := loadAttach(tlsSpec.CustomCert.SecretName); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	if tlsSpec.CertManager != nil && tlsSpec.CertManager.IssuerRef.Name != "" {
-		if ok, err := loadAttach(certName); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	cfg.InsecureSkipVerify = true
-	return cfg, nil
+	return tlsConfigForClusterRef(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
 }
 
-// fetchBackupTargetPassword — 대상 인스턴스 의 auth secret 에서 password 추출.
+// fetchBackupTargetPassword — dial_helpers.go 의 fetchClusterRefPassword thin wrapper.
 func (r *ValkeyBackupReconciler) fetchBackupTargetPassword(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (string, error) {
-	secretName := resources.DefaultSecretName(b.Spec.ClusterRef.Name)
-	s := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: b.Namespace}, s); err != nil {
-		return "", fmt.Errorf("get auth secret %s: %w", secretName, err)
-	}
-	return string(s.Data[resources.SecretPasswordKey]), nil
+	return fetchClusterRefPassword(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
 }
 
 // reconcileCopyingPhase — Copying phase 의 reconcile loop.

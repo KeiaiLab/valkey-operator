@@ -12,8 +12,6 @@ package controller
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"os"
 	"time"
@@ -441,112 +439,11 @@ func (r *ValkeyRestoreReconciler) operatorImage() string {
 // 추후 별개 commit 에서 *공통 helper* (receiver-less, 양 controller 활용)
 // 로 추출 예정.
 
-// dialValkey — 대상 Valkey 의 primary 노드 (pod-0) dial. TLS / Auth 자동.
+// dialValkey — dial_helpers.go 의 dialClusterRefTarget thin wrapper.
 func (r *ValkeyRestoreReconciler) dialValkey(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (*redis.Client, error) {
-	password, err := r.fetchValkeyPassword(ctx, rest)
-	if err != nil {
-		return nil, err
-	}
-	tlsCfg, err := r.tlsConfigForValkey(ctx, rest)
-	if err != nil {
-		return nil, err
-	}
-	port := int32(resources.PortClient)
-	if tlsCfg != nil {
-		port = resources.PortTLS
-	}
-	addr := fmt.Sprintf("%s:%d",
-		resources.PodFQDN(rest.Spec.ClusterRef.Name, 0, rest.Namespace),
-		port)
-	opts := vk.DialOptions{Address: addr, Password: password}
-	if tlsCfg != nil {
-		opts.UseTLS = true
-		opts.TLSConf = tlsCfg
-	}
-	return vk.NewSingleClient(opts), nil
-}
-
-// fetchValkeyPassword — 대상 인스턴스의 auth secret 에서 password 추출.
-func (r *ValkeyRestoreReconciler) fetchValkeyPassword(
-	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
-) (string, error) {
-	secretName := resources.DefaultSecretName(rest.Spec.ClusterRef.Name)
-	s := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name: secretName, Namespace: rest.Namespace,
-	}, s); err != nil {
-		return "", fmt.Errorf("get auth secret %s: %w", secretName, err)
-	}
-	if len(s.Data[resources.SecretPasswordKey]) == 0 {
-		return "", fmt.Errorf("auth secret %s missing password key", secretName)
-	}
-	return string(s.Data[resources.SecretPasswordKey]), nil
-}
-
-// tlsConfigForValkey — 대상 CR 의 Spec.TLS 조회 → operator → pod control-plane
-// TLS config. CustomCert > CertManager > InsecureSkipVerify.
-func (r *ValkeyRestoreReconciler) tlsConfigForValkey(
-	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
-) (*tls.Config, error) {
-	v := &cachev1alpha1.Valkey{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      rest.Spec.ClusterRef.Name,
-		Namespace: rest.Namespace,
-	}, v); err != nil {
-		return nil, err
-	}
-	if v.Spec.TLS == nil || !v.Spec.TLS.Enabled {
-		return nil, nil
-	}
-	headless := resources.HeadlessServiceName(v.Name) + "." + rest.Namespace + ".svc"
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: headless}
-
-	loadAttach := func(secretName string) (bool, error) {
-		s := &corev1.Secret{}
-		if err := r.Get(ctx, types.NamespacedName{
-			Name: secretName, Namespace: rest.Namespace,
-		}, s); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		caBytes, ok := s.Data["ca.crt"]
-		if !ok || len(caBytes) == 0 {
-			return false, nil
-		}
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(caBytes) {
-			return false, fmt.Errorf("invalid PEM in %s/ca.crt", secretName)
-		}
-		cfg.RootCAs = pool
-		if crt, hasCrt := s.Data["tls.crt"]; hasCrt {
-			if key, hasKey := s.Data["tls.key"]; hasKey && len(crt) > 0 && len(key) > 0 {
-				if pair, err := tls.X509KeyPair(crt, key); err == nil {
-					cfg.Certificates = []tls.Certificate{pair}
-				}
-			}
-		}
-		return true, nil
-	}
-	if v.Spec.TLS.CustomCert != nil && v.Spec.TLS.CustomCert.SecretName != "" {
-		if ok, err := loadAttach(v.Spec.TLS.CustomCert.SecretName); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	if v.Spec.TLS.CertManager != nil && v.Spec.TLS.CertManager.IssuerRef.Name != "" {
-		if ok, err := loadAttach(resources.CertificateSecretName(v.Name)); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	cfg.InsecureSkipVerify = true
-	return cfg, nil
+	return dialClusterRefTarget(ctx, r.Client, rest.Spec.ClusterRef, rest.Namespace)
 }
 
 // verifyDataPlane — INFO keyspace 호출 (non-blocking). 실패는 warn log,
