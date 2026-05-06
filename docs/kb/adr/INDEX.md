@@ -19,4 +19,5 @@
 | [0015](0015-valkeyrestore-init-container-pattern.md) | ValkeyRestore — Init Container 기반 RDB 로드 + STS 재시작 | Accepted | 2026-05-06 |
 | [0016](0016-valkeybackuptarget-crd-external-storage.md) | ValkeyBackupTarget CRD — S3-compatible 외부 저장 추상화 | Accepted | 2026-05-06 |
 | [0022](0022-s3-client-library-minio-go.md) | S3 Client Library — minio-go v7 채택 (sonatype + context7 검증) | Accepted | 2026-05-06 |
+| [0021](0021-helm-chart-kubebuilder-helm-plugin.md) | Helm Chart — kubebuilder helm/v2-alpha plugin 채택 | Accepted | 2026-05-06 |
 | [0023](0023-operator-binary-subcommand-upload-download.md) | Operator binary 의 upload/download sub-command — 이미지 통합 | Accepted | 2026-05-06 |
