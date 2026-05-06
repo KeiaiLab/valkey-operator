@@ -82,6 +82,40 @@ INDEX 갱신 의무 — `docs/kb/adr/INDEX.md`.
 2. 디자인 분기 6+ 가 있으면 ADR 사전 작성
 3. atomic commit 정책 — 1 step = 1 commit, 각 commit lefthook 4-stage 통과
 
+## 품질 시스템 (SSOT 게이트)
+
+본 repo 는 35+ SSOT 동기 게이트로 *광고 = 현실* invariant 자동 강제 (cycles
+20-77 누적). 신규 PR 작성 시 다음 인지:
+
+### 게이트 위치
+- `internal/observability/*_test.go` — 모든 SSOT 게이트 (33+ 함수).
+- 인벤토리: [docs/operations/release-checklist.md §2](docs/operations/release-checklist.md).
+
+### 자동 차단 시나리오 (PR 머지 전)
+- 신규 metric → alert-rules.yaml + runbook §9 anchor 동기 강제.
+- 신규 ADR → INDEX.md + Nygard 3 섹션 + supersede chain 검증.
+- 신규 kubebuilder:rbac → config/rbac/role.yaml 동기 (`make manifests`).
+- 신규 chart values key → templates/ 어디에서든 참조 강제 (silent ignore 차단).
+- 신규 SSOT gate → release-checklist §2 entry 자동 강제 (cycle 60 양방향).
+
+### 자동화 (drift 발생 자체 차단)
+- `make manifests` → chart CRD 자동 sync (cycle 38).
+- `git push` lefthook 6-hook — full-lint + gitleaks + go-mod-tidy +
+  helm-lint + helm-template + unit-test 모든 push 자동 검증.
+- pre-push `go mod tidy` → direct/indirect drift 자동 차단 (cycle 47).
+
+### Hot-path benchmark
+- `go test -bench=. ./internal/valkey/` — parser 5종 baseline.
+- 변경이 baseline 대비 2x slowdown 시 회귀 신호.
+
+### 게이트 fail 메시지의 *self-explaining*
+대부분 게이트 가 *fix 명령 까지 출력*. 예:
+- TestCRDBaseChartSync: `cp config/crd/bases/X charts/.../crds/X 후 재커밋`.
+- TestRBACMarkerResourcesInRole: `make manifests 실행 필요`.
+- TestReleaseChecklistGatesSync: `release-checklist §2 entry 추가 필수`.
+
+신규 contributor 가 *어떤 표면 변경* 시 *어떤 다른 표면이 동기 필요* 자동 안내.
+
 ## 보안 이슈
 
 보안 취약점은 *공개 issue 로 보고하지 마세요*. `SECURITY.md` 의 비공개
