@@ -469,6 +469,24 @@ is manually re-applied afterwards.
 [Issues](https://github.com/keiailab/valkey-operator/issues) 또는 GitHub
 Discussions 에서.
 
+## Production Readiness
+
+본 operator 는 alpha 단계지만 *상용 제품 수준* 의 품질 시스템을 갖추고 있다:
+
+- **29 SSOT 동기 게이트** — alert/runbook/RBAC/CRD/sample/chart artifacts 등
+  drift 자동 차단 (lefthook pre-push). 상세: [docs/operations/release-checklist.md §2](docs/operations/release-checklist.md).
+- **3 자동화** — release pipeline SBOM/trivy 자동 첨부, `make manifests` 가
+  chart CRD 자동 sync, `git push` 의 go mod tidy drift 자동 차단.
+- **Performance baseline** — hot path parser 5 종 microbenchmark
+  (`go test -bench=. ./internal/valkey/`).
+- **운영 문서** — [docs/operations/runbook.md](docs/operations/runbook.md) 9 섹션
+  + alert 별 대응 (§9, 10 alert × Trigger/Diagnosis/Mitigation/Escalation).
+- **Supply chain** — Apache-2.0 LICENSE + SECURITY.md PGP fingerprint +
+  ArtifactHub 검증 (3-repo 통일 — mongodb-operator + postgresql-operator).
+
+[release-checklist.md](docs/operations/release-checklist.md) 에서 release tag
+push 직전 통과 게이트 전체 인벤토리 확인 가능.
+
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md) 참조 — 환경 요구사항, PR 절차,
