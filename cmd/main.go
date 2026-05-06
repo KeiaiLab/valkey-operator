@@ -251,12 +251,19 @@ func main() {
 		setupLog.Error(err, "Failed to create controller", "controller", "valkey")
 		os.Exit(1)
 	}
-	if err := (&controller.ValkeyClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "valkeycluster")
-		os.Exit(1)
+	// cycle 80: feature gating env. chart 의 features.cluster.enabled=false 시
+	// RBAC 차단 → cache.WaitForCacheSync 실패 → CrashLoopBackOff. 본 env 가 chart
+	// values 와 동기 — false 면 reconciler skip (RBAC 권한 부재 시 정상 동작).
+	if os.Getenv("ENABLE_CLUSTER_RECONCILER") != "false" {
+		if err := (&controller.ValkeyClusterReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create controller", "controller", "valkeycluster")
+			os.Exit(1)
+		}
+	} else {
+		setupLog.Info("ValkeyClusterReconciler skipped — ENABLE_CLUSTER_RECONCILER=false")
 	}
 	// nolint:goconst
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
@@ -272,26 +279,31 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if err := (&controller.ValkeyBackupReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "valkeybackup")
-		os.Exit(1)
-	}
-	if err := (&controller.ValkeyBackupTargetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "valkeybackuptarget")
-		os.Exit(1)
-	}
-	if err := (&controller.ValkeyRestoreReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "valkeyrestore")
-		os.Exit(1)
+	// cycle 80: backup/restore feature gating — features.backup.enabled 와 정합.
+	if os.Getenv("ENABLE_BACKUP_RECONCILER") != "false" {
+		if err := (&controller.ValkeyBackupReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create controller", "controller", "valkeybackup")
+			os.Exit(1)
+		}
+		if err := (&controller.ValkeyBackupTargetReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create controller", "controller", "valkeybackuptarget")
+			os.Exit(1)
+		}
+		if err := (&controller.ValkeyRestoreReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create controller", "controller", "valkeyrestore")
+			os.Exit(1)
+		}
+	} else {
+		setupLog.Info("ValkeyBackup/BackupTarget/Restore reconciler skipped — ENABLE_BACKUP_RECONCILER=false")
 	}
 	// +kubebuilder:scaffold:builder
 

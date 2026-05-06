@@ -113,6 +113,16 @@ spec:
             - name: WATCH_NAMESPACES
               value: {{ join "," . | quote }}
             {{- end }}
+            # cycle 80: feature gating — chart RBAC 와 reconciler registration 동기.
+            # false 면 reconciler skip (RBAC 권한 부재 → CrashLoopBackOff 차단).
+            {{- if not .Values.features.cluster.enabled }}
+            - name: ENABLE_CLUSTER_RECONCILER
+              value: "false"
+            {{- end }}
+            {{- if not .Values.features.backup.enabled }}
+            - name: ENABLE_BACKUP_RECONCILER
+              value: "false"
+            {{- end }}
             {{- if .Values.valkey.version }}
             - name: DEFAULT_VALKEY_VERSION
               value: {{ .Values.valkey.version | quote }}
