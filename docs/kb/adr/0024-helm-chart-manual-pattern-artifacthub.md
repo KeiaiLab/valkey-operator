@@ -129,8 +129,14 @@ ArtifactHub publish 모델:
 - [x] AI-0024-11: helper 의 name 충돌 회피 안내 — ArtifactHub 의 다른 vendor
       'valkey-operator' (v0.0.61-chart) 와 충돌. 등록 시 name 권장:
       `keiailab-valkey-operator` (path: /packages/helm/keiailab-valkey-operator/valkey-operator).
-- [ ] AI-0024-1: **ArtifactHub UI 에서 valkey-operator repo 신규 등록** (수동) →
-      `scripts/artifacthub-register.sh <uuid>` 로 placeholder 교체 후 follow-up
-      commit + `make helm-publish` 재실행. 자동화 불가 (UI 만 지원).
-      **postgres-operator 도 ~30분 polling 후 ArtifactHub 인덱싱 자동 완료** (이미
-      등록된 repositoryID e7f6b661-... 보유, 별도 등록 작업 불필요).
+- [x] AI-0024-1: **ArtifactHub UI 자동 등록 완료** (claude-in-chrome MCP, 2026-05-06).
+      Browser session 으로 keiailab org context 활성화 → ADD REPOSITORY → 폼 자동
+      채우기 (name=keiailab-valkey-operator, URL=https://keiailab.github.io/valkey-operator)
+      → submit → UUID 자동 추출 (`16085dd0-0f19-4c6b-ab90-bd97105bdf42`) → helper 로
+      placeholder 교체 → commit eb8bcc3 + helm-publish (gh-pages 627868b) 동기화.
+      `scripts/artifacthub-register.sh` helper 와 claude-in-chrome MCP 의 결합으로
+      "UI 만 지원" 가정 깨짐 — 단 사용자 browser session 활성 + admin 권한 전제.
+- [x] AI-0024-12: 3-repo branch protection (postgres + valkey 신규 — force-push
+      차단 + linear history + conversation resolution) + 3-repo CODEOWNERS 통일
+      (@eightynine01 직접 매핑) + 3-repo `scripts/release-smoke-test.sh` (10항목,
+      모두 10/10 PASS).

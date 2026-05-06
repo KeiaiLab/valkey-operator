@@ -8,7 +8,7 @@
 | ID  | 기능명/요약                                                   | 단계   | 완성도 | 의존 | 영향          | 비고                         |
 |-----|---------------------------------------------------------------|--------|--------|------|---------------|------------------------------|
 | F01 | Helm chart scaffold + ArtifactHub publish 파이프라인           | 완료   | 100%   | -    | 모든 release  | commit 8a54d3d (ADR-0024)   |
-| T01 | valkey ArtifactHub UI 신규 등록 + repositoryID 교체             | 차단됨 | 10%    | F01  | F02           | 사용자 수동, name 권장: keiailab-valkey-operator |
+| T01 | valkey ArtifactHub UI 자동 등록 (claude-in-chrome MCP)        | 완료   | 100%    | F01  | F02           | 사용자 수동, name 권장: keiailab-valkey-operator |
 | T02 | valkey 첫 release v0.1.0-alpha.1 트리거                         | 완료   | 100%   | T01  | -             | GHCR + GH Release + gh-pages |
 | T03 | valkey GitHub Pages 활성화                                      | 완료   | 100%   | T02  | -             | 자동 (gh-pages push 트리거)  |
 | T04 | postgres 첫 release v0.3.0-alpha.1 트리거 (3-repo 통일)         | 완료   | 100%   | -    | -             | sha256:7658a42e, gh-pages 817399a |
