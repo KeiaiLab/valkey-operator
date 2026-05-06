@@ -16,6 +16,18 @@ deploy/
 
 운영 모델: **operator 와 workload 는 별개 ArgoCD application** — operator 는 prod ns, 데이터는 db ns.
 
+## 현 운영 상태 (2026-05-06)
+
+`keiailab/argos-platform-data/valkey` (ApplicationSet path) 는 **bitnami/valkey 5.6.1** (replication 1+1) 로 운영 중. **keiailab/valkey-operator 는 클러스터 미배포 상태**.
+
+본 디렉터리는 따라서 *bitnami → keiailab* 마이그레이션의 **Day-0 GitOps 진입점 후보** 이다. 마이그레이션 시:
+
+1. argos-platform-data/valkey/Chart.yaml 의 dependencies 가 bitnami → keiailab 으로 전환되거나, 또는 argos ApplicationSet 의 valkey path 가 본 repo 의 deploy/overlays/prod 를 가리키도록 변경.
+2. 기존 bitnami Valkey 의 데이터 (sidekiq queue, web session 등 ESS=infisical-cloud-valkey-shared-valkey-auth) 마이그레이션 절차 사전 정의.
+3. 본 deploy/valkey-cluster.yaml 의 sharded 토폴로지 (3×1) 는 *현 1+1 replication 보다 격상* — 다운타임 허용 또는 dual-write 패턴 필요.
+
+본 디렉터리 단독 적용은 위 사전 작업 없이는 *프로덕션 영향* 가능. 현 단계는 *진입점 마련* 까지로 한정한다.
+
 ## 사전 조건 (cluster)
 
 - [ ] `prod` namespace 사전 생성.

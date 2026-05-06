@@ -12,6 +12,12 @@
 2. 자동 생성된 Namespace 리소스가 prod ns 사전생성 정책과 충돌.
 3. 3 repo 중 mongodb-operator 만 `deploy/overlays/prod/` 진입점을 가져 운영자 인지 부하.
 
+### 현 운영 상태 (2026-05-06 인벤토리)
+
+- `keiailab/argos-platform-data/valkey` (ApplicationSet path) 는 **bitnami/valkey 5.6.1** (replication 1+1) 로 운영 중. **keiailab/valkey-operator 는 클러스터 미배포 상태**.
+- 본 deploy/ 는 따라서 *유일한 ArgoCD source 가 되도록 강제하는 것이 아니라*, 향후 bitnami → keiailab/valkey-operator 마이그레이션의 **Day-0 GitOps 진입점 후보** 로 정의된다. RFC-0004 §3 "Day-0 첫 배포" 적용.
+- 마이그레이션 시 argos-platform-data/valkey/Chart.yaml 의 dependencies 가 (bitnami → keiailab) 바뀌고 본 deploy/ 의 sharded 토폴로지가 적용 대상이 된다.
+
 ## Decision
 
 mongodb-operator 와 동일 구조의 GitOps 오버레이 계층을 도입한다.
@@ -46,4 +52,4 @@ ValkeyCluster sample 은 production 토폴로지 (sharded 3 shards × 1 replica)
 
 1. **config/default 를 ArgoCD source 로** — namespace 강제 변경 + Namespace 자동생성 이슈. 거절.
 2. **manager.yaml 의 Namespace name 을 full name 으로 수동 변경 (mongodb 방식)** — kubebuilder regenerate 호환성 저하. 거절.
-3. **Helm chart (`charts/valkey-operator`) 를 GitOps source 로** — ADR-0028 (helm-kustomize parity invariant) 와 *추가 동기화 부담* 발생. chart 는 외부 사용자 배포용으로 보존하고 내부 GitOps 는 kustomize 단독. 거절.
+3. **Helm chart (`charts/valkey-operator`) 를 GitOps source 로** — mongodb 의 argos-platform-data umbrella chart 가 이미 이 패턴 (operator chart 를 dependency 로 흡수). 본 ADR 은 그것과 *별개 진입점* 도입을 결정하는 것이며 helm 경로를 부정하지 않는다. ADR-0028 (helm/kustomize parity invariant) 가 *두 진입점이 동일 cluster state 를 산출* 하도록 보장하는 방향으로 후속 작업이 필요하다. 본 ADR 은 진입점 도입에만 한정.
