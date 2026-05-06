@@ -295,7 +295,15 @@ previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml
 is manually re-applied afterwards.
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+
+[CONTRIBUTING.md](CONTRIBUTING.md) 참조 — 환경 요구사항, PR 절차,
+Conventional Commits, ADR 작성 의무 시점, 코드 스타일.
+
+보안 취약점은 **공개 issue 로 보고하지 마세요**. [SECURITY.md](SECURITY.md)
+의 비공개 보고 경로 사용 (GitHub Security Advisory 또는 email).
+
+운영 절차 (Backup / Restore / Scaling / Upgrade / 응급 조치) 는
+[docs/operations/runbook.md](docs/operations/runbook.md).
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
 
