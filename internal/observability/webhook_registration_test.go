@@ -17,6 +17,66 @@ import (
 	"testing"
 )
 
+// TestReconcilerTypesRegisteredInMain — 동일 패턴 (정의 → 호출 동기) 을 controller
+// Reconciler 타입에 적용. 신규 CRD 추가 후 main.go SetupWithManager 호출 누락
+// 차단. 누락 시 *해당 CRD 만 reconcile 안 됨* — CR 생성은 통과하지만 status
+// 갱신 / 자식 리소스 생성 0. silent half-broken 운영.
+func TestReconcilerTypesRegisteredInMain(t *testing.T) {
+	candidates := []string{"internal/controller", "../../internal/controller", "../../../internal/controller"}
+	var dir string
+	for _, c := range candidates {
+		if info, err := os.Stat(c); err == nil && info.IsDir() {
+			dir = c
+			break
+		}
+	}
+	if dir == "" {
+		t.Fatalf("internal/controller not found: %v", candidates)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir: %v", err)
+	}
+	// "func (r *<Type>Reconciler) SetupWithManager" 패턴.
+	setupRe := regexp.MustCompile(`func\s+\(\w+\s+\*(\w+Reconciler)\)\s+SetupWithManager\(`)
+	defined := map[string]bool{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		for _, m := range setupRe.FindAllStringSubmatch(string(raw), -1) {
+			defined[m[1]] = true
+		}
+	}
+	if len(defined) == 0 {
+		t.Fatal("Reconciler.SetupWithManager 0건 — controller 패키지 회귀")
+	}
+
+	mainCandidates := []string{"cmd/main.go", "../../cmd/main.go", "../../../cmd/main.go"}
+	var mainPath string
+	for _, c := range mainCandidates {
+		if _, err := os.Stat(c); err == nil {
+			mainPath = c
+			break
+		}
+	}
+	mainRaw, _ := os.ReadFile(mainPath)
+	mainContent := string(mainRaw)
+
+	for typ := range defined {
+		// main.go 가 `controller.<Type>{` (struct literal) 또는 `&controller.<Type>{` 으로 인스턴스화.
+		instantiated := strings.Contains(mainContent, "controller."+typ+"{")
+		if !instantiated {
+			t.Errorf("Reconciler 타입 %q 가 정의되었지만 cmd/main.go 에서 인스턴스화되지 않음 — controller.%s{...}.SetupWithManager(mgr) 누락",
+				typ, typ)
+		}
+	}
+}
+
 func TestWebhookSetupFunctionsRegisteredInMain(t *testing.T) {
 	// 1. internal/webhook/v1alpha1/ 의 모든 SetupXxxWebhookWithManager 함수 추출.
 	candidates := []string{"internal/webhook/v1alpha1", "../../internal/webhook/v1alpha1", "../../../internal/webhook/v1alpha1"}
