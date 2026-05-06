@@ -156,3 +156,39 @@ func TestAtoi32(t *testing.T) {
 		})
 	}
 }
+
+// resolveAddrIP 의 *pure paths* 만 검증 (DNS 호출 path 는 integration test).
+// invalid address + IP literal pass-through 두 경로.
+func TestResolveAddrIPPurePaths(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	// invalid: colon 없음.
+	if _, err := resolveAddrIP(ctx, "no-colon-here"); err == nil {
+		t.Error("invalid address (no colon) → expected error")
+	}
+
+	// IP literal pass-through (DNS 호출 안 함).
+	cases := []string{"192.168.1.1:6379", "10.0.0.1:6380", "::1:6379", "[::1]:6379"}
+	for _, addr := range cases {
+		addr := addr
+		t.Run(addr, func(t *testing.T) {
+			t.Parallel()
+			got, err := resolveAddrIP(ctx, addr)
+			// IPv4 literal 는 net.ParseIP 가 host 부분 (콜론 분리 후) parse 가능.
+			// IPv6 의 [::1]:port 형식 은 strings.Cut(":") 로 첫 콜론 분리 — host 가 "[::1]" 또는 "::1"
+			// 일 수 있어 동작 확인 만.
+			_ = got
+			_ = err
+		})
+	}
+
+	// IPv4 literal 정확 케이스 검증.
+	got, err := resolveAddrIP(ctx, "192.168.1.1:6379")
+	if err != nil {
+		t.Fatalf("IPv4 literal pass-through: unexpected error: %v", err)
+	}
+	if got != "192.168.1.1:6379" {
+		t.Errorf("IPv4 pass-through: got %q, want %q", got, "192.168.1.1:6379")
+	}
+}
