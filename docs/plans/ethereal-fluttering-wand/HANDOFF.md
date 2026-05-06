@@ -1,16 +1,17 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 17 완료 — 자율 영역 한계 도달)
+**최종 갱신**: 2026-05-06 (cycle 18 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 ArtifactHub 등록 완료 + Track D 사용자 외부 publish 완료
-+ Track E 50% + Track F **OTEL infrastructure + 22 trace spans + 사용자 가이드 + helper tests**.
++ Track E **alerts 10건 (cluster 7 + business 3)** + Track F **OTEL +
+22 trace spans + 6 metrics + 사용자 가이드 + helper tests**.
 
 **큰 step deferred** (ADR-0026 / ADR-0027): Conversion webhook (v1alpha1
 stable 후) + HPA (Track B Resharding 후).
 
-**자율 영역 한계**: 17 cycles 누적 진행 후 *작은 quality fix* 만 가능. 큰 step
-은 *외부 trigger* (사용자 base / e2e 환경 / Track B 통합) 도달 후 진입.
+**자율 영역 한계 + 작은 가치 누적**: 17-18 cycles 진행 후 *큰 step* 은 외부
+trigger 의존, *작은 quality fix* 누적 (테스트 / metrics / alerts).
 
 ---
 
@@ -169,6 +170,22 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 19. Cycle 18 추가분 (2 commits — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 79 | `35cca06` | `feat(metrics): Application-level Counter — backup/restore/failover total 추가` | 3 신규 metrics + Inc() 호출 site (markFailed / Completed 분기). |
+| 80 | `07ce5ca` | `feat(prometheus): backup/restore/failover 비즈니스 alert rules — 3 신규` | rate(backup_total[1h]) > threshold 등. 운영자 가시 가치. |
+
+**Track E + F 누적 보강**:
+- 6 metrics 기반 Counter (backup_total / restore_total / failover_total)
+- 10 alerts (cluster 7 + business 3)
+- Day-N₁ 의 *비즈니스 critical event* 가시화
+
+**다음 cycle 권고**:
+- 외부 trigger 의존 큰 step (e2e 실측 / Track B 통합 / Conversion / HPA)
+- 또는 추가 작은 가치 (helper test / 추가 ADR / 문서)
 
 ## 18. Cycle 17 추가분 (1 commit — 본 세션, 자율 영역 한계)
 
