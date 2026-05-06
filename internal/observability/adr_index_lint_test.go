@@ -103,6 +103,36 @@ func TestADRIndexStatusValid(t *testing.T) {
 	}
 }
 
+// 각 ADR 파일이 Nygard 5섹션 (~/.../standards/adr.md §3) 의 필수 3 섹션을 갖는지 검증.
+// Context / Decision / Consequences — 본 3 개가 ADR 의 *최소 hygiene*.
+// (Status / Authors 헤더 + Alternatives 는 optional.)
+func TestADRFilesHaveRequiredSections(t *testing.T) {
+	dir := adrDir(t)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir: %v", err)
+	}
+	required := []string{"## Context", "## Decision", "## Consequences"}
+	for _, e := range entries {
+		if e.IsDir() || !adrFileRe.MatchString(e.Name()) {
+			continue
+		}
+		fname := e.Name()
+		t.Run(fname, func(t *testing.T) {
+			raw, err := os.ReadFile(filepath.Join(dir, fname))
+			if err != nil {
+				t.Fatalf("read: %v", err)
+			}
+			content := string(raw)
+			for _, sec := range required {
+				if !strings.Contains(content, sec) {
+					t.Errorf("ADR %s 에 '%s' 섹션 누락 (Nygard 형식 위반)", fname, sec)
+				}
+			}
+		})
+	}
+}
+
 func TestADRIndexSupersededReferencesExist(t *testing.T) {
 	dir := adrDir(t)
 	idxPath := filepath.Join(dir, "INDEX.md")
