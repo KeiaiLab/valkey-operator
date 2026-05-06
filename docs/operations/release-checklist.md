@@ -62,6 +62,7 @@ push 도 동일 통과 필수.
 | 35 | `TestValuesTemplateBindingCoverage` | values.yaml top-level key 가 templates/ 어디에서든 참조됨 (silent ignore value 차단, 미구현 항목은 exempted + values.yaml 에 명시) |
 | 36 | `TestChartFeaturesReconcilerEnvSync` | chart features.{cluster,backup}.enabled ↔ ENABLE_{CLUSTER,BACKUP}_RECONCILER env (operator code 인식) — RBAC + reconciler 정합 (cycle 80 의 helm install default CrashLoopBackOff 차단) |
 | 37 | `TestNetworkPolicyWebhookPortPresent` | NetworkPolicy ingress 에 webhook.enabled 조건부 9443 rule (cycles 72/73 cross-feature interaction — webhook silent reject 차단) |
+| 38 | `TestNetworkPolicyTracingEgressPresent` | NetworkPolicy egress 에 tracing.endpoint 조건부 OTLP 4317/4318 rule (cycles 65/72 cross-feature — OTEL spans silent loss 차단) |
 
 검증 명령: `go test ./internal/observability/`
 

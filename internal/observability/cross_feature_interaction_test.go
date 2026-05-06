@@ -38,3 +38,23 @@ func TestNetworkPolicyWebhookPortPresent(t *testing.T) {
 		t.Error("networkpolicy.yaml 의 webhook.enabled 분기 안에 webhook.port (9443) ingress rule 없음")
 	}
 }
+
+// TestNetworkPolicyTracingEgressPresent — tracing.endpoint 활성 시 OTLP gRPC
+// egress (4317/4318) 허용. cycle 88 cross-feature — tracing+networkPolicy 결합
+// silent fail 차단.
+func TestNetworkPolicyTracingEgressPresent(t *testing.T) {
+	repo := findRepoRoot(t)
+	npPath := filepath.Join(repo, "charts/valkey-operator/templates/networkpolicy.yaml")
+	raw, _ := os.ReadFile(npPath)
+	body := string(raw)
+
+	// egress block 안에 tracing.endpoint 분기 존재.
+	if !strings.Contains(body, ".Values.tracing.endpoint") {
+		t.Error("networkpolicy.yaml 에 .Values.tracing.endpoint 분기 없음 — tracing 활성 시 OTLP egress 차단 → spans silent loss")
+	}
+
+	// 분기 안에 OTLP port 4317 또는 4318 ingress rule 보유.
+	if !strings.Contains(body, "4317") && !strings.Contains(body, "4318") {
+		t.Error("networkpolicy.yaml tracing 분기 안에 OTLP port (4317 gRPC / 4318 HTTP) egress rule 없음")
+	}
+}

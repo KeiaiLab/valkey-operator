@@ -66,6 +66,16 @@ spec:
           port: 6380
         - protocol: TCP
           port: 16379  # cluster bus.
+    {{- if .Values.tracing.endpoint }}
+    # cycle 88: OTLP gRPC egress (default 4317). cycles 65/72 cross-feature
+    # — tracing 활성 시 NetworkPolicy 가 collector 호출 차단 → OTEL spans 0
+    # 도달 silent. tracing.endpoint 분기 동기.
+    - ports:
+        - protocol: TCP
+          port: 4317  # OTLP gRPC default.
+        - protocol: TCP
+          port: 4318  # OTLP HTTP default.
+    {{- end }}
     {{- with .Values.networkPolicy.egress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
