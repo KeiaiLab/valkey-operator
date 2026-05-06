@@ -144,6 +144,62 @@ kubectl delete crd valkeyrestores.cache.keiailab.io
 > ⚠️ Deleting CRDs will remove all Valkey custom resources cluster-wide.
 > Back up your data before uninstalling in production.
 
+## Production Features (cycles 65-74)
+
+본 chart 는 *production-grade 운영* 을 위한 5 항목 opt-in:
+
+### 1. Admission Webhooks
+
+```bash
+helm upgrade valkey-operator . --set webhook.enabled=true
+```
+
+cert-manager 사전 설치 필수. Validating + Mutating WebhookConfiguration +
+selfSigned Issuer + Certificate + webhook Service 자동 생성. invalid CR
+admission 차단.
+
+### 2. NetworkPolicy
+
+```bash
+helm upgrade valkey-operator . --set networkPolicy.enabled=true
+```
+
+operator pod default-deny + 명시 ingress (Prometheus 8443) + egress (K8s API
+443, DNS 53, Valkey 6379/6380/16379).
+
+### 3. OpenTelemetry Tracing (ADR-0025)
+
+```bash
+helm upgrade valkey-operator . \
+  --set tracing.endpoint=tempo.observability.svc:4317
+```
+
+OTLP gRPC exporter 활성. 22 trace spans 발행. endpoint 비어있으면 no-op
+tracer (성능 영향 0).
+
+### 4. Namespace-Scoped Watch
+
+```bash
+helm upgrade valkey-operator . --set 'watch.namespaces={valkey-prod,valkey-stage}'
+```
+
+multi-tenant 환경에서 reconcile 표면 제한 (cluster-wide ClusterRole 와는
+별개 — 사용자 자체 namespaced RBAC 권장).
+
+### 5. Version Identification
+
+```bash
+# CLI 시점 검증:
+kubectl exec -n valkey-operator-system \
+  -l app.kubernetes.io/name=valkey-operator -- /manager --version
+# → "valkey-operator vX.Y.Z (commit abc1234, built YYYY-MM-DD)"
+
+# Prometheus dashboard:
+sum by (version) (valkey_cluster_build_info)
+```
+
+운영 시점 release tag 식별 + version skew 감지.
+
 ## Troubleshooting
 
 ```bash
