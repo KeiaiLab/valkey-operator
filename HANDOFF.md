@@ -17,6 +17,29 @@
 - **3-repo governance 정합**: postgres 의 ADR 경로 표준화 (`docs/adr/` → `docs/kb/adr/`) + ADR-0007 신규 (pre-commit 분기 정당화). mongodb 도 ADR-0011 동일 패턴. valkey 는 lefthook 으로 표준 정합 ✓.
 - **다음 단계 (열린 트랙)**: T06 이후 GitOps overlay 실 클러스터 검증 (RFC-0004 클러스터 라이브 게이트 발동 영역), 0018 Cluster Resharding ADR 작성.
 
+## Quality baseline (2026-05-07 실측)
+
+`enforcement.md §3.4 (Coverage 합산)` 의 P2 측정 — 본 세션 baseline.
+
+```
+$ make test    # exit 0 / FAIL: 0
+internal/webhook/v1alpha1   coverage: 93.1% of statements
+internal/resources          coverage: 91.3% of statements
+internal/observability      coverage: 76.2% of statements
+internal/storage            coverage: 68.2% of statements
+internal/cli                coverage: 62.5% of statements
+internal/controller         coverage: 48.7% of statements
+internal/valkey             coverage: 41.6% of statements
+cmd                         coverage:  0.0% of statements
+```
+
+**80% 목표** 대비:
+- ✓ webhook 93.1% / resources 91.3% — 안정 영역 (3-repo 중 최고)
+- △ observability 76.2% — 근접
+- ✗ controller 48.7% / valkey 41.6% / cmd 0% — envtest 기반 reconcile 강화 권장
+
+`enforcement` 의 "절대치보다 *변경된 코드의 커버 여부*가 우선" 원칙 적용 — 본 baseline 은 회귀 비교 기준점.
+
 ## 이전 상태 (2026-05-06, release pipeline 정합 + image ref 버그 수정)
 
 - **HEAD `9a93f4c`**: `chore(deploy): image controller tag v0.1.0 → 0.1.0-alpha.1 (실재 GHCR tag 정합)`
