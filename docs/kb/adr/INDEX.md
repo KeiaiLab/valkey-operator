@@ -26,3 +26,4 @@
 | [0021](0021-helm-chart-kubebuilder-helm-plugin.md) | Helm Chart — kubebuilder helm/v2-alpha plugin 채택 | Superseded by 0024 | 2026-05-06 |
 | [0023](0023-operator-binary-subcommand-upload-download.md) | Operator binary 의 upload/download sub-command — 이미지 통합 | Accepted | 2026-05-06 |
 | [0024](0024-helm-chart-manual-pattern-artifacthub.md) | Helm Chart — 수기 작성 + ArtifactHub publish 패턴 (3-repo 통일, supersedes 0021) | Accepted | 2026-05-06 |
+| [0028](0028-helm-kustomize-parity-invariant.md) | Helm vs Kustomize Parity Invariant — 5 sibling silent failure family 차단 | Accepted | 2026-05-06 |
