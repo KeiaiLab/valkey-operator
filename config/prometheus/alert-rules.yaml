@@ -118,3 +118,50 @@ spec:
               metrics endpoint 도달 불가. controller-manager pod 가 down 또는
               metrics server 가 listen 안 함.
               `kubectl -n valkey-operator-system get pods` 로 확인.
+
+    - name: valkey-business.rules
+      interval: 1m
+      rules:
+        # 7. Backup 실패율 — 1시간 동안 0.1/min 초과 시 warning.
+        # cycle 18 의 application-level metric: valkey_cluster_backup_total
+        - alert: ValkeyBackupFailureRateHigh
+          expr: rate(valkey_cluster_backup_total{phase="Failed"}[1h]) > 0.0017
+          for: 10m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyBackup 실패율 높음 ({{ $value | humanize }}/sec)"
+            description: |
+              {{ $labels.namespace }}/{{ $labels.name }} 의 backup 실패율 가
+              0.0017/sec (= 0.1/min) 초과 10분 지속.
+              `kubectl get valkeybackup -A` + `kubectl describe` 로 진단.
+
+        # 8. Restore 실패율 — 1시간 동안 0.1/min 초과 시 warning.
+        - alert: ValkeyRestoreFailureRateHigh
+          expr: rate(valkey_cluster_restore_total{phase="Failed"}[1h]) > 0.0017
+          for: 10m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyRestore 실패율 높음 ({{ $value | humanize }}/sec)"
+            description: |
+              {{ $labels.namespace }}/{{ $labels.name }} 의 restore 실패율
+              가 임계값 초과. PVC accessMode / Source.TargetRef reachability /
+              shard mapping 등 확인.
+
+        # 9. Failover 폭주 — 1시간 1회 이상 = 인스턴스 불안정.
+        - alert: ValkeyFailoverHigh
+          expr: increase(valkey_cluster_failover_total[1h]) >= 2
+          for: 1m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyReplication 자동 failover 빈번 ({{ $value }}회/시간)"
+            description: |
+              {{ $labels.namespace }}/{{ $labels.name }} 의 자동 failover 가
+              1시간 동안 2회 이상. primary pod 의 안정성 확인 (ResourceQuota /
+              OOMKilled / liveness probe).
+              `kubectl describe pod {{ $labels.name }}-0` + 로그 점검.
