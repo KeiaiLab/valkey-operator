@@ -5,6 +5,7 @@
 package resources
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -191,6 +192,86 @@ func TestBuildClientService(t *testing.T) {
 	}
 	if len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != PortClient {
 		t.Error("client 포트 1개여야 함")
+	}
+}
+
+// BuildCertificateForValkey + PortIntOrString 회귀 보호 (cycle 128) — 잔여
+// pure helper 망라.
+func TestBuildCertificateForValkey(t *testing.T) {
+	t.Parallel()
+	t.Run("nil TLS → nil", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		if got := BuildCertificateForValkey(v); got != nil {
+			t.Errorf("nil TLS → expected nil, got %+v", got)
+		}
+	})
+	t.Run("TLS disabled → nil", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
+		if got := BuildCertificateForValkey(v); got != nil {
+			t.Errorf("Enabled=false → expected nil")
+		}
+	})
+	t.Run("CertManager empty → nil", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true}
+		if got := BuildCertificateForValkey(v); got != nil {
+			t.Errorf("CertManager nil → expected nil")
+		}
+	})
+	t.Run("empty IssuerRef.Name → nil", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.TLS = &cachev1alpha1.TLSSpec{
+			Enabled:     true,
+			CertManager: &cachev1alpha1.CertManagerSpec{},
+		}
+		if got := BuildCertificateForValkey(v); got != nil {
+			t.Errorf("empty IssuerRef.Name → expected nil")
+		}
+	})
+	t.Run("valid spec → Certificate object", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Name = "rs"
+		v.Namespace = "ns"
+		v.Spec.TLS = &cachev1alpha1.TLSSpec{
+			Enabled: true,
+			CertManager: &cachev1alpha1.CertManagerSpec{
+				IssuerRef: cachev1alpha1.CertIssuerRef{Name: "ca-issuer"},
+			},
+		}
+		got := BuildCertificateForValkey(v)
+		if got == nil {
+			t.Fatal("valid spec → nil 반환")
+		}
+		// Unstructured object — kind=Certificate.
+		if got.GetKind() != "Certificate" {
+			t.Errorf("kind: %q (want Certificate)", got.GetKind())
+		}
+		if got.GetAPIVersion() != "cert-manager.io/v1" {
+			t.Errorf("apiVersion: %q", got.GetAPIVersion())
+		}
+	})
+}
+
+// PortIntOrString — intstr.FromInt wrapper. statefulset / service builders 의
+// port specification 에 사용.
+func TestPortIntOrString(t *testing.T) {
+	t.Parallel()
+	cases := []int32{6379, 6380, 8080, 16379}
+	for _, p := range cases {
+		p := p
+		t.Run(fmt.Sprintf("port_%d", p), func(t *testing.T) {
+			t.Parallel()
+			got := PortIntOrString(p)
+			if got.IntValue() != int(p) {
+				t.Errorf("PortIntOrString(%d).IntValue() = %d, want %d", p, got.IntValue(), int(p))
+			}
+		})
 	}
 }
 
