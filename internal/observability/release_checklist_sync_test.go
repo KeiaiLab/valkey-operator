@@ -36,15 +36,24 @@ func TestReleaseChecklistGatesSyncWithActualTests(t *testing.T) {
 	}
 
 	// 2. internal/observability/ 의 *_test.go 안의 모든 func TestXxx(t *testing.T) 추출.
+	// SSOT 게이트가 *아닌* 일반 unit test 파일은 제외 — tracing_test.go 는 OTEL
+	// tracer wrapper 의 단위 test (release-checklist 광고 대상 외).
 	dir := filepath.Join(repo, "internal/observability")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("readdir: %v", err)
 	}
+	excludedFiles := map[string]bool{
+		"tracing_test.go": true, // OTEL wrapper 단위 test, SSOT gate 아님.
+	}
 	codeTests := map[string]bool{}
-	funcRe := regexp.MustCompile(`func\s+(Test\w+)\(t\s*\*testing\.T\)`)
+	// (?m) multi-line + ^ anchor → 주석 안의 "func TestXxx" 같은 잡음 제거.
+	funcRe := regexp.MustCompile(`(?m)^func\s+(Test\w+)\(t\s*\*testing\.T\)`)
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		if excludedFiles[e.Name()] {
 			continue
 		}
 		raw, err := os.ReadFile(filepath.Join(dir, e.Name()))
@@ -59,13 +68,23 @@ func TestReleaseChecklistGatesSyncWithActualTests(t *testing.T) {
 		t.Fatal("observability Test* 추출 0건 — 패키지 회귀")
 	}
 
-	// 3. 단방향 검증 (doc → code) — release-checklist 가 광고하는 모든 게이트가 실재.
-	// 역방향 (code → doc) 은 강제하지 않음 — observability 패키지가 SSOT 게이트 외에도
-	// tracing 단위 테스트 등 일반 unit test 보유 가능. release-checklist §2 는 *SSOT 게이트
-	// 부분집합* 만 광고.
+	// 3. doc → code: release-checklist 가 광고하는 모든 게이트가 실재.
 	for name := range docTests {
 		if !codeTests[name] {
 			t.Errorf("release-checklist 가 %q 를 광고하지만 internal/observability 에 함수 없음 — 게이트 삭제 후 doc 잔재 또는 typo",
+				name)
+		}
+	}
+
+	// 4. code → doc (cycle 60 신규): SSOT gate 신규 추가 시 release-checklist
+	// 갱신 누락 차단. 본 sync test 자체와 excludedFiles 의 일반 unit test 는 제외.
+	for name := range codeTests {
+		// 본 sync test 자체는 release-checklist 가 광고할 필요 없음.
+		if name == "TestReleaseChecklistGatesSyncWithActualTests" {
+			continue
+		}
+		if !docTests[name] {
+			t.Errorf("SSOT gate %q 가 internal/observability 에 추가되었지만 release-checklist §2 에 없음 — doc 갱신 필수 (cycle 60: code → doc 양방향 강제)",
 				name)
 		}
 	}
