@@ -193,6 +193,79 @@ func TestBuildClientService(t *testing.T) {
 	}
 }
 
+// BuildBackupPVC 회귀 보호 (cycle 123) — ValkeyBackup CR 의 결과 PVC.
+// default size 8Gi + override + ReadWriteOnce + BackupLabels.
+func TestBuildBackupPVC(t *testing.T) {
+	t.Parallel()
+	t.Run("default 8Gi size", func(t *testing.T) {
+		t.Parallel()
+		b := &cachev1alpha1.ValkeyBackup{}
+		b.Name = "nightly"
+		b.Namespace = "ns"
+		pvc := BuildBackupPVC(b)
+		if pvc.Name != "nightly-backup" || pvc.Namespace != "ns" {
+			t.Errorf("name/ns: %q/%q", pvc.Name, pvc.Namespace)
+		}
+		if len(pvc.Spec.AccessModes) != 1 || pvc.Spec.AccessModes[0] != "ReadWriteOnce" {
+			t.Errorf("accessMode: %v", pvc.Spec.AccessModes)
+		}
+		got := pvc.Spec.Resources.Requests["storage"]
+		if got.String() != "8Gi" {
+			t.Errorf("default size 8Gi 기대, got %s", got.String())
+		}
+	})
+	t.Run("override storageSize", func(t *testing.T) {
+		t.Parallel()
+		b := &cachev1alpha1.ValkeyBackup{}
+		b.Name = "big"
+		b.Namespace = "ns"
+		b.Spec.StorageSize = "100Gi"
+		pvc := BuildBackupPVC(b)
+		got := pvc.Spec.Resources.Requests["storage"]
+		if got.String() != "100Gi" {
+			t.Errorf("override 100Gi 기대, got %s", got.String())
+		}
+	})
+	t.Run("BackupLabels applied", func(t *testing.T) {
+		t.Parallel()
+		b := &cachev1alpha1.ValkeyBackup{}
+		b.Name = "test"
+		b.Namespace = "ns"
+		pvc := BuildBackupPVC(b)
+		if pvc.Labels["app.kubernetes.io/instance"] != "test" {
+			t.Errorf("instance label: %q", pvc.Labels["app.kubernetes.io/instance"])
+		}
+		if pvc.Labels["app.kubernetes.io/component"] != "backup" {
+			t.Errorf("component label: %q", pvc.Labels["app.kubernetes.io/component"])
+		}
+	})
+}
+
+// joinArgs — 본 함수 는 strings.Join(args, " ") 의 micro-implementation.
+// BuildBackupJob 의 sh -c 명령 조합 시 사용.
+func TestJoinArgs(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		in   []string
+		want string
+	}{
+		{"empty", []string{}, ""},
+		{"single", []string{"valkey-cli"}, "valkey-cli"},
+		{"multiple", []string{"valkey-cli", "-h", "host", "BGSAVE"}, "valkey-cli -h host BGSAVE"},
+		{"with spaces in arg", []string{"foo", "bar baz"}, "foo bar baz"}, // 의도된 단순 join.
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := joinArgs(c.in); got != c.want {
+				t.Errorf("joinArgs(%v) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
 // BuildNetworkPolicy 회귀 보호 (cycle 122) — operator 가 생성하는 *Valkey
 // instance 자체* 의 NetworkPolicy. cycle 72 의 chart NetworkPolicy 와 별개
 // (operator 자체 vs Valkey CR 의 instance pod).
