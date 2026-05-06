@@ -1,13 +1,16 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 16 완료)
+**최종 갱신**: 2026-05-06 (cycle 17 완료 — 자율 영역 한계 도달)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 ArtifactHub 등록 완료 + Track D 사용자 외부 publish 완료
-+ Track E 50% + Track F **OTEL infrastructure + 22 trace spans + 사용자 가이드**.
++ Track E 50% + Track F **OTEL infrastructure + 22 trace spans + 사용자 가이드 + helper tests**.
 
 **큰 step deferred** (ADR-0026 / ADR-0027): Conversion webhook (v1alpha1
 stable 후) + HPA (Track B Resharding 후).
+
+**자율 영역 한계**: 17 cycles 누적 진행 후 *작은 quality fix* 만 가능. 큰 step
+은 *외부 trigger* (사용자 base / e2e 환경 / Track B 통합) 도달 후 진입.
 
 ---
 
@@ -166,6 +169,27 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 18. Cycle 17 추가분 (1 commit — 본 세션, 자율 영역 한계)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 77 | `a75ac50` | `test(observability): StartReconcileSpan/StartCallSpan noop tracer 검증 — 3 단위 테스트 추가` | helper 의 zero overhead default 보장. RecordError 호출 panic 없음. |
+
+**Cycle 17 의 의미**: 17 cycles 누적 진행 후 *자율 영역 한계*. 다음 cycles
+는 *외부 trigger 도달* 후 큰 step 진입 또는 *작은 quality fix*.
+
+**자율 영역 잔여 (작은 가치)**:
+- 추가 helper unit test (cycle 17 패턴)
+- 코드 simplification / dead code 정리
+- 문서 갱신 (README sub-section / 추가 ADR 결정)
+
+**외부 trigger 의존 (큰 step)**:
+- e2e 실측 (`make test-e2e` — kind cluster 환경 의존, 5-10분)
+- Track B Scale apply (사용자 영역 통합 후 — cycle 8 revert 영역)
+- Track B Resharding (큰 작업, slot 재분배 알고리즘)
+- Conversion webhook (ADR-0026 trigger: v1alpha1 stable 후)
+- HPA (ADR-0027 trigger: Track B Resharding 완료 후)
 
 ## 17. Cycle 16 추가분 (2 commits — 본 세션, 결정 ADR 만)
 
