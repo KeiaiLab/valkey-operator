@@ -135,35 +135,80 @@ make install && make deploy IMG=valkey-operator:dev
 
 ---
 
-## Quality 시스템 종합 (cycle 47 갱신 — Phase 2 quality)
+## Quality 시스템 종합 (cycle 91 갱신 — Phase 2 quality 73 commits 마일스톤)
 
-본 세션 (cycles 20-51) 의 quality 작업이 *체계적 production-grade 시스템* 으로
-정리됨. 상세는 [release-checklist.md](../../operations/release-checklist.md).
+본 세션 (cycles 20-91) 의 quality 작업이 *체계적 production-grade 시스템* 으로
+정리됨. 상세 inventory: [release-checklist.md §2](../../operations/release-checklist.md).
 
 ### 자동 차단 game (PR 머지 전)
-- **6 lefthook pre-push** — full-lint, gitleaks, go-mod-tidy, helm-lint,
-  helm-template, unit-test.
-- **29 SSOT 동기 게이트** (internal/observability/) — alert/runbook/RBAC/CRD/
-  sample/chart artifacts/markdown links 모두 drift 차단.
+- **6 lefthook pre-push** — full-lint + gitleaks + go-mod-tidy + helm-lint +
+  helm-template (6 combinations) + unit-test.
+- **39 SSOT 동기 게이트** (internal/observability/, release-checklist §2) —
+  alert/runbook/RBAC/CRD/sample/chart artifacts/markdown/Webhook+Reconciler/
+  features/value↔template/cross-feature interaction 망라.
 - **5 hot-path benchmark** (internal/valkey/) — performance 회귀 baseline.
 
 ### 자동화 (실수 발생 자체 차단)
 - `make manifests` → chart CRD 자동 sync (cycle 38).
 - pre-push hook → go.mod direct/indirect drift 자동 차단 (cycle 47).
-- `make release` → SBOM (syft) + trivy scan 자동 첨부 (cycle 6).
+- `make release` → SBOM (syft) + trivy post-scan 자동 첨부 (cycle 6).
 
-### 발견·수정한 production gap (10건)
-1. cycle 29 — config/samples/ 의 `monitoring.serviceMonitor.enabled` silent ignore.
-2. cycle 32 — LICENSE 파일 부재 (OSS 법적 보호).
-3. cycle 33 — Issue triage 부재.
+### 결함 family progressive completion (5)
+1. mode/version drift (cycles 36-44) — 4 sibling → 횡단 게이트.
+2. ldflags chain (cycles 53-57) — 5-step end-to-end version traceability.
+3. value↔template binding (cycles 65-70) — 횡단 게이트 + 4 unused values 명시.
+4. features RBAC+reconciler (cycles 80-81) — 3-layer 정합 게이트.
+5. cross-feature interaction (cycles 86-90) — 3 sibling (NetworkPolicy +
+   webhook/tracing/backup) + max combination helm-template.
+
+### 발견·수정한 production gap (23건)
+1. cycle 29 — config/samples/ `monitoring.serviceMonitor.enabled` silent ignore.
+2. cycle 32 — LICENSE 파일 부재 (Apache-2.0 추가).
+3. cycle 33 — Issue triage 부재 (3 ISSUE_TEMPLATE).
 4. cycle 34 — README#roadmap broken anchor.
 5. cycle 35 — `.github/PULL_REQUEST_TEMPLATE.md` broken link.
-6. cycle 36 — `artifacthub.io/crdsExamples` 4 drift (mode 대소문자 + 필드).
-7. cycle 37 — chart CRD `cache.keiailab.io_valkeys.yaml` 의 autoFailover 누락
-   (Helm vs kustomize 사용자 다른 기능 세트 — 가장 위험한 silent failure).
+6. cycle 36 — `artifacthub.io/crdsExamples` 4 drift.
+7. cycle 37 — chart CRD valkeys autoFailover 누락 (Helm vs kustomize 다른 기능).
 8. cycle 41 — NOTES.txt mode lowercase + values.yaml version drift.
-9. cycle 42 — chart README YAML codeblock mode + version drift.
-10. cycle 46 — go.mod direct/indirect drift (본 세션 SSOT gate 도입 후 발생).
+9. cycle 42 — chart README YAML codeblock mode/version drift.
+10. cycle 46 — go.mod direct/indirect drift (자기 부채).
+11. cycle 51 — ADR-0002 후속작업 stale (자기 부채).
+12. cycle 64 — OPERATOR_IMAGE env 미주입 (Backup/Restore Job ImagePullBackOff).
+13. cycle 68 — chart 옛 `--enable-*-controller` flag (Helm cluster mode CrashLoop).
+14. cycle 69 — chart logging.format silent ignore (zap-encoder 미배선).
+15. cycle 70 — chart 4 unused values (webhook/crds/watch/networkPolicy 명시).
+16. cycle 76 — WATCH_NAMESPACES log marshalling error (자기 부채).
+17. cycle 80 — features.* RBAC + reconciler 비정합 (Helm default CrashLoop).
+18. cycle 86 — NetworkPolicy + webhook ingress 9443 차단.
+19. cycle 88 — NetworkPolicy + tracing OTLP egress 차단 (spans silent loss).
+20. cycle 89 — NetworkPolicy + backup S3 외부 egress 차단 (Pending 영구).
+21. cycle 61 — kustomize manager resources 와 chart values drift.
+
+### 구현 완료 (cycle 70 의 4 exempted progressive)
+- networkPolicy (cycle 72) ✅
+- webhook (cycle 73, cert-manager 의존) ✅
+- watch.namespaces (cycle 74, WATCH_NAMESPACES env) ✅
+- crds — Helm 3 built-in 의식적 deferred.
+- (autoscaling — ADR-0027 deferred 정직 표시)
+
+### 6-layer Documentation 시스템
+- README "Production Readiness" (cycle 50).
+- chart README "Production Features" (cycle 75).
+- NOTES.txt 8 항목 self-aware (cycles 67/77).
+- CONTRIBUTING "품질 시스템" (cycle 78).
+- release-checklist §2 — 39 게이트 인벤토리 (cycle 60 양방향 sync).
+- HANDOFF.md (본 cycle 갱신).
+- runbook §7.1 환경변수 진단 가이드 (cycle 85).
+
+### 3-layer DX
+- Auto: lefthook pre-push 6-hook.
+- Fast: `make ssot-check` (1.4s, 39 게이트).
+- Comprehensive: `make gate` (~30s, lint+test+helm+audit).
+
+### 자기 정합성 (self-enforcing)
+- cycle 60 양방향 sync gate (release-checklist ↔ code) — *10 cycle 자동 작동*.
+- cycle 78 CONTRIBUTING 품질 시스템 안내.
+- cycle 91 CHANGELOG [Unreleased] 종합 정리.
 
 ---
 
