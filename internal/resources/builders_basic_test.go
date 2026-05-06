@@ -194,6 +194,71 @@ func TestBuildClientService(t *testing.T) {
 	}
 }
 
+// BuildConfigMapForValkeyCluster 회귀 보호 (cycle 125) — ValkeyCluster CR 의
+// valkey.conf ConfigMap. cluster-enabled yes + cluster-node-timeout default
+// 15000ms + autoFailover→cluster-replica-no-failover 분기.
+func TestBuildConfigMapForValkeyCluster(t *testing.T) {
+	t.Parallel()
+	t.Run("default cluster mode + autoFailover=true", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Name = "vc"
+		vc.Namespace = "ns"
+		vc.Spec.AutoFailover = true
+		cm, err := BuildConfigMapForValkeyCluster(vc, "secretpass")
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if cm.Name != "vc-config" || cm.Namespace != "ns" {
+			t.Errorf("name/ns: %q/%q", cm.Name, cm.Namespace)
+		}
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "cluster-enabled yes") {
+			t.Error("cluster-enabled yes 누락")
+		}
+		if !strings.Contains(conf, "cluster-node-timeout 15000") {
+			t.Error("default cluster-node-timeout 15000ms 누락")
+		}
+		if !strings.Contains(conf, "requirepass secretpass") {
+			t.Error("requirepass injection 누락")
+		}
+	})
+	t.Run("autoFailover=false → cluster-replica-no-failover yes", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Name = "vc"
+		vc.Namespace = "ns"
+		vc.Spec.AutoFailover = false
+		cm, _ := BuildConfigMapForValkeyCluster(vc, "p")
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "cluster-replica-no-failover yes") {
+			t.Error("autoFailover=false → cluster-replica-no-failover yes 누락")
+		}
+	})
+	t.Run("custom NodeTimeoutMillis", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Name = "vc"
+		vc.Namespace = "ns"
+		vc.Spec.NodeTimeoutMillis = 30000
+		cm, _ := BuildConfigMapForValkeyCluster(vc, "p")
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "cluster-node-timeout 30000") {
+			t.Error("custom NodeTimeoutMillis 30000 누락")
+		}
+	})
+	t.Run("component label = valkey-cluster", func(t *testing.T) {
+		t.Parallel()
+		vc := &cachev1alpha1.ValkeyCluster{}
+		vc.Name = "vc"
+		vc.Namespace = "ns"
+		cm, _ := BuildConfigMapForValkeyCluster(vc, "p")
+		if cm.Labels[LabelComponent] != "valkey-cluster" {
+			t.Errorf("component label: %q (want valkey-cluster)", cm.Labels[LabelComponent])
+		}
+	})
+}
+
 // BuildConfigMapForValkey 회귀 보호 (cycle 124) — Valkey CR 의 valkey.conf
 // ConfigMap. password injection + persistence mode + TLS 분기.
 func TestBuildConfigMapForValkey(t *testing.T) {
