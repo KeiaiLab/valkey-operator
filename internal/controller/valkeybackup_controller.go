@@ -39,6 +39,9 @@ const (
 	// operatorImageEnv — Upload Job 의 image 결정 env. Deployment manifest 에서 주입.
 	operatorImageEnv     = "OPERATOR_IMAGE"
 	defaultOperatorImage = "controller:latest"
+
+	// finalizerValkeyBackup — backup CR 삭제 시 PVC + Job cleanup.
+	finalizerValkeyBackup = "cache.keiailab.io/valkeybackup-finalizer"
 )
 
 // ValkeyBackupReconciler — RDB / AOF backup 트리거 + 상태 추적.
@@ -77,9 +80,21 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	// Terminal phase 면 추가 작업 없음.
+	// Finalizer / deletion.
+	if !b.DeletionTimestamp.IsZero() {
+		return r.handleBackupDeletion(ctx, b)
+	}
+	if !controllerutil.ContainsFinalizer(b, finalizerValkeyBackup) {
+		controllerutil.AddFinalizer(b, finalizerValkeyBackup)
+		if err := r.Update(ctx, b); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Terminal phase: TTL 처리 (만료 시 self-delete) + RequeueAfter scheduling.
 	if b.IsTerminal() {
-		return ctrl.Result{}, nil
+		return r.handleBackupTerminal(ctx, b)
 	}
 
 	// 1. ClusterRef 검증 — 대상 CR 존재 확인.
@@ -599,6 +614,82 @@ func keyOrDefault(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// handleBackupTerminal — Phase=Completed/Failed 시 TTL 만료 검사.
+//
+// Spec.TTL 명시 + Status.CompletedAt + 현재 > deadline → r.Delete(ctx, b).
+// finalizer 가 cleanup 진행. 미만료 시 RequeueAfter=time.Until(deadline).
+//
+// TTL 미명시 시 보존 (no-op).
+func (r *ValkeyBackupReconciler) handleBackupTerminal(
+	ctx context.Context, b *cachev1alpha1.ValkeyBackup,
+) (ctrl.Result, error) {
+	if b.Spec.TTL == "" || b.Status.CompletedAt == nil {
+		return ctrl.Result{}, nil
+	}
+	ttl, err := time.ParseDuration(b.Spec.TTL)
+	if err != nil {
+		// TTL 파싱 실패 — 보존 (operator 가 자동 삭제 시도 안 함).
+		return ctrl.Result{}, nil
+	}
+	deadline := b.Status.CompletedAt.Add(ttl)
+	if time.Now().After(deadline) {
+		// 만료 — self-delete. finalizer 가 cleanup.
+		if err := r.Delete(ctx, b); err != nil {
+			if errors.IsNotFound(err) {
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		}
+		return ctrl.Result{}, nil
+	}
+	return ctrl.Result{RequeueAfter: time.Until(deadline)}, nil
+}
+
+// handleBackupDeletion — finalizer cleanup. Backup PVC (RetainPVC=false 시) +
+// Backup Job + Upload Job 정리. Owner-ref GC 가 RetainPVC=false 인 경우
+// PVC 도 처리하지만, RetainPVC=true 시 owner-ref 미설정 패턴 (별개 commit
+// 보강). 본 commit 은 *명시적 cleanup* 으로 안전 보장.
+func (r *ValkeyBackupReconciler) handleBackupDeletion(
+	ctx context.Context, b *cachev1alpha1.ValkeyBackup,
+) (ctrl.Result, error) {
+	logger := logf.FromContext(ctx)
+
+	// Backup Job + Upload Job 명시적 삭제 (best-effort).
+	for _, jobName := range []string{
+		resources.BackupJobName(b.Name),
+		resources.UploadJobName(b.Name),
+	} {
+		job := &batchv1.Job{}
+		if err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: b.Namespace}, job); err == nil {
+			// PropagationPolicy=Background — Job 의 Pod 도 함께 삭제.
+			policy := metav1.DeletePropagationBackground
+			_ = r.Delete(ctx, job, &client.DeleteOptions{PropagationPolicy: &policy})
+		}
+	}
+
+	// PVC 정리 — RetainPVC=false 시만.
+	if !b.Spec.RetainPVC {
+		pvcName := b.Status.PVCName
+		if pvcName == "" {
+			pvcName = resources.BackupPVCName(b.Name)
+		}
+		pvc := &corev1.PersistentVolumeClaim{}
+		if err := r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: b.Namespace}, pvc); err == nil {
+			_ = r.Delete(ctx, pvc)
+		}
+	}
+
+	controllerutil.RemoveFinalizer(b, finalizerValkeyBackup)
+	if err := r.Update(ctx, b); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+	logger.Info("ValkeyBackup deleted — Job/PVC cleanup", "name", b.Name, "retainPVC", b.Spec.RetainPVC)
+	return ctrl.Result{}, nil
 }
 
 // buildBackupJob — 대상 CR 의 image / TLS 설정을 조회 한 후 Job spec 빌드.

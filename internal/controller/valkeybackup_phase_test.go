@@ -38,9 +38,14 @@ func fakeBackupReconciler(b *cachev1alpha1.ValkeyBackup, target client.Object) *
 	return &ValkeyBackupReconciler{Client: c, Scheme: scheme}
 }
 
+// freshBackup — finalizer 포함. 신규 CR (finalizer 없음) 시뮬레이션은
+// freshBackupBare.
 func freshBackup(name, namespace, kind, target string) *cachev1alpha1.ValkeyBackup {
 	return &cachev1alpha1.ValkeyBackup{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Generation: 1},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: namespace, Generation: 1,
+			Finalizers: []string{finalizerValkeyBackup},
+		},
 		Spec: cachev1alpha1.ValkeyBackupSpec{
 			ClusterRef: cachev1alpha1.ClusterReference{Kind: kind, Name: target},
 			Type:       cachev1alpha1.BackupTypeRDB,
