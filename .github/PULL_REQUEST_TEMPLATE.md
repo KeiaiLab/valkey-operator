@@ -66,4 +66,4 @@ Any additional context, screenshots, or links to relevant discussions.
 
 ---
 
-**📚 For detailed guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md)**
+**📚 For detailed guidelines, see [CONTRIBUTING.md](../CONTRIBUTING.md)**
