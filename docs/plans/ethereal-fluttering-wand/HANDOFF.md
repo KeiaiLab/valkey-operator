@@ -1,9 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 5 완료)
+**최종 갱신**: 2026-05-06 (cycle 6 일부 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
-**현재 진행**: Track A **100%** + Track C 50% + Track D 사용자 외부 작업 진행
-+ Track E 50%.
+**현재 진행**: Track A **100%** + Track B 디자인+인프라 (실제 reconcileFailover
+미구현) + Track C 50% + Track D 사용자 외부 ArtifactHub publish 진행 +
+Track E 50%.
 
 ---
 
@@ -147,18 +148,51 @@ make install && make deploy IMG=valkey-operator:dev
 
 ```bash
 cd /Users/phil/WorkSpace/public/valkey-operator
-git log --oneline -10               # 36 commits 확인
+git log --oneline -10               # 41+ commits 확인
 cat docs/plans/ethereal-fluttering-wand/HANDOFF.md | head -80
-
-# 사용자 외부 작업 통합 확인
-git status --short                  # charts/ + Makefile + .lefthook.yml + ADR-0024 진행도
 
 # 회귀 검증
 go test -count=1 -timeout=120s ./...
 
 # 다음 step 후보:
-# A. 사용자 charts/ 작업 commit 통합 (Track D)
+# A. Track B reconcileFailover 본문 (ADR-0017 후속 — internal/valkey/
+#    ParseReplicationOffset + valkey_controller reconcileFailover)
 # B. kind + MinIO 실측 (RFC-0004 §3 라이브 사실 게이트)
 # C. e2e 시나리오 자동화 (test/e2e/)
-# D. Track B Failover (ADR-0017 작성 후)
+# D. 사용자 ArtifactHub publish 결과 통합 검증
 ```
+
+---
+
+## 7. Cycle 6 추가분 (3 commits)
+
+| # | SHA | Subject |
+|---|---|---|
+| 39 | `cdf906e` | `docs: ADR-0017 — Replication Mode Failover (replica with largest master_repl_offset)` |
+| 40 | `b7eaede` | `refactor(valkey): determinePrimary helper 추출 — Track B AI-001` |
+| 41 | `2ed5523` | `feat(api): Valkey.Spec.AutoFailover 필드 — Track B AI-002` |
+
+**Track B 진척**: ADR-0017 (디자인 결정) + determinePrimary helper 추출 (호출
+site 통일) + Spec.AutoFailover 필드 (default true). 실제 `reconcileFailover()`
+본문 + ParseReplicationOffset (internal/valkey) + 단위 테스트는 다음 cycle.
+
+**사용자 외부 commits (cycle 6 중)**:
+- `8a54d3d` `feat(helm): GitOps publish 파이프라인 — chart scaffold + ArtifactHub 통일 (ADR-0024)`
+- `ca52c53` `docs(handoff): HANDOFF + TASKS — ArtifactHub 등록 + 첫 release 후속 인계`
+- `0c4c2fb` `chore(release): Chart.yaml version → 0.1.0-alpha.1 (첫 ArtifactHub publish 준비)`
+
+**ParseReplicationOffset 미적용**: 본 cycle 에서 추가 시도된 internal/valkey/
+replication.go 의 `ParseReplicationOffset` + 단위 테스트가 외부 process /
+hook 에 의해 revert 됨 (uncommitted 상태). 다음 cycle 에서 *재시도* 또는
+사용자 작업 통합 후 진입.
+
+**다음 cycle 진입 시 권고**:
+1. `git status --short` 로 사용자 외부 작업 미커밋 변경 점검
+2. `internal/valkey/replication.go` 에 ParseReplicationOffset 재추가 +
+   parse_test.go 의 4 테스트
+3. `internal/controller/valkey_controller.go` 에 reconcileFailover() 본문
+   (Mode=Replication + IsAutoFailoverEnabled + Status.CurrentPrimary
+   NotReady 30s+ → INFO replication 모든 replica → offset 가장 큰 선출
+   → REPLICAOF NO ONE)
+4. determinePrimary 강화 — Status.CurrentPrimary 보존 (failover 후 다음
+   reconcile 이 pod-0 으로 되돌리지 않도록)
