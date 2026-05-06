@@ -1,10 +1,13 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 15 완료)
+**최종 갱신**: 2026-05-06 (cycle 16 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
-Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50% + Track F **OTEL infrastructure + 22 trace spans + 사용자 가이드**.
+Track C 사용자 외부 ArtifactHub 등록 완료 + Track D 사용자 외부 publish 완료
++ Track E 50% + Track F **OTEL infrastructure + 22 trace spans + 사용자 가이드**.
+
+**큰 step deferred** (ADR-0026 / ADR-0027): Conversion webhook (v1alpha1
+stable 후) + HPA (Track B Resharding 후).
 
 ---
 
@@ -163,6 +166,25 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 17. Cycle 16 추가분 (2 commits — 본 세션, 결정 ADR 만)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 72 | `2877627` | `docs: ADR-0026 — Conversion Webhook v1alpha1 stable 도달 후 도입 (deferred)` | premature integration 회피. trigger 조건 명시. |
+| 73 | `7d58ce1` | `docs: ADR-0027 — HPA Replication Mode 만 + Operator-managed (deferred)` | Spec.Autoscaling 디자인. Track B Resharding 사전조건. |
+
+**Cycle 16 의 의미**: 다음 cycle 의 *큰 step* 디자인 결정 *사전 기록*.
+실제 코드 변경 0건 — Action Items 7+6 = 13건 모두 trigger 도달 시 작성.
+
+**다음 cycle 진입 권고 (재정렬)**:
+1. **Track B Scale apply** (재진입, cycle 8 revert 후) — HPA 사전조건.
+2. **Track B Resharding** — ValkeyCluster shard scale (slot 재분배). HPA
+   for ValkeyCluster 사전조건.
+3. **e2e 실측** (`make test-e2e` — kind 5분+) — RFC-0004 §3 라이브 사실 게이트.
+4. **Application-level metrics** (controller-runtime 외, 작은 가치).
+
+(Conversion webhook + HPA 는 *deferred* — 별개 ADR trigger.)
 
 ## 16. Cycle 15 추가분 (1 commit — 본 세션, 짧은 종료)
 
