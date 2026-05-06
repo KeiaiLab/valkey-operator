@@ -66,6 +66,12 @@ spec:
             # features.{cluster,backup,autoscaling}.enabled 는 *RBAC 권한 부여*
             # 만 controlling — operator 는 항상 모든 reconciler 등록 (cycle 40
             # 의 TestReconcilerTypesRegisteredInMain 게이트 참조).
+            {{- if .Values.webhook.enabled }}
+            # cycle 106: webhook serving cert path. config/default/manager_webhook_patch.yaml
+            # 의 chart 이식. webhook.enabled=true 시 operator 가 본 path 에서 cert
+            # 마운트 후 9443 listen.
+            - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            {{- end }}
           ports:
             - name: metrics
               containerPort: {{ .Values.service.metricsPort }}
@@ -73,6 +79,11 @@ spec:
             - name: health
               containerPort: {{ .Values.service.healthPort }}
               protocol: TCP
+            {{- if .Values.webhook.enabled }}
+            - name: webhook-server
+              containerPort: {{ .Values.webhook.port | default 9443 }}
+              protocol: TCP
+            {{- end }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -142,13 +153,29 @@ spec:
             {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- with .Values.extraVolumeMounts }}
+          {{- if or .Values.webhook.enabled .Values.extraVolumeMounts }}
           volumeMounts:
+            {{- if .Values.webhook.enabled }}
+            # cycle 106: webhook serving certs (cert-manager managed).
+            - name: webhook-certs
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
-      {{- with .Values.extraVolumes }}
+      {{- if or .Values.webhook.enabled .Values.extraVolumes }}
       volumes:
+        {{- if .Values.webhook.enabled }}
+        # cycle 106: webhook cert Secret (cycle 73 의 Certificate 가 생성).
+        - name: webhook-certs
+          secret:
+            secretName: {{ printf "%s-webhook-server-cert" (include "valkey-operator.fullname" .) }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
