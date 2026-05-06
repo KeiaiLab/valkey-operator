@@ -1,0 +1,65 @@
+{{- /*
+NetworkPolicy for valkey-operator manager pod (cycle 72).
+opt-in via .Values.networkPolicy.enabled. default-deny + 명시 ingress/egress 허용.
+
+기본 ingress (enabled 시):
+- Prometheus scrape (metrics 8443) — 같은 namespace 또는 .Values.networkPolicy.ingress 추가.
+- Webhook serving (9443) — apiserver 호출 (현재 chart webhook 미구현, port 만 예약).
+- Health probe (8081) — kubelet 자동 (NetworkPolicy 외 — kubelet 호출은 NP 적용 안 됨).
+
+기본 egress:
+- API server (443) — 모든 reconciler 의 K8s API 호출.
+- Valkey 인스턴스 (6379, 6380 TLS) — operator 가 control-plane (CLUSTER MEET 등).
+- DNS (53 UDP/TCP) — Service DNS resolve.
+- 사용자 추가 ingress/egress 는 .Values.networkPolicy.{ingress,egress} 로 확장.
+*/}}
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "valkey-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "valkey-operator.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus metrics scrape (8443).
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.service.metricsPort | default 8443 }}
+    {{- with .Values.networkPolicy.ingress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    # K8s API server (443).
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+    # DNS resolution.
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Valkey instances (6379 + 6380 TLS).
+    - ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 6380
+        - protocol: TCP
+          port: 16379  # cluster bus.
+    {{- with .Values.networkPolicy.egress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

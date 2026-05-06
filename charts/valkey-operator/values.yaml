@@ -202,14 +202,15 @@ features:
   autoscaling:
     enabled: false
 
-# Network Policy configuration — NOT YET IMPLEMENTED (cycle 70).
-# 본 chart 는 NetworkPolicy template 미보유 — Helm 사용자는 NetworkPolicy
-# 미적용. CR-level (Valkey/ValkeyCluster.Spec.NetworkPolicy) 의 NetworkPolicy
-# (config/samples 참조) 는 정상 작동 — operator 가 직접 생성. 본 *operator
-# 자체* 의 NetworkPolicy (manager pod) 만 chart 미구현.
+# NetworkPolicy for operator pod (cycle 72 implemented).
+# default-deny 기반 + 명시 ingress (Prometheus 8443) + egress (K8s API 443, DNS 53,
+# Valkey 6379/6380/16379). 추가 rule 은 networkPolicy.ingress / egress 로 확장.
 networkPolicy:
+  # -- Enable NetworkPolicy for operator pod (default-deny + 명시 허용 rules).
   enabled: false
+  # -- Additional ingress rules (NetworkPolicyIngressRule[]).
   ingress: []
+  # -- Additional egress rules (NetworkPolicyEgressRule[]).
   egress: []
 
 # Pod Disruption Budget configuration
