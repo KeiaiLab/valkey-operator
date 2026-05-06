@@ -78,7 +78,23 @@ nodeSelector: {}
 tolerations: []
 
 # -- Affinity rules for operator pod scheduling
-affinity: {}
+# cycle 101: supported arch (amd64+arm64) + linux OS 명시 — mixed-arch cluster
+# 의 ImagePullBackOff 차단. config/manager/manager.yaml 와 정합. 사용자 가
+# 추가 affinity 필요 시 본 값 override.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - amd64
+                - arm64
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
 
 # Leader election configuration
 leaderElection:
