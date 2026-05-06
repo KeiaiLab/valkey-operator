@@ -179,3 +179,99 @@ func toInt(v any) int {
 	}
 	return 0
 }
+
+// TestKustomizeChartSecurityContextInvariants — 보안 critical 필드가 *양쪽 모두*
+// 적용되었는지 검증. strict equality 아님 — chart 는 추가 redundancy 가능
+// (e.g., container-level 에 runAsNonRoot 추가는 pod-level 위에 무해 redundancy).
+//
+// 검증 invariant (Pod Security Standards "restricted" 준수):
+// 1. Pod 레벨: runAsNonRoot=true + seccompProfile=RuntimeDefault.
+// 2. Container 레벨: allowPrivilegeEscalation=false + readOnlyRootFilesystem=true
+//   - capabilities.drop 에 ALL 포함.
+//
+// 한쪽에서 누락 시 *Pod Security Admission 거절* (restricted PSS namespace 에서)
+// 또는 *컨테이너 권한 상승 가능* (privileged 침투 위험).
+func TestKustomizeChartSecurityContextInvariants(t *testing.T) {
+	repo := findRepoRoot(t)
+
+	// 1. kustomize manager.yaml 의 pod + container securityContext.
+	mgrRaw, _ := os.ReadFile(filepath.Join(repo, "config/manager/manager.yaml"))
+	var mgrPodSC, mgrContainerSC map[string]any
+	for _, doc := range strings.Split(string(mgrRaw), "\n---\n") {
+		body := strings.TrimSpace(doc)
+		if body == "" {
+			continue
+		}
+		var m map[string]any
+		if err := yaml.Unmarshal([]byte(body), &m); err != nil {
+			continue
+		}
+		if k, _ := m["kind"].(string); k != "Deployment" {
+			continue
+		}
+		spec, _ := m["spec"].(map[string]any)
+		tmpl, _ := spec["template"].(map[string]any)
+		podSpec, _ := tmpl["spec"].(map[string]any)
+		mgrPodSC, _ = podSpec["securityContext"].(map[string]any)
+		containers, _ := podSpec["containers"].([]any)
+		for _, c := range containers {
+			cm, _ := c.(map[string]any)
+			if cm["name"] == "manager" {
+				mgrContainerSC, _ = cm["securityContext"].(map[string]any)
+			}
+		}
+	}
+
+	// 2. chart values.yaml.
+	chartRaw, _ := os.ReadFile(filepath.Join(repo, "charts/valkey-operator/values.yaml"))
+	var chartValues map[string]any
+	_ = yaml.Unmarshal(chartRaw, &chartValues)
+	chartPodSC, _ := chartValues["podSecurityContext"].(map[string]any)
+	chartContainerSC, _ := chartValues["securityContext"].(map[string]any)
+
+	// 3. Pod 레벨 invariant: runAsNonRoot=true.
+	for _, pair := range []struct {
+		name, side string
+		sc         map[string]any
+	}{
+		{"kustomize", "pod", mgrPodSC},
+		{"chart", "pod", chartPodSC},
+	} {
+		if v, _ := pair.sc["runAsNonRoot"].(bool); !v {
+			t.Errorf("%s.%s.runAsNonRoot = false (want true) — Pod Security Standards restricted 위반",
+				pair.name, pair.side)
+		}
+		seccomp, _ := pair.sc["seccompProfile"].(map[string]any)
+		if seccomp["type"] != "RuntimeDefault" {
+			t.Errorf("%s.%s.seccompProfile.type=%v (want RuntimeDefault)", pair.name, pair.side, seccomp["type"])
+		}
+	}
+
+	// 4. Container 레벨 invariant.
+	for _, pair := range []struct {
+		name string
+		sc   map[string]any
+	}{
+		{"kustomize", mgrContainerSC},
+		{"chart", chartContainerSC},
+	} {
+		if v, _ := pair.sc["allowPrivilegeEscalation"].(bool); v {
+			t.Errorf("%s.container.allowPrivilegeEscalation=true (want false) — privilege escalation 차단 필수", pair.name)
+		}
+		if v, _ := pair.sc["readOnlyRootFilesystem"].(bool); !v {
+			t.Errorf("%s.container.readOnlyRootFilesystem=false (want true)", pair.name)
+		}
+		caps, _ := pair.sc["capabilities"].(map[string]any)
+		dropList, _ := caps["drop"].([]any)
+		hasAll := false
+		for _, d := range dropList {
+			if s, _ := d.(string); s == "ALL" {
+				hasAll = true
+				break
+			}
+		}
+		if !hasAll {
+			t.Errorf("%s.container.capabilities.drop 에 'ALL' 없음 — 모든 capability drop 필수", pair.name)
+		}
+	}
+}
