@@ -203,6 +203,7 @@ func (r *ValkeyReconciler) reconcileFailover(
 
 	// Status.CurrentPrimary 갱신 (in-memory).
 	v.Status.CurrentPrimary = newPrimaryPod
+	MetricFailoverTotal.WithLabelValues(v.Namespace, v.Name).Inc()
 	logger.Info("Failover completed",
 		"oldPrimary", curPrimary, "newPrimary", newPrimaryPod)
 	return nil

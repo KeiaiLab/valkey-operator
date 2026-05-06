@@ -233,6 +233,7 @@ func (r *ValkeyBackupReconciler) validateClusterRef(ctx context.Context, b *cach
 
 // markFailed — 백업을 Failed phase 로 전이 + 에러 condition.
 func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha1.ValkeyBackup, reason, msg string) (ctrl.Result, error) {
+	MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Failed").Inc()
 	b.Status.Phase = cachev1alpha1.BackupPhaseFailed
 	b.Status.Message = msg
 	now := metav1.Now()
@@ -391,6 +392,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 			return ctrl.Result{Requeue: true}, nil
 		}
 
+		MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
 		now := metav1.Now()
 		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
 		b.Status.CompletedAt = &now
@@ -508,6 +510,7 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 
 	// 4. Job 상태 폴링.
 	if existing.Status.Succeeded > 0 {
+		MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
 		now := metav1.Now()
 		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
 		b.Status.CompletedAt = &now

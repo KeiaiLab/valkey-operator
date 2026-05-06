@@ -92,6 +92,40 @@ var (
 		},
 		[]string{"namespace", "name", "phase"},
 	)
+
+	// MetricBackupTotal — ValkeyBackup terminal phase 도달 카운터.
+	// label phase=Completed|Failed. handleBackupTerminal 진입 시 증가.
+	MetricBackupTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Subsystem: metricSubsystem,
+			Name:      "backup_total",
+			Help:      "Total ValkeyBackup CRs reaching terminal phase",
+		},
+		[]string{"namespace", "name", "phase"},
+	)
+
+	// MetricRestoreTotal — ValkeyRestore terminal phase 도달 카운터.
+	// label phase=Completed|Failed. handleVerifying 의 Completed 진입 또는
+	// markFailed 시 증가.
+	MetricRestoreTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Subsystem: metricSubsystem,
+			Name:      "restore_total",
+			Help:      "Total ValkeyRestore CRs reaching terminal phase",
+		},
+		[]string{"namespace", "name", "phase"},
+	)
+
+	// MetricFailoverTotal — Replication mode 자동 failover 발생 카운터.
+	// reconcileFailover 의 성공 분기 (Status.CurrentPrimary 갱신 후) 증가.
+	MetricFailoverTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Subsystem: metricSubsystem,
+			Name:      "failover_total",
+			Help:      "Total automatic failover events (Replication mode, ADR-0017)",
+		},
+		labelNamespaceName,
+	)
 )
 
 func init() {
@@ -103,6 +137,9 @@ func init() {
 		MetricReconcileTotal,
 		MetricReconcileErrors,
 		MetricPhase,
+		MetricBackupTotal,
+		MetricRestoreTotal,
+		MetricFailoverTotal,
 	)
 }
 

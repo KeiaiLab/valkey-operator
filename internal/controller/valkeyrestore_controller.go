@@ -679,6 +679,7 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 	r.verifyDataPlane(ctx, rest)
 
 	// → Completed.
+	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Completed").Inc()
 	now := metav1.Now()
 	rest.Status.Phase = cachev1alpha1.RestorePhaseCompleted
 	rest.Status.CompletedAt = &now
@@ -744,10 +745,12 @@ func (r *ValkeyRestoreReconciler) handleDeletion(
 }
 
 // markFailed — Phase=Failed + Reason + Message 기록 후 종료.
+// markFailed — Phase=Failed 전이 + metric 증가.
 func (r *ValkeyRestoreReconciler) markFailed(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 	reason, msg string,
 ) (ctrl.Result, error) {
+	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Failed").Inc()
 	now := metav1.Now()
 	rest.Status.Phase = cachev1alpha1.RestorePhaseFailed
 	rest.Status.CompletedAt = &now
