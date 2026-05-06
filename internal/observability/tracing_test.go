@@ -50,3 +50,36 @@ func TestNoopShutdown_returnsNil(t *testing.T) {
 		t.Fatalf("noopShutdown should return nil, got %v", err)
 	}
 }
+
+func TestStartReconcileSpan_returnsValidContextAndSpan(t *testing.T) {
+	// Tracer 미설치 (env 부재 → noop) 환경에서도 panic 없이 span 반환.
+	ctx, span := StartReconcileSpan(t.Context(), "Valkey", "ns", "name")
+	defer span.End()
+	if ctx == nil {
+		t.Fatal("ctx must be non-nil")
+	}
+	if span == nil {
+		t.Fatal("span must be non-nil")
+	}
+	// SetAttributes 호출 — noop tracer 라도 panic 없음 보장.
+	span.SetAttributes()
+}
+
+func TestStartCallSpan_returnsValidContextAndSpan(t *testing.T) {
+	ctx, span := StartCallSpan(t.Context(), "test/operation")
+	defer span.End()
+	if ctx == nil || span == nil {
+		t.Fatal("ctx + span must be non-nil")
+	}
+}
+
+func TestStartCallSpan_recordError(t *testing.T) {
+	// noop tracer 에서도 RecordError 가 panic 없이 동작.
+	_, span := StartCallSpan(t.Context(), "test/op_with_error")
+	defer span.End()
+	span.RecordError(noopError{})
+}
+
+type noopError struct{}
+
+func (noopError) Error() string { return "noop test error" }
