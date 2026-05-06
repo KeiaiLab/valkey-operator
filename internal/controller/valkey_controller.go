@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -147,7 +148,18 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		stsParams.ExporterImg = exporterImage(v.Spec.Monitoring)
 	}
 	sts := resources.BuildStatefulSet(stsParams)
-	if err := applyStatefulSet(ctx, r.Client, r.Scheme, v, sts, false); err != nil {
+
+	// Scale 가드: ValkeyCluster 와 비대칭 — Replication mode 의 default 는
+	// *자동 적용* (Spec.ScalePolicy 미명시 시 Deliberate=true 와 동등). slot
+	// 재분배 가 없는 일반 replica 수 변경은 안전하므로 자동 적용 default.
+	// Deliberate=false 명시 시만 PendingScale 기록 + STS 보존.
+	preserveReplicas, pendingScale, scaleErr := r.evaluateScalePolicy(ctx, v, desiredReplicas(v))
+	if scaleErr != nil {
+		return applyErrorCondition(ctx, r.Client, v, "ScalePolicy", scaleErr, r.Recorder)
+	}
+	v.Status.PendingScale = pendingScale
+
+	if err := applyStatefulSet(ctx, r.Client, r.Scheme, v, sts, preserveReplicas); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "StatefulSet", err, r.Recorder)
 	}
 
@@ -251,6 +263,52 @@ func (r *ValkeyReconciler) applyDefaults(v *cachev1alpha1.Valkey) {
 }
 
 func desiredReplicas(v *cachev1alpha1.Valkey) int32 { return v.Spec.Replicas }
+
+// evaluateScalePolicy — Replication mode 의 Spec.Replicas 변경 감지 + 가드.
+//
+// ValkeyCluster 와 *비대칭*:
+//   - ValkeyCluster: Deliberate=false default (slot 재분배 위험 → 명시 동의 필요)
+//   - Valkey (Replication): Deliberate=true default (단순 replica 수 변경 안전)
+//
+// 결정 규칙:
+//   - STS 미존재 (초기 부트스트랩): preserve=false, pending=nil → 정상 desired 적용.
+//   - 현재 == desired: preserve=false, pending=nil.
+//   - 현재 != desired & ScalePolicy.Deliberate=true 또는 ScalePolicy=nil:
+//     preserve=false, pending=nil → 즉시 적용.
+//   - 현재 != desired & Deliberate=false 명시: preserve=true, pending 기록.
+func (r *ValkeyReconciler) evaluateScalePolicy(
+	ctx context.Context, v *cachev1alpha1.Valkey, desired int32,
+) (preserveReplicas bool, pendingScale *cachev1alpha1.PendingScale, err error) {
+	stsKey := types.NamespacedName{Name: resources.StatefulSetName(v.Name), Namespace: v.Namespace}
+	sts := &appsv1.StatefulSet{}
+	if getErr := r.Get(ctx, stsKey, sts); getErr != nil {
+		if errors.IsNotFound(getErr) {
+			return false, nil, nil
+		}
+		return false, nil, getErr
+	}
+	if sts.Spec.Replicas == nil {
+		return false, nil, nil
+	}
+	current := *sts.Spec.Replicas
+	if current == desired {
+		return false, nil, nil
+	}
+	// Replication mode default: ScalePolicy 미명시 시 자동 적용.
+	deliberate := v.Spec.ScalePolicy == nil || v.Spec.ScalePolicy.Deliberate
+	if deliberate {
+		return false, nil, nil
+	}
+	pending := &cachev1alpha1.PendingScale{
+		CurrentReplicas: current,
+		DesiredReplicas: desired,
+		RequestedAt:     metav1.Now().Format("2006-01-02T15:04:05Z07:00"),
+		Reason: fmt.Sprintf(
+			"Replication scale deferred: set Spec.ScalePolicy.Deliberate=true to apply (%d → %d)",
+			current, desired),
+	}
+	return true, pending, nil
+}
 
 // determinePrimary — primary pod 결정 (ADR-0017).
 //
