@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 7 완료)
+**최종 갱신**: 2026-05-06 (cycle 8 짧은 종료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
-**현재 진행**: Track A **100%** + Track B **핵심 Failover 완성** (Scale apply
-/ Resharding 잔여) + Track C 50% + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50%.
+**현재 진행**: Track A **100%** + Track B **핵심 Failover 완성** + Track C
+사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish 진행
++ Track E 50%.
 
 ---
 
@@ -163,6 +163,26 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 9. Cycle 8 추가분 (1 commit — 본 세션, 짧은 종료)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 51 | `5667361` | `docs: README — Replication 자동 Failover 사용법 (cycle 7)` | ADR-0017 + cycle 7 reconcileFailover 사용자 가시 반영. |
+
+**Cycle 8 의 시도된 작업** — *외부 process 로 revert*:
+- ValkeyController 의 `evaluateScalePolicy` 추가 + applyStatefulSet
+  preserveReplicas 통합 (Track B Scale apply, ValkeyCluster 와 비대칭 default).
+- 외부 process / hook 가 *완전 revert*. 사용자 의도 존중.
+
+**사용자 외부 commits (cycle 8 동시 진행)**:
+- `a353b44` `fix(release): grpc CVE-2026-33186 차단 + audit trivy fail-handling 보강 + register helper` — Track C 릴리스 + 보안.
+
+**다음 cycle 진입 권고**:
+- Track B Scale apply 는 *사용자 외부 작업 통합 후* 또는 *영역 회피* 로 진입.
+- ValkeyCluster 의 evaluateScalePolicy 패턴 분석 → ValkeyController 의
+  *대칭 default* (Deliberate=false) 로 진행 가능 (revert 회피).
+- 또는 e2e 시나리오 자동화 (kind + MinIO + primary kill → failover) 우선.
 
 ## 8. Cycle 7 추가분 (3 commits — 본 세션)
 
