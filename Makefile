@@ -308,7 +308,7 @@ helm-lint: ## Run helm lint on the chart.
 	helm lint $(HELM_CHART)
 
 .PHONY: helm-template
-helm-template: ## Render chart with default values for sanity check.
+helm-template: ## Render chart with default + critical combinations sanity check.
 	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system >/dev/null && \
 		echo "✓ helm template (default values) OK"
 	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system \
@@ -316,6 +316,15 @@ helm-template: ## Render chart with default values for sanity check.
 		--set features.backup.enabled=true \
 		--set features.autoscaling.enabled=true >/dev/null && \
 		echo "✓ helm template (all features enabled) OK"
+	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system \
+		--set tracing.endpoint=otel-collector.observability.svc:4317 \
+		--set tracing.serviceName=valkey-operator >/dev/null && \
+		echo "✓ helm template (OTEL tracing enabled) OK"
+	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system \
+		--set logging.format=console \
+		--set logging.level=debug \
+		--set logging.development=true >/dev/null && \
+		echo "✓ helm template (debug logging) OK"
 
 .PHONY: audit
 audit: ## govulncheck + gosec + trivy fs — RFC 0002 L3 security 게이트.
