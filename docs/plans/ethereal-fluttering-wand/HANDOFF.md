@@ -1,6 +1,6 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 18 완료)
+**최종 갱신**: 2026-05-06 (cycle 20 완료 — supply chain cycle 6: SBOM + trivy + helm-docs, commit 8516de3)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 ArtifactHub 등록 완료 + Track D 사용자 외부 publish 완료

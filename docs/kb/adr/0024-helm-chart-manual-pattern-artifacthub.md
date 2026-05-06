@@ -157,3 +157,8 @@ ArtifactHub publish 모델:
       기본 default 0 (unsigned, 기존 동작 보존). 사용자가 PGP private key import
       후 `make release HELM_SIGN=1` 활성. commits: valkey 248201a, postgres
       9ce90cd, mongodb 3009f1e.
+- [x] AI-0024-17: supply chain 강화 cycle 6 — `make sbom` (syft SPDX-2.3) +
+      `make helm-docs` (values 표 자동) + release pipeline 의 자동 SBOM asset 첨부.
+      release-smoke-test 6단계로 확장: SBOM asset 검증 + trivy post-publish
+      HIGH/CRITICAL CVE scan (--exit-code 1, --ignore-unfixed). SLSA / EU CRA
+      (2027) SBOM 의무화 대비. commit valkey 8516de3.
