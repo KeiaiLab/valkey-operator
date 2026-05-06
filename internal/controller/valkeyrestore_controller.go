@@ -13,9 +13,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +35,23 @@ import (
 const (
 	finalizerValkeyRestore = "cache.keiailab.io/valkeyrestore-finalizer"
 )
+
+// sourcePVCName — Source.PVC 시 그대로, Source.TargetRef 시 임시 PVC 이름.
+// Restoring phase 의 init container 가 mount 하는 PVC.
+func sourcePVCName(rest *cachev1alpha1.ValkeyRestore) string {
+	if rest.Spec.Source.PVC != nil && rest.Spec.Source.PVC.Name != "" {
+		return rest.Spec.Source.PVC.Name
+	}
+	return resources.RestoreSourcePVCName(rest.Name)
+}
+
+// sourceRDBPath — Source PVC 안의 RDB 파일 상대 경로.
+func sourceRDBPath(rest *cachev1alpha1.ValkeyRestore) string {
+	if rest.Spec.Source.PVC != nil && rest.Spec.Source.PVC.Path != "" {
+		return rest.Spec.Source.PVC.Path
+	}
+	return resources.BackupRDBFileName // "dump.rdb"
+}
 
 // ValkeyRestoreReconciler — Source.PVC 에서 RDB 를 cluster 로 복원 (ADR-0015).
 //
@@ -130,8 +149,8 @@ func (r *ValkeyRestoreReconciler) transitionToPending(
 
 // handlePending — ClusterRef + Source 검증 → Mounting.
 //
-// 본 commit 의 제한: ClusterRef.Kind=="Valkey" + Source.PVC + Mode=Standalone.
-// 위 외 케이스는 RestorePhaseFailed.
+// 본 commit 의 제한: ClusterRef.Kind=="Valkey" + Mode=Standalone.
+// Source 는 PVC | TargetRef 둘 중 하나 (XOR).
 func (r *ValkeyRestoreReconciler) handlePending(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
@@ -140,13 +159,29 @@ func (r *ValkeyRestoreReconciler) handlePending(
 			fmt.Sprintf("kind=%s — only Valkey (Standalone) supported in this version",
 				rest.Spec.ClusterRef.Kind))
 	}
-	if rest.Spec.Source.PVC == nil {
-		return r.markFailed(ctx, rest, "UnsupportedSource",
-			"only Source.PVC supported in this version (TargetRef pending)")
+	hasPVC := rest.Spec.Source.PVC != nil
+	hasTargetRef := rest.Spec.Source.TargetRef != nil
+	if !hasPVC && !hasTargetRef {
+		return r.markFailed(ctx, rest, "MissingSource",
+			"Source.PVC 또는 Source.TargetRef 중 하나 필요")
 	}
-	if rest.Spec.Source.PVC.Name == "" {
+	if hasPVC && hasTargetRef {
+		return r.markFailed(ctx, rest, "AmbiguousSource",
+			"Source.PVC + Source.TargetRef 동시 명시 — 하나만 명시")
+	}
+	if hasPVC && rest.Spec.Source.PVC.Name == "" {
 		return r.markFailed(ctx, rest, "MissingSourcePVCName",
 			"spec.source.pvc.name required")
+	}
+	if hasTargetRef {
+		if rest.Spec.Source.TargetRef.Name == "" {
+			return r.markFailed(ctx, rest, "MissingTargetRefName",
+				"spec.source.targetRef.name required")
+		}
+		if rest.Spec.Source.TargetRef.Path == "" {
+			return r.markFailed(ctx, rest, "MissingTargetRefPath",
+				"spec.source.targetRef.path required")
+		}
 	}
 
 	// 대상 Valkey 가 Standalone 인지 확인.
@@ -186,21 +221,24 @@ func (r *ValkeyRestoreReconciler) handlePending(
 	return ctrl.Result{Requeue: true}, nil
 }
 
-// handleMounting — Source PVC 존재 확인 + paused annotation set → Restoring.
+// handleMounting — Source 확보 + paused annotation set → Restoring.
+//
+// Source.PVC: PVC 존재만 확인.
+// Source.TargetRef: ValkeyBackupTarget Reachable 검증 + 임시 PVC 보장 +
+//
+//	Download Job spawn → 완료 시 진행.
 func (r *ValkeyRestoreReconciler) handleMounting(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
-	// PVC 존재 확인.
-	pvc := &corev1.PersistentVolumeClaim{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      rest.Spec.Source.PVC.Name,
-		Namespace: rest.Namespace,
-	}, pvc); err != nil {
-		if errors.IsNotFound(err) {
-			return r.markFailed(ctx, rest, "SourcePVCNotFound",
-				fmt.Sprintf("PVC/%s/%s not found", rest.Namespace, rest.Spec.Source.PVC.Name))
+	// Source 확보.
+	if rest.Spec.Source.PVC != nil {
+		if res, ok, err := r.ensurePVCSource(ctx, rest); !ok {
+			return res, err
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	} else if rest.Spec.Source.TargetRef != nil {
+		if res, ok, err := r.ensureTargetRefSource(ctx, rest); !ok {
+			return res, err
+		}
 	}
 
 	// 대상 Valkey 에 paused annotation set.
@@ -223,8 +261,8 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 
 	// → Restoring.
 	rest.Status.Phase = cachev1alpha1.RestorePhaseRestoring
-	rest.Status.Message = fmt.Sprintf("Source PVC %s exists, target paused — STS patch pending",
-		rest.Spec.Source.PVC.Name)
+	rest.Status.Message = fmt.Sprintf("Source PVC %s ready, target paused — STS patch pending",
+		sourcePVCName(rest))
 	setCondition(rest.GetConditions(), metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionFalse,
@@ -236,6 +274,130 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
+}
+
+// ensurePVCSource — Source.PVC: 사전 존재 확인 만. ok=false 시 caller 가
+// 반환된 result/err 그대로 전파.
+func (r *ValkeyRestoreReconciler) ensurePVCSource(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) (ctrl.Result, bool, error) {
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := r.Get(ctx, types.NamespacedName{
+		Name:      rest.Spec.Source.PVC.Name,
+		Namespace: rest.Namespace,
+	}, pvc); err != nil {
+		if errors.IsNotFound(err) {
+			res, err := r.markFailed(ctx, rest, "SourcePVCNotFound",
+				fmt.Sprintf("PVC/%s/%s not found", rest.Namespace, rest.Spec.Source.PVC.Name))
+			return res, false, err
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+	}
+	return ctrl.Result{}, true, nil
+}
+
+// ensureTargetRefSource — Source.TargetRef: ValkeyBackupTarget Reachable +
+// 임시 PVC 생성 + Download Job spawn → Job Succeeded 까지 대기.
+//
+// ok=true 만 호출자가 다음 단계 (paused annotation set + Restoring 전이) 진입.
+func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) (ctrl.Result, bool, error) {
+	logger := logf.FromContext(ctx)
+
+	// 1. ValkeyBackupTarget Get + Reachable 검증.
+	tgt := &cachev1alpha1.ValkeyBackupTarget{}
+	if err := r.Get(ctx, types.NamespacedName{
+		Name:      rest.Spec.Source.TargetRef.Name,
+		Namespace: rest.Namespace,
+	}, tgt); err != nil {
+		if errors.IsNotFound(err) {
+			res, err := r.markFailed(ctx, rest, "TargetRefNotFound",
+				fmt.Sprintf("ValkeyBackupTarget %s/%s not found",
+					rest.Namespace, rest.Spec.Source.TargetRef.Name))
+			return res, false, err
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+	}
+	if tgt.Status.Phase != cachev1alpha1.BackupTargetPhaseReachable {
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, false, nil
+	}
+	if tgt.Spec.S3 == nil {
+		res, err := r.markFailed(ctx, rest, "TargetMissingS3",
+			"ValkeyBackupTarget.Spec.S3 미설정")
+		return res, false, err
+	}
+
+	// 2. 임시 source PVC 보장.
+	pvc := resources.BuildRestoreSourcePVC(rest.Name, rest.Namespace)
+	if err := controllerutil.SetControllerReference(rest, pvc, r.Scheme); err != nil {
+		res, err := r.markFailed(ctx, rest, "PVCOwnerRef", err.Error())
+		return res, false, err
+	}
+	existingPVC := &corev1.PersistentVolumeClaim{}
+	if err := r.Get(ctx, types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}, existingPVC); err != nil {
+		if errors.IsNotFound(err) {
+			if err := r.Create(ctx, pvc); err != nil {
+				res, err := r.markFailed(ctx, rest, "PVCCreateFailed", err.Error())
+				return res, false, err
+			}
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+	}
+
+	// 3. Download Job 보장.
+	downloadJob := resources.BuildDownloadJob(resources.DownloadJobParams{
+		RestoreName:              rest.Name,
+		Namespace:                rest.Namespace,
+		OperatorImage:            r.operatorImage(),
+		PVCName:                  pvc.Name,
+		FilePath:                 resources.BackupVolumeMountPath + "/" + resources.BackupRDBFileName,
+		Endpoint:                 tgt.Spec.S3.Endpoint,
+		Region:                   tgt.Spec.S3.Region,
+		Bucket:                   tgt.Spec.S3.Bucket,
+		ObjectKey:                tgt.Spec.S3.Prefix + rest.Spec.Source.TargetRef.Path,
+		ForcePathStyle:           tgt.Spec.S3.ForcePathStyle,
+		CredentialsSecretName:    tgt.Spec.S3.CredentialsSecretRef.Name,
+		AccessKeyIDSecretKey:     keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.AccessKeyIDKey, "AWS_ACCESS_KEY_ID"),
+		SecretAccessKeySecretKey: keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.SecretAccessKeyKey, "AWS_SECRET_ACCESS_KEY"),
+	})
+	if err := controllerutil.SetControllerReference(rest, downloadJob, r.Scheme); err != nil {
+		res, err := r.markFailed(ctx, rest, "JobOwnerRef", err.Error())
+		return res, false, err
+	}
+	existingJob := &batchv1.Job{}
+	if err := r.Get(ctx, types.NamespacedName{Name: downloadJob.Name, Namespace: downloadJob.Namespace}, existingJob); err != nil {
+		if errors.IsNotFound(err) {
+			if err := r.Create(ctx, downloadJob); err != nil {
+				res, err := r.markFailed(ctx, rest, "DownloadJobCreateFailed", err.Error())
+				return res, false, err
+			}
+			logger.Info("Download Job created", "name", downloadJob.Name)
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+	}
+
+	// 4. Job 상태 폴링.
+	if existingJob.Status.Succeeded > 0 {
+		return ctrl.Result{}, true, nil // 다음 단계 진입.
+	}
+	if existingJob.Status.Failed > 0 {
+		res, err := r.markFailed(ctx, rest, "DownloadJobFailed",
+			fmt.Sprintf("Download Job %s failed (failed=%d)", downloadJob.Name, existingJob.Status.Failed))
+		return res, false, err
+	}
+	// 진행 중.
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+}
+
+// operatorImage — Download/Upload Job image. valkeybackup_controller 와 동일.
+func (r *ValkeyRestoreReconciler) operatorImage() string {
+	if v := os.Getenv("OPERATOR_IMAGE"); v != "" {
+		return v
+	}
+	return "controller:latest"
 }
 
 // handleRestoring — STS 에 init container inject + 모든 pod Ready 대기 → Verifying.
@@ -257,10 +419,8 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	srcPath := rest.Spec.Source.PVC.Path
-	if srcPath == "" {
-		srcPath = "dump.rdb"
-	}
+	srcPath := sourceRDBPath(rest)
+	srcPVC := sourcePVCName(rest)
 
 	// 멱등 inject.
 	hadRestoreContainer := false
@@ -270,7 +430,7 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 			break
 		}
 	}
-	resources.InjectRestoreIntoPodSpec(&sts.Spec.Template.Spec, srcPath, rest.Spec.Source.PVC.Name)
+	resources.InjectRestoreIntoPodSpec(&sts.Spec.Template.Spec, srcPath, srcPVC)
 	if !hadRestoreContainer {
 		if err := r.Update(ctx, sts); err != nil {
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil

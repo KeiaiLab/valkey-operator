@@ -10,6 +10,7 @@ package controller
 import (
 	"context"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -320,6 +321,139 @@ func TestRestore_verifying_revertsAndCompletes(t *testing.T) {
 	}
 	if gotV.Annotations[PausedAnnotation] == "true" {
 		t.Fatalf("expected paused annotation removed")
+	}
+}
+
+// === Source.TargetRef 시나리오 ===
+
+func validBackupTarget(name, ns string) *cachev1alpha1.ValkeyBackupTarget {
+	return &cachev1alpha1.ValkeyBackupTarget{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Spec: cachev1alpha1.ValkeyBackupTargetSpec{
+			Type: cachev1alpha1.BackupTargetTypeS3,
+			S3: &cachev1alpha1.S3Spec{
+				Endpoint: "https://s3.fake",
+				Region:   "us-east-1",
+				Bucket:   "b",
+				CredentialsSecretRef: cachev1alpha1.S3CredentialsSecretRef{
+					Name: "creds",
+				},
+			},
+		},
+		Status: cachev1alpha1.ValkeyBackupTargetStatus{
+			Phase: cachev1alpha1.BackupTargetPhaseReachable,
+		},
+	}
+}
+
+func freshTargetRefRestore(name, ns, target, refTarget, path string) *cachev1alpha1.ValkeyRestore {
+	r := freshRestoreCR(name, ns, target)
+	r.Spec.Source = cachev1alpha1.RestoreSource{
+		TargetRef: &cachev1alpha1.RestoreSourceTargetRef{Name: refTarget, Path: path},
+	}
+	return r
+}
+
+// 12. Pending: Source.PVC + Source.TargetRef 동시 → AmbiguousSource.
+func TestRestore_pending_ambiguousSource(t *testing.T) {
+	rest := freshRestoreCR("r1", "ns", "vk")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	rest.Spec.Source.TargetRef = &cachev1alpha1.RestoreSourceTargetRef{
+		Name: "tgt", Path: "p",
+	}
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"))
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed, got %s", got.Status.Phase)
+	}
+}
+
+// 13. Pending: Source 둘 다 nil → MissingSource.
+func TestRestore_pending_missingSource(t *testing.T) {
+	rest := freshRestoreCR("r1", "ns", "vk")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	rest.Spec.Source = cachev1alpha1.RestoreSource{}
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"))
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed, got %s", got.Status.Phase)
+	}
+}
+
+// 14. Pending: Source.TargetRef + missing Path → MissingTargetRefPath.
+func TestRestore_pending_missingTargetRefPath(t *testing.T) {
+	rest := freshTargetRefRestore("r1", "ns", "vk", "tgt", "")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"))
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed, got %s", got.Status.Phase)
+	}
+}
+
+// 15. Pending: Source.TargetRef 정상 → Mounting.
+func TestRestore_pendingTargetRef_toMounting(t *testing.T) {
+	rest := freshTargetRefRestore("r1", "ns", "vk", "tgt", "dump.rdb")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"))
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseMounting {
+		t.Fatalf("expected Mounting, got %s", got.Status.Phase)
+	}
+}
+
+// 16. Mounting: ValkeyBackupTarget not Reachable → 15s requeue (Phase 그대로).
+func TestRestore_mountingTargetRef_targetNotReachable(t *testing.T) {
+	rest := freshTargetRefRestore("r1", "ns", "vk", "tgt", "dump.rdb")
+	rest.Status.Phase = cachev1alpha1.RestorePhaseMounting
+	tgt := validBackupTarget("tgt", "ns")
+	tgt.Status.Phase = cachev1alpha1.BackupTargetPhasePending
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"), tgt)
+
+	res, err := r.Reconcile(context.Background(), reqFor("r1", "ns"))
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != 15*time.Second {
+		t.Fatalf("expected 15s requeue (target not reachable), got %v", res)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseMounting {
+		t.Fatalf("expected Phase=Mounting (still waiting), got %s", got.Status.Phase)
+	}
+}
+
+// 17. Mounting: TargetRef + Reachable → 임시 PVC + Download Job 생성.
+func TestRestore_mountingTargetRef_createsPVCAndJob(t *testing.T) {
+	rest := freshTargetRefRestore("r1", "ns", "vk", "tgt", "dump.rdb")
+	rest.Status.Phase = cachev1alpha1.RestorePhaseMounting
+	tgt := validBackupTarget("tgt", "ns")
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"), tgt)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	// 임시 PVC 생성 확인.
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := r.Get(context.Background(),
+		types.NamespacedName{Name: "r1-source", Namespace: "ns"}, pvc); err != nil {
+		t.Fatalf("expected r1-source PVC created, got: %v", err)
 	}
 }
 
