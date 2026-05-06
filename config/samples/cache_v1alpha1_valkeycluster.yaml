@@ -33,5 +33,4 @@ spec:
   podDisruptionBudget:
     enabled: true
   monitoring:
-    serviceMonitor:
-      enabled: true
+    enabled: true

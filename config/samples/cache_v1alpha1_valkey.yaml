@@ -33,5 +33,5 @@ spec:
   podDisruptionBudget:
     enabled: true                          # 운영 환경 권장
   monitoring:
-    serviceMonitor:
-      enabled: true                        # Prometheus Operator 사용 시
+    enabled: true                          # Prometheus Operator 사용 시 ServiceMonitor 자동 생성
+    # serviceMonitor 하위 필드는 Labels / Interval / Namespace 만 (enabled 없음 — Monitoring.Enabled 가 단일 switch)
