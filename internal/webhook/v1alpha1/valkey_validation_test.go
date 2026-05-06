@@ -171,3 +171,98 @@ func TestValidateClusterSpec(t *testing.T) {
 		}
 	})
 }
+
+// validateValkeyImmutable 회귀 보호 (cycle 132).
+func TestValidateValkeyImmutable(t *testing.T) {
+	t.Parallel()
+	t.Run("mode change → forbidden", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.Valkey{}
+		old.Spec.Mode = cachev1alpha1.ModeStandalone
+		newV := &cachev1alpha1.Valkey{}
+		newV.Spec.Mode = cachev1alpha1.ModeReplication
+		errs := validateValkeyImmutable(old, newV)
+		var hasModeErr bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "spec.mode is immutable") {
+				hasModeErr = true
+			}
+		}
+		if !hasModeErr {
+			t.Error("mode change → expected immutable error")
+		}
+	})
+	t.Run("storageClassName change → forbidden", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.Valkey{}
+		old.Spec.Storage.StorageClassName = "fast-ssd"
+		newV := &cachev1alpha1.Valkey{}
+		newV.Spec.Storage.StorageClassName = "slow-hdd"
+		errs := validateValkeyImmutable(old, newV)
+		if len(errs) == 0 {
+			t.Error("storageClassName change → expected error")
+		}
+	})
+	t.Run("tls.enabled toggle → forbidden", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.Valkey{}
+		old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
+		newV := &cachev1alpha1.Valkey{}
+		newV.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true}
+		errs := validateValkeyImmutable(old, newV)
+		if len(errs) == 0 {
+			t.Error("tls.enabled toggle → expected error")
+		}
+	})
+	t.Run("no change → no error", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.Valkey{}
+		old.Spec.Mode = cachev1alpha1.ModeStandalone
+		old.Spec.Storage.StorageClassName = "fast-ssd"
+		newV := &cachev1alpha1.Valkey{}
+		newV.Spec.Mode = cachev1alpha1.ModeStandalone
+		newV.Spec.Storage.StorageClassName = "fast-ssd"
+		errs := validateValkeyImmutable(old, newV)
+		if len(errs) > 0 {
+			t.Errorf("no change → expected no error, got %v", errs)
+		}
+	})
+}
+
+// validateClusterImmutable 회귀 보호 (cycle 132).
+func TestValidateClusterImmutable(t *testing.T) {
+	t.Parallel()
+	t.Run("storageClassName change → forbidden", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.ValkeyCluster{}
+		old.Spec.Storage.StorageClassName = "fast-ssd"
+		newV := &cachev1alpha1.ValkeyCluster{}
+		newV.Spec.Storage.StorageClassName = "slow-hdd"
+		errs := validateClusterImmutable(old, newV)
+		if len(errs) == 0 {
+			t.Error("storageClassName change → expected error")
+		}
+	})
+	t.Run("dataDirPath change → forbidden", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.ValkeyCluster{}
+		old.Spec.Storage.DataDirPath = "/data"
+		newV := &cachev1alpha1.ValkeyCluster{}
+		newV.Spec.Storage.DataDirPath = "/var/data"
+		errs := validateClusterImmutable(old, newV)
+		if len(errs) == 0 {
+			t.Error("dataDirPath change → expected error")
+		}
+	})
+	t.Run("tls.enabled toggle → forbidden", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.ValkeyCluster{}
+		old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true}
+		newV := &cachev1alpha1.ValkeyCluster{}
+		newV.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
+		errs := validateClusterImmutable(old, newV)
+		if len(errs) == 0 {
+			t.Error("tls.enabled toggle → expected error")
+		}
+	})
+}
