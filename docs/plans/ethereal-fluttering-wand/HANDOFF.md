@@ -135,7 +135,7 @@ make install && make deploy IMG=valkey-operator:dev
 
 ---
 
-## Quality 시스템 종합 (cycle 104 갱신 — Phase 2 quality 86 commits / 학습형 immune system)
+## Quality 시스템 종합 (cycle 134 갱신 — Phase 2 quality 108 commits / unit test maturity)
 
 본 세션 (cycles 20-91) 의 quality 작업이 *체계적 production-grade 시스템* 으로
 정리됨. 상세 inventory: [release-checklist.md §2](../../operations/release-checklist.md).
@@ -143,6 +143,21 @@ make install && make deploy IMG=valkey-operator:dev
 ### 자동 차단 game (PR 머지 전)
 - **6 lefthook pre-push** — full-lint + gitleaks + go-mod-tidy + helm-lint +
   helm-template (6 combinations) + unit-test.
+### Unit test coverage 진화 (cycles 117-133)
+
+| Package | Before | After | Δ | 잔여 |
+|---|---|---|---|---|
+| internal/resources | 51% | **91.3%** | +40.3 | minor utility |
+| internal/webhook | 83.3% | **93.1%** | +9.8 | envtest wrapper |
+| internal/valkey | 33.8% | 41.6% | +7.8 | redis client I/O |
+| internal/controller | 47% | 48.7% | +1.7 | Reconciler/apply (envtest) |
+| internal/observability | 76.2% | 76.2% | (cycle 25-) | OTLP gRPC |
+| internal/storage | 68.2% | 68.2% | (S3 I/O) | integration test |
+| internal/cli | 62.5% | 62.5% | (S3 I/O) | integration test |
+
+진정한 unit test maturity 도달 — *모든 critical pure builder/helper/validator*
+회귀 보호. 잔여 미커버 는 *모두 외부 의존* (K8s client / redis / S3 / OTLP).
+
 - **42 SSOT 동기 게이트** (internal/observability/, release-checklist §2) —
   alert/runbook/RBAC/CRD/sample/chart artifacts/markdown/Webhook+Reconciler/
   features/value↔template/cross-feature interaction/metric phase enum/
