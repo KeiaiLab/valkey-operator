@@ -253,8 +253,12 @@ func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha
 // triggerBackup — 대상 인스턴스의 primary (Valkey) 또는 임의 노드 (ValkeyCluster)
 // 에 BGSAVE / BGREWRITEAOF 발행. preLastSave timestamp 반환 (완료 감지용).
 func (r *ValkeyBackupReconciler) triggerBackup(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (time.Time, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyBackup/TriggerBGSAVE")
+	defer span.End()
+
 	c, err := r.dialBackupTarget(ctx, b)
 	if err != nil {
+		span.RecordError(err)
 		return time.Time{}, err
 	}
 	defer func() { _ = c.Close() }()
@@ -278,8 +282,12 @@ func (r *ValkeyBackupReconciler) triggerBackup(ctx context.Context, b *cachev1al
 
 // queryLastSave — primary (Valkey) 또는 임의 노드 (ValkeyCluster) 의 LASTSAVE 조회.
 func (r *ValkeyBackupReconciler) queryLastSave(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (time.Time, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyBackup/LASTSAVE")
+	defer span.End()
+
 	c, err := r.dialBackupTarget(ctx, b)
 	if err != nil {
+		span.RecordError(err)
 		return time.Time{}, err
 	}
 	defer func() { _ = c.Close() }()

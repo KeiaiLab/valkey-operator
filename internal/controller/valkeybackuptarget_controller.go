@@ -228,6 +228,8 @@ func (r *ValkeyBackupTargetReconciler) verifyEndpoint(
 	t *cachev1alpha1.ValkeyBackupTarget,
 	ak, sk string,
 ) (reason, msg string, ok bool) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyBackupTarget/BucketExists")
+	defer span.End()
 	build := r.S3ClientBuilder
 	if build == nil {
 		build = defaultS3ClientBuilder
