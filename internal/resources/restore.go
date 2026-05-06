@@ -72,6 +72,110 @@ func BuildRestoreInitContainer(srcRelPath string) corev1.Container {
 	}
 }
 
+// BuildRestoreInitContainerForCluster — ValkeyCluster mode init container.
+//
+// 단일 STS 의 모든 pod 가 동일 init container 사용. shell 안에서 pod
+// hostname 의 ordinal 추출 → shard index 결정 → 적절한 shard RDB cp.
+//
+// ValkeyCluster ordinal 매핑 (valkeycluster_controller.go):
+//   - ordinal 0..shards-1: primary (shard index = ordinal)
+//   - ordinal shards..total-1: replica (shard index = (ordinal - shards) % shards)
+//
+// ShardLayout: shard index → source PVC 내부 path 매핑. 미명시 시 default
+// `shard-{index}/dump.rdb`. caller (controller) 가 default 채워서 전달.
+//
+// ROX source PVC 가정 (multi-pod 동시 mount).
+func BuildRestoreInitContainerForCluster(shards int32, shardLayout map[int]string) corev1.Container {
+	dstPath := "/data/dump.rdb"
+	// shell case 분기 빌드 — shard index 별 source path.
+	caseLines := ""
+	for i := int32(0); i < shards; i++ {
+		path, ok := shardLayout[int(i)]
+		if !ok || path == "" {
+			path = fmt.Sprintf("shard-%d/dump.rdb", i)
+		}
+		caseLines += fmt.Sprintf("    %d) SRC=%q ;;\n", i, path)
+	}
+	caseLines += "    *) echo \"unknown shard index $SHARD_IDX\"; exit 1 ;;\n"
+
+	cmd := fmt.Sprintf(`set -eu
+ORDINAL=${HOSTNAME##*-}
+SHARDS=%d
+if [ "$ORDINAL" -lt "$SHARDS" ]; then
+  SHARD_IDX=$ORDINAL
+else
+  SHARD_IDX=$(( (ORDINAL - SHARDS) %% SHARDS ))
+fi
+case $SHARD_IDX in
+%sesac
+SRC_FULL=%s/$SRC
+cp -f "$SRC_FULL" %q
+ls -la %q
+echo "restore-init-ok ordinal=$ORDINAL shard=$SHARD_IDX src=$SRC"
+`, shards, caseLines, RestoreSourceMountPath, dstPath, dstPath)
+
+	return corev1.Container{
+		Name:    RestoreInitContainerName,
+		Image:   RestoreInitImage,
+		Command: []string{"sh", "-c", cmd},
+		Env: []corev1.EnvVar{
+			{
+				Name: "HOSTNAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "data", MountPath: "/data"},
+			{Name: RestoreSourceVolumeName, MountPath: RestoreSourceMountPath, ReadOnly: true},
+		},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsNonRoot: ptrBool(true),
+			RunAsUser:    ptrInt64(999),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+		},
+	}
+}
+
+// InjectRestoreIntoPodSpecForCluster — ValkeyCluster 의 STS PodTemplate 에
+// init container + source volume 을 *멱등* 추가 (cluster 형태).
+func InjectRestoreIntoPodSpecForCluster(
+	pod *corev1.PodSpec,
+	shards int32,
+	shardLayout map[int]string,
+	sourcePVC string,
+) {
+	initC := BuildRestoreInitContainerForCluster(shards, shardLayout)
+	srcVol := BuildRestoreSourceVolume(sourcePVC)
+
+	replaced := false
+	for i, c := range pod.InitContainers {
+		if c.Name == RestoreInitContainerName {
+			pod.InitContainers[i] = initC
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		pod.InitContainers = append(pod.InitContainers, initC)
+	}
+
+	replaced = false
+	for i, v := range pod.Volumes {
+		if v.Name == RestoreSourceVolumeName {
+			pod.Volumes[i] = srcVol
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		pod.Volumes = append(pod.Volumes, srcVol)
+	}
+}
+
 // BuildRestoreSourceVolume — STS PodTemplate 에 추가할 source PVC volume.
 //
 // ReadOnly=true — source 는 변경 불가 (init container 가 cp 만).
