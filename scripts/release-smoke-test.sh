@@ -62,7 +62,7 @@ fi
 
 # 2. GHCR image
 echo ""
-echo "▸ [2/5] GHCR image manifest"
+echo "▸ [2/6] GHCR image manifest"
 # Image name 은 GH repo name 을 따름 (chart name 과 다를 수 있음 — postgresql-operator
 # chart 가 ghcr.io/keiailab/postgres-operator 로 push 되는 패턴 등).
 IMAGE_REF="ghcr.io/${GH_OWNER}/${GH_REPO}:${VERSION}"
@@ -75,7 +75,7 @@ fi
 
 # 3. GitHub Pages
 echo ""
-echo "▸ [3/5] GitHub Pages status"
+echo "▸ [3/6] GitHub Pages status"
 PAGES_STATUS="$(gh api "repos/${GH_OWNER}/${GH_REPO}/pages/builds" --jq '.[0].status' 2>/dev/null || echo "missing")"
 if [ "$PAGES_STATUS" = "built" ]; then
   pass "Pages status=built"
@@ -85,7 +85,7 @@ fi
 
 # 4. Helm repo index.yaml — 파일 기반 (bash 변수 long-string echo race 회피)
 echo ""
-echo "▸ [4/5] Helm repo index.yaml fetch"
+echo "▸ [4/6] Helm repo index.yaml fetch"
 INDEX_FILE="/tmp/release-smoke-index-$$.yaml"
 if curl -sfo "$INDEX_FILE" "${HELM_REPO_URL}/index.yaml" 2>/dev/null; then
   SIZE=$(wc -c < "$INDEX_FILE" | tr -d ' ')
@@ -103,7 +103,7 @@ fi
 
 # 5. helm pull + template
 echo ""
-echo "▸ [5/5] helm pull + template (default + all-features)"
+echo "▸ [5/6] helm pull + template (default + all-features)"
 TMP_REPO="smoke-test-$$"
 if helm repo add "$TMP_REPO" "${HELM_REPO_URL}" >/dev/null 2>&1; then
   helm repo update "$TMP_REPO" >/dev/null 2>&1

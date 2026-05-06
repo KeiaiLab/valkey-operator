@@ -29,5 +29,8 @@ go.work
 # Kubeconfig might contain secrets
 *.kubeconfig
 
+# kubebuilder make build-installer 산출물 (release artifact, repo 추적 대상 아님)
+dist/
+
 # Ralph loop state (local-only)
 .claude/ralph-loop.local.md
