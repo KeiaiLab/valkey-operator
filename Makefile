@@ -335,6 +335,14 @@ helm-template: ## Render chart with default + critical combinations sanity check
 		--set webhook.enabled=true \
 		--set networkPolicy.enabled=true >/dev/null && \
 		echo "✓ helm template (webhook + NetworkPolicy enabled, cycles 72/73) OK"
+	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system \
+		--set features.cluster.enabled=true \
+		--set features.backup.enabled=true \
+		--set webhook.enabled=true \
+		--set networkPolicy.enabled=true \
+		--set tracing.endpoint=otel-collector.observability.svc:4317 \
+		--set 'watch.namespaces={valkey-prod}' >/dev/null && \
+		echo "✓ helm template (full production stack, cycles 86/88/89 cross-feature) OK"
 
 .PHONY: audit
 audit: ## govulncheck + gosec + trivy fs — RFC 0002 L3 security 게이트.
