@@ -154,14 +154,19 @@ docker-push: ## Push docker image with the manager.
 # To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 .PHONY: docker-buildx
-docker-buildx: ## Build and push docker image for the manager for cross-platform support
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name valkey-operator-builder
-	$(CONTAINER_TOOL) buildx use valkey-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm valkey-operator-builder
-	rm Dockerfile.cross
+docker-buildx: ## Build and push multi-arch image. CLAUDE.md §2: default builder + ldflags 자동 주입.
+	# CLAUDE.md §2 — default builder 만 사용 (커스텀 builder 인스턴스 금지). buildx
+	# default 가 자동 멀티아키 지원. ldflags 자동 주입 (cycle 54 의 docker-build 와
+	# 동일 패턴 — production release 의 핵심 경로).
+	@VERSION_VAL="$${VERSION:-dev}"; \
+	COMMIT_VAL="$$(git rev-parse --short HEAD 2>/dev/null || echo none)"; \
+	DATE_VAL="$$(date -u +%Y-%m-%d)"; \
+	$(CONTAINER_TOOL) buildx build --push \
+		--platform=$(PLATFORMS) \
+		--build-arg VERSION=$$VERSION_VAL \
+		--build-arg COMMIT=$$COMMIT_VAL \
+		--build-arg BUILD_DATE=$$DATE_VAL \
+		--tag ${IMG} .
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
