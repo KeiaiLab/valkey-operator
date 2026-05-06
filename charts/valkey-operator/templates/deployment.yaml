@@ -54,16 +54,12 @@ spec:
             {{- if .Values.logging.development }}
             - --zap-devel=true
             {{- end }}
-            # Feature gates (v0.1.0-alpha — values.features 참조)
-            {{- if .Values.features.cluster.enabled }}
-            - --enable-cluster-controller=true
-            {{- end }}
-            {{- if .Values.features.backup.enabled }}
-            - --enable-backup-controller=true
-            {{- end }}
-            {{- if .Values.features.autoscaling.enabled }}
-            - --enable-autoscaling=true
-            {{- end }}
+            # cycle 68: Feature gates 는 *RBAC 차원* 에서만 작동 (clusterrole.yaml).
+            # 옛 `--enable-*-controller=true` flag 는 cmd/main.go 가 parse 안 함
+            # → operator immediate exit + CrashLoopBackOff. 본 cycle 에서 제거.
+            # features.{cluster,backup,autoscaling}.enabled 는 *RBAC 권한 부여*
+            # 만 controlling — operator 는 항상 모든 reconciler 등록 (cycle 40
+            # 의 TestReconcilerTypesRegisteredInMain 게이트 참조).
           ports:
             - name: metrics
               containerPort: {{ .Values.service.metricsPort }}
