@@ -6,6 +6,7 @@ resources:
 - bases/cache.keiailab.io_valkeyclusters.yaml
 - bases/cache.keiailab.io_valkeybackups.yaml
 - bases/cache.keiailab.io_valkeybackuptargets.yaml
+- bases/cache.keiailab.io_valkeyrestores.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
