@@ -191,9 +191,15 @@ kubectl exec -it <cr-name>-0 -- valkey-cli -a "$PASS"
 |---|---|---|
 | `ENABLE_CLUSTER_RECONCILER` | `true` | `false` 시 ValkeyClusterReconciler skip — chart `features.cluster.enabled=false` 자동 주입. |
 | `ENABLE_BACKUP_RECONCILER` | `true` | `false` 시 ValkeyBackup/BackupTarget/Restore 3 reconciler skip — chart `features.backup.enabled=false` 자동 주입. |
+| `ENABLE_WEBHOOKS` | `true` | `false` 시 ValkeyWebhook + ValkeyClusterWebhook 미등록 — *envtest 환경 만 사용*. production 에서 명시 설정 금지. |
 | `WATCH_NAMESPACES` | (미설정 = cluster-wide) | `ns1,ns2` 형식. cache.DefaultNamespaces 으로 제한 — chart `watch.namespaces` 자동 주입. |
 | `OPERATOR_IMAGE` | `controller:latest` | Upload/Download Job image — chart `valkey-operator.image` helper 자동 주입 (cycle 64). 미설정 시 ImagePullBackOff 위험. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | (미설정 = no-op) | OTLP gRPC endpoint — chart `tracing.endpoint` 주입 (cycle 65). 미설정 시 22 spans 발행 0 (성능 영향 0). |
+| `OTEL_SERVICE_NAME` | `valkey-operator` | OTEL service identifier — chart `tracing.serviceName` 주입. Jaeger/Tempo UI 의 service 식별. |
+
+**Note**: `ENABLE_*_RECONCILER` / `ENABLE_WEBHOOKS` 는 *case-sensitive* — `"false"`
+literal (lowercase) 만 비활성. 대소문자 불일치 (`"FALSE"`, `"False"`) 또는 다른
+값 (`"0"`, `"no"`) 은 *enabled* 로 처리 — kubebuilder convention.
 
 진단 명령:
 
