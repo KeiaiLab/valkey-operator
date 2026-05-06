@@ -202,7 +202,10 @@ features:
   # ValkeyBackup + ValkeyBackupTarget + ValkeyRestore — S3/PVC 대상 백업/복원. alpha.
   backup:
     enabled: false
-  # Auto-scaling (HPA) — alpha 단계, drift-guard mutex 검증 미완료.
+  # Auto-scaling (HPA) — DEFERRED (ADR-0027). 본 chart 의 features.autoscaling.enabled
+  # 는 *RBAC 권한 만 부여* (autoscaling/horizontalpodautoscalers). operator 코드 가
+  # HPA reconciler 미보유 — 활성화해도 *실제 동작 없음*. v0.1.0 stable 후 ADR-0027
+  # trigger 시 구현 예정 (Replication mode only + operator-managed).
   autoscaling:
     enabled: false
 
