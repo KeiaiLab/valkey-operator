@@ -9,8 +9,10 @@ Helm 사용자가 .Values.webhook.enabled=true 설정 시:
    cert-manager 의 cert-manager.io/inject-ca-from annotation 으로 caBundle 자동
    주입.
 
-operator manager 컨테이너는 *기본적으로 9443 listen* — webhook 미활성 시에도
-listen 만, K8s admission webhook 미등록 → 호출 0.
+cycle 106 의 deployment.yaml 가 webhook.enabled=true 시 *operator container 의
+serving config* (--webhook-cert-path + cert volumeMount + 9443 containerPort) 자동
+주입. webhook.enabled=false 시 Setup 코드는 여전히 실행 (controller-runtime default
+self-signed cert 으로 9443 listen) 하지만 *K8s admission webhook 미등록* → 호출 0.
 
 WARNING: cert-manager 미설치 시 Certificate/Issuer CR 생성 실패 → 설치 거절.
 *Helm dependencies 으로 cert-manager 자동 설치* 는 cycle 73 scope 외 (사용자

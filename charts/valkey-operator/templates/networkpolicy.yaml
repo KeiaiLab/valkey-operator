@@ -4,7 +4,7 @@ opt-in via .Values.networkPolicy.enabled. default-deny + 명시 ingress/egress �
 
 기본 ingress (enabled 시):
 - Prometheus scrape (metrics 8443) — 같은 namespace 또는 .Values.networkPolicy.ingress 추가.
-- Webhook serving (9443) — apiserver 호출 (현재 chart webhook 미구현, port 만 예약).
+- Webhook serving (9443) — apiserver 호출 (cycle 73 chart webhook 활성화 + cycle 86 ingress rule + cycle 106 deployment serving config).
 - Health probe (8081) — kubelet 자동 (NetworkPolicy 외 — kubelet 호출은 NP 적용 안 됨).
 
 기본 egress:
