@@ -1,0 +1,46 @@
+# Probe pods — NetworkPolicy enforcement 검증용 (Calico/Cilium 환경).
+#
+# probe-allowed: Valkey selector 와 호환 (NP 의 from-selector 일치).
+# probe-blocked: 다른 label — NP 가 차단해야.
+#
+# 사용:
+#   kubectl apply -f test/network-policy/probe-pods.yaml
+#   kubectl exec probe-allowed -- nc -zv <valkey-headless>:6379   # OK
+#   kubectl exec probe-blocked -- nc -zv <valkey-headless>:6379   # timeout (차단됨)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-allowed
+  labels:
+    # Valkey 의 NetworkPolicy 가 *Pod selector* 로 같은 app 만 허용 — probe-allowed 는
+    # 동일 selector 매칭하도록 label 부여.
+    app: valkey-probe
+    valkey.io/role: probe
+spec:
+  containers:
+    - name: probe
+      image: alpine:3.21
+      command: ["sleep", "3600"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        capabilities:
+          drop: ["ALL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-blocked
+  labels:
+    # 의도적으로 다른 label — NP 가 차단해야.
+    app: stranger
+spec:
+  containers:
+    - name: probe
+      image: alpine:3.21
+      command: ["sleep", "3600"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        capabilities:
+          drop: ["ALL"]
