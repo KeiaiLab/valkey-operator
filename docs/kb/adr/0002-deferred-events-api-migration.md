@@ -45,8 +45,16 @@ deprecation 경고 무음 처리. M2 단계 별도 PR 로 분리.
 
 - Trigger: controller-runtime v0.24+ 또는 client-go v0.36+ 에서 legacy API deprecation
   scheduled-removal 표시 시.
-- 작업 항목:
+- 작업 항목 (현재 상태, cycle 47 갱신):
   1. `helpers.go:applyErrorCondition` 시그니처 → `events.EventRecorder`.
-  2. 양 컨트롤러의 `Recorder` 필드 타입 변경.
-  3. `Eventf` 호출 사이트 7곳 (현재) action/note 분리.
-  4. nolint 2건 제거.
+  2. **5 reconciler** 의 `Recorder` 필드 타입 변경:
+     valkey_controller, valkeycluster_controller, valkeybackup_controller (cycle 19),
+     valkeybackuptarget_controller (cycle 19), valkeyrestore_controller (cycle 19).
+  3. `Eventf` 호출 사이트 1곳 (`helpers.go:applyErrorCondition`) action/note 분리.
+     본 함수가 reconciler 별 분기 없이 모든 reconciler 의 events 를 발행 — 단일
+     변경점.
+  4. **nolint 5건 제거** (cycles 19/46): valkey_controller:519,
+     valkeycluster_controller:1024, valkeybackup_controller:704,
+     valkeybackuptarget_controller:282, valkeyrestore_controller:781.
+- 검증: `make lint` → SA1019 0건 + `kubectl get events --field-selector
+  involvedObject.kind=Valkey` 정상 발행.
