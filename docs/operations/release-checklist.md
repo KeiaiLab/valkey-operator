@@ -64,6 +64,7 @@ push 도 동일 통과 필수.
 | 37 | `TestNetworkPolicyWebhookPortPresent` | NetworkPolicy ingress 에 webhook.enabled 조건부 9443 rule (cycles 72/73 cross-feature interaction — webhook silent reject 차단) |
 | 38 | `TestNetworkPolicyTracingEgressPresent` | NetworkPolicy egress 에 tracing.endpoint 조건부 OTLP 4317/4318 rule (cycles 65/72 cross-feature — OTEL spans silent loss 차단) |
 | 39 | `TestNetworkPolicyBackupEgressPresent` | NetworkPolicy egress 에 features.backup.enabled 조건부 외부 S3 (443/9000) rule (cycles 16/72 cross-feature — BackupTarget Reachable 영구 Pending 차단) |
+| 40 | `TestMetricPhaseLabelsSync` | metrics.go::allPhases ↔ api ValkeyPhase + ClusterPhase enum union (Grafana dashboard 의 phase 시계열 incomplete 차단) |
 
 검증 명령: `go test ./internal/observability/`
 
