@@ -54,6 +54,7 @@ push 도 동일 통과 필수.
 | 27 | `TestRBACRoleResourcesInMarker` | role.yaml 의 resource → kubebuilder:rbac 마커 (orphan rule 차단) |
 | 28 | `TestInstallYAMLStructure` | dist/install.yaml 구조 검증 (5 CRD + Deployment + RBAC + Webhook + Service) |
 | 29 | `TestKustomizeManifestLabelChainSync` | pod labels ⊇ Deployment selector ⊇ Service selector + ServiceMonitor selector ⊆ Service metadata.labels |
+| 30 | `TestKustomizeChartResourcesSync` | config/manager/manager.yaml ↔ charts/.../values.yaml 의 resources (limits + requests × cpu + memory) |
 
 검증 명령: `go test ./internal/observability/`
 

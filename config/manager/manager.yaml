@@ -87,15 +87,17 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
-        # TODO(user): Configure the resources accordingly based on the project requirements.
-        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        # cycle 61: kubebuilder default (10m/64Mi req, 128Mi limit) 은 production
+        # 현실 부족 — controller-runtime 캐시 + 다중 CR reconcile 시 128Mi OOM
+        # 위험. chart values.yaml + 3-repo (mongodb/postgres-operator) 와 정합.
+        # 운영자가 메트릭 (process_resident_memory_bytes) 모니터링 후 조정 가능.
         resources:
           limits:
             cpu: 500m
-            memory: 128Mi
+            memory: 512Mi
           requests:
-            cpu: 10m
-            memory: 64Mi
+            cpu: 100m
+            memory: 128Mi
         volumeMounts: []
       volumes: []
       serviceAccountName: controller-manager
