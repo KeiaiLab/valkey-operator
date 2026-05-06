@@ -135,7 +135,7 @@ make install && make deploy IMG=valkey-operator:dev
 
 ---
 
-## Quality 시스템 종합 (cycle 91 갱신 — Phase 2 quality 73 commits 마일스톤)
+## Quality 시스템 종합 (cycle 97 갱신 — Phase 2 quality 79 commits)
 
 본 세션 (cycles 20-91) 의 quality 작업이 *체계적 production-grade 시스템* 으로
 정리됨. 상세 inventory: [release-checklist.md §2](../../operations/release-checklist.md).
@@ -143,9 +143,11 @@ make install && make deploy IMG=valkey-operator:dev
 ### 자동 차단 game (PR 머지 전)
 - **6 lefthook pre-push** — full-lint + gitleaks + go-mod-tidy + helm-lint +
   helm-template (6 combinations) + unit-test.
-- **39 SSOT 동기 게이트** (internal/observability/, release-checklist §2) —
+- **42 SSOT 동기 게이트** (internal/observability/, release-checklist §2) —
   alert/runbook/RBAC/CRD/sample/chart artifacts/markdown/Webhook+Reconciler/
-  features/value↔template/cross-feature interaction 망라.
+  features/value↔template/cross-feature interaction/metric phase enum/
+  Go version (Dockerfile+CONTRIBUTING)/K8s version (Chart+README+chart README)
+  망라.
 - **5 hot-path benchmark** (internal/valkey/) — performance 회귀 baseline.
 
 ### 자동화 (실수 발생 자체 차단)
@@ -153,13 +155,15 @@ make install && make deploy IMG=valkey-operator:dev
 - pre-push hook → go.mod direct/indirect drift 자동 차단 (cycle 47).
 - `make release` → SBOM (syft) + trivy post-scan 자동 첨부 (cycle 6).
 
-### 결함 family progressive completion (5)
+### 결함 family progressive completion (6)
 1. mode/version drift (cycles 36-44) — 4 sibling → 횡단 게이트.
 2. ldflags chain (cycles 53-57) — 5-step end-to-end version traceability.
 3. value↔template binding (cycles 65-70) — 횡단 게이트 + 4 unused values 명시.
 4. features RBAC+reconciler (cycles 80-81) — 3-layer 정합 게이트.
 5. cross-feature interaction (cycles 86-90) — 3 sibling (NetworkPolicy +
    webhook/tracing/backup) + max combination helm-template.
+6. **version sync (cycles 95-97)** — Go (Dockerfile + go.mod + CONTRIBUTING) +
+   K8s (Chart.yaml + README badge + chart README) — 6 sync points 자동 검증.
 
 ### 발견·수정한 production gap (23건)
 1. cycle 29 — config/samples/ `monitoring.serviceMonitor.enabled` silent ignore.
