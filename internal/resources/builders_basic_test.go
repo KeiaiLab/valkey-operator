@@ -193,6 +193,66 @@ func TestBuildClientService(t *testing.T) {
 	}
 }
 
+// BuildNetworkPolicy 회귀 보호 (cycle 122) — operator 가 생성하는 *Valkey
+// instance 자체* 의 NetworkPolicy. cycle 72 의 chart NetworkPolicy 와 별개
+// (operator 자체 vs Valkey CR 의 instance pod).
+func TestBuildNetworkPolicy(t *testing.T) {
+	t.Parallel()
+	t.Run("standalone client port only", func(t *testing.T) {
+		t.Parallel()
+		np := BuildNetworkPolicy("rs", "ns", false, nil)
+		if np.Name != "rs" || np.Namespace != "ns" {
+			t.Errorf("name/ns: %q/%q", np.Name, np.Namespace)
+		}
+		if len(np.Spec.Ingress) != 1 {
+			t.Fatalf("ingress 1 rule 기대, got %d", len(np.Spec.Ingress))
+		}
+		ports := np.Spec.Ingress[0].Ports
+		if len(ports) != 1 || ports[0].Port.IntValue() != PortClient {
+			t.Errorf("client port (%d) 기대", PortClient)
+		}
+	})
+	t.Run("cluster mode adds bus port", func(t *testing.T) {
+		t.Parallel()
+		np := BuildNetworkPolicy("rs", "ns", true, nil)
+		ports := np.Spec.Ingress[0].Ports
+		if len(ports) != 2 {
+			t.Fatalf("client + cluster-bus 2 ports 기대, got %d", len(ports))
+		}
+		hasBus := false
+		for _, p := range ports {
+			if p.Port.IntValue() == PortClusterBus {
+				hasBus = true
+			}
+		}
+		if !hasBus {
+			t.Error("cluster mode 에 cluster-bus port 누락")
+		}
+	})
+	t.Run("self-peer always present", func(t *testing.T) {
+		t.Parallel()
+		np := BuildNetworkPolicy("rs", "ns", false, nil)
+		from := np.Spec.Ingress[0].From
+		if len(from) < 1 || from[0].PodSelector == nil {
+			t.Error("self-peer (PodSelector with selectorLabels) 누락")
+		}
+	})
+	t.Run("additional ingress merged", func(t *testing.T) {
+		t.Parallel()
+		extraPodSel := map[string]string{"app": "client"}
+		spec := &cachev1alpha1.NetworkPolicySpec{
+			AdditionalIngressFrom: []cachev1alpha1.NetworkPolicyPeer{
+				{PodSelector: &extraPodSel},
+			},
+		}
+		np := BuildNetworkPolicy("rs", "ns", false, spec)
+		from := np.Spec.Ingress[0].From
+		if len(from) != 2 {
+			t.Errorf("self + additional 2 peers 기대, got %d", len(from))
+		}
+	})
+}
+
 func TestBuildMetricsService(t *testing.T) {
 	t.Parallel()
 	svc := BuildMetricsService("rs", "ns")
