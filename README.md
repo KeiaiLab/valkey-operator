@@ -187,6 +187,46 @@ NFS / GlusterFS / Ceph FS 등 file system 기반 storage class 사용. 외부
 저장 (Source.TargetRef) 사용 시 `Spec.SourcePVCAccessMode: ReadOnlyMany`
 명시 필수.
 
+## Replication 자동 Failover — 신규 (cycle 7)
+
+ADR-0017 채택. Replication mode (replicas≥2) 에서 primary pod NotReady
+30s+ 감지 시 *operator 가 자동 failover*. 데이터 손실 최소화 — replica 의
+master_repl_offset / slave_repl_offset 가장 큰 노드 선출 → REPLICAOF NO ONE.
+
+### 동작 조건
+
+- `Spec.Mode == Replication` + `Spec.Replicas > 1`
+- `Spec.AutoFailover == true` (default — `false` 명시 시 비활성)
+
+### 알고리즘
+
+1. 현재 primary (`Status.CurrentPrimary` 또는 `<name>-0`) Pod Ready 검증.
+2. NotReady 가 30s+ 미만이면 transient flap 으로 무시.
+3. 모든 replica (primary 제외) 의 INFO replication 호출 → offset 추출.
+4. `selectFailoverCandidate` 로 가장 큰 offset replica 선출 (tie 시
+   ordinal 작은 것).
+5. PromoteToPrimary (`REPLICAOF NO ONE`) 발행 → 새 primary.
+6. 다른 Ready replicas 에 `EnsureReplicaOf <new-primary>` 발행.
+7. `Status.CurrentPrimary` 갱신 (in-memory, 다음 reconcile 의 Status update
+   에 반영).
+
+### 비활성
+
+```yaml
+spec:
+  autoFailover: false   # primary kill 시 사용자가 수동 처리
+```
+
+### 한계
+
+- **Split-brain 강력 보장 없음** — 네트워크 분단 시 두 primary 발생 가능.
+  *완화*: NotReady 30s 임계값 + operator leader-elect (단일 인스턴스).
+  Stronger 일관성은 별개 ADR (Sentinel/Raft 추후).
+- **ValkeyCluster 모드는 N/A** — valkey native cluster mode 의
+  `cluster_replica_validity_factor` 가 처리. ValkeyClusterReconciler 는
+  관여 안 함.
+- **e2e 자동 검증 미진행** (별개 cycle).
+
 ## ValkeyRestore (Standalone PVC) 사용법 — 신규
 
 전제: 이미 ValkeyBackup 으로 backup PVC (`<backup-name>-backup`) 가 생성됨.
