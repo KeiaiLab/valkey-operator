@@ -62,6 +62,7 @@ rules:
   - cache.keiailab.io
   resources:
   - valkeybackups
+  - valkeybackuptargets
   - valkeyclusters
   - valkeys
   verbs:
@@ -76,6 +77,7 @@ rules:
   - cache.keiailab.io
   resources:
   - valkeybackups/finalizers
+  - valkeybackuptargets/finalizers
   - valkeyclusters/finalizers
   - valkeys/finalizers
   verbs:
@@ -84,6 +86,7 @@ rules:
   - cache.keiailab.io
   resources:
   - valkeybackups/status
+  - valkeybackuptargets/status
   - valkeyclusters/status
   - valkeys/status
   verbs:
