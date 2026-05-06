@@ -1,0 +1,207 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "valkey-operator.fullname" . }}
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+rules:
+  # Valkey CRDs (cache.keiailab.io/v1alpha1)
+  - apiGroups:
+      - cache.keiailab.io
+    resources:
+      - valkeys
+      {{- if .Values.features.cluster.enabled }}
+      - valkeyclusters
+      {{- end }}
+      {{- if .Values.features.backup.enabled }}
+      - valkeybackups
+      - valkeybackuptargets
+      - valkeyrestores
+      {{- end }}
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - cache.keiailab.io
+    resources:
+      - valkeys/status
+      {{- if .Values.features.cluster.enabled }}
+      - valkeyclusters/status
+      {{- end }}
+      {{- if .Values.features.backup.enabled }}
+      - valkeybackups/status
+      - valkeybackuptargets/status
+      - valkeyrestores/status
+      {{- end }}
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - cache.keiailab.io
+    resources:
+      - valkeys/finalizers
+      {{- if .Values.features.cluster.enabled }}
+      - valkeyclusters/finalizers
+      {{- end }}
+      {{- if .Values.features.backup.enabled }}
+      - valkeybackups/finalizers
+      - valkeybackuptargets/finalizers
+      - valkeyrestores/finalizers
+      {{- end }}
+    verbs:
+      - update
+
+  # Core resources
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+      - endpoints
+      - persistentvolumeclaims
+      - events
+      - configmaps
+      - secrets
+      - serviceaccounts
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # Apps resources
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+      {{- if .Values.features.cluster.enabled }}
+      - deployments
+      - replicasets
+      {{- end }}
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  {{- if .Values.features.backup.enabled }}
+
+  # Batch resources (for backup jobs) — gated by features.backup.enabled
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  {{- end }}
+
+  {{- if .Values.features.autoscaling.enabled }}
+
+  # Autoscaling (for HPA) — gated by features.autoscaling.enabled
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  {{- end }}
+
+  # Policy (for PDB)
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # Networking (for NetworkPolicy)
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # cert-manager (for TLS)
+  - apiGroups:
+      - cert-manager.io
+    resources:
+      - certificates
+      - issuers
+      - clusterissuers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # Prometheus monitoring
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+      - prometheusrules
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  # Coordination (for leader election)
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+{{- end }}

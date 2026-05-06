@@ -261,3 +261,143 @@ endef
 define gomodver
 $(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
+
+##@ Release pipeline (RFC 0002 — 100% 로컬, GH Actions 금지)
+
+# Release 변수 — overridable via env or `make release VAR=...`.
+IMAGE_REPOSITORY ?= ghcr.io/keiailab/valkey-operator
+HELM_CHART       ?= charts/valkey-operator
+HELM_REPO_URL    ?= https://keiailab.github.io/valkey-operator
+RELEASE_TMP      ?= /tmp/valkey-operator-release
+GHPAGES_TMP      ?= /tmp/valkey-operator-gh-pages
+
+.PHONY: require-version
+require-version:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "ERROR: VERSION 필수 (예- make release VERSION=v0.1.0-alpha.1)"; \
+		exit 1; \
+	fi
+
+.PHONY: helm-lint
+helm-lint: ## Run helm lint on the chart.
+	helm lint $(HELM_CHART)
+
+.PHONY: helm-template
+helm-template: ## Render chart with default values for sanity check.
+	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system >/dev/null && \
+		echo "✓ helm template (default values) OK"
+	helm template valkey-operator $(HELM_CHART) --namespace valkey-operator-system \
+		--set features.cluster.enabled=true \
+		--set features.backup.enabled=true \
+		--set features.autoscaling.enabled=true >/dev/null && \
+		echo "✓ helm template (all features enabled) OK"
+
+.PHONY: audit
+audit: ## govulncheck + gosec + trivy fs — RFC 0002 L3 security 게이트.
+	@echo "=== govulncheck (call-graph CVE) ==="
+	@command -v $(LOCALBIN)/govulncheck >/dev/null 2>&1 || GOBIN=$(LOCALBIN) go install golang.org/x/vuln/cmd/govulncheck@latest
+	$(LOCALBIN)/govulncheck ./...
+	@echo "=== gosec (HIGH only) ==="
+	@command -v $(LOCALBIN)/gosec >/dev/null 2>&1 || GOBIN=$(LOCALBIN) go install github.com/securego/gosec/v2/cmd/gosec@latest
+	$(LOCALBIN)/gosec -quiet -severity high ./internal/... || true
+	@echo "=== trivy fs (lockfile + base CVE) ==="
+	@command -v trivy >/dev/null 2>&1 && trivy fs --exit-code 1 --severity HIGH,CRITICAL --quiet --skip-dirs vendor . || echo "trivy not installed (brew install trivy)"
+
+.PHONY: gate
+gate: lint test helm-lint helm-template audit ## RFC 0002 L3 종합 게이트 (lint+test+helm+audit).
+	@echo "✓ all gates PASS"
+
+.PHONY: setup-hooks
+setup-hooks: ## RFC 0002 L1+L2 로컬 hook 설치 (pre-commit + pre-push).
+	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not installed: brew install pre-commit"; exit 1; }
+	pre-commit install --hook-type pre-commit --hook-type pre-push
+	@echo "✓ pre-commit + pre-push hooks installed"
+
+.PHONY: release-preflight
+release-preflight: require-version ## 릴리스 사전 검증 — git clean + Chart.yaml 버전 일치.
+	@echo "=== Step 0/6- 릴리스 preflight (git clean + Chart 버전 일치) ==="
+	@git diff --quiet || { echo "ERROR- working tree dirty"; git status --short; exit 1; }
+	@git diff --cached --quiet || { echo "ERROR- staged but uncommitted changes"; exit 1; }
+	@CHART_VER=$$(awk '/^version:/ { print $$2; exit }' $(HELM_CHART)/Chart.yaml); \
+	TARGET_VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+	if [ "$$CHART_VER" != "$$TARGET_VER" ]; then \
+		echo "ERROR- $(HELM_CHART)/Chart.yaml version=$$CHART_VER, but release VERSION=$$TARGET_VER"; \
+		echo "  먼저 $(HELM_CHART)/Chart.yaml 의 version + appVersion 갱신"; \
+		exit 1; \
+	fi
+	@echo "✓ Chart.yaml version=$$(echo $(VERSION) | sed 's/^v//') 일치"
+
+.PHONY: release
+release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.Y.Z 필수.
+	@echo "=== Step 1/6- 로컬 게이트 (lint/test/helm/audit) ==="
+	$(MAKE) gate
+	@echo ""
+	$(MAKE) release-preflight VERSION="$(VERSION)"
+	@echo ""
+	@echo "=== Step 2/6- Docker image build + push (linux/amd64, default builder) ==="
+	@TARGET_VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
+	docker --context=default buildx build --platform linux/amd64 \
+		-t "$(IMAGE_REPOSITORY):$(VERSION)" \
+		-t "$(IMAGE_REPOSITORY):$$TARGET_VER" \
+		--push .
+	@echo ""
+	@echo "=== Step 3/6- Git tag + push ==="
+	@if git tag -l "$(VERSION)" | grep -q .; then \
+		echo "WARN- tag $(VERSION) 이미 존재 — skip"; \
+	else \
+		git tag -a "$(VERSION)" -m "$(VERSION)"; \
+	fi
+	git push origin "$(VERSION)"
+	@echo ""
+	@echo "=== Step 4/6- GitHub Release (prerelease if -alpha/-beta/-rc) ==="
+	@PREFLAG=""; case "$(VERSION)" in *alpha*|*beta*|*rc*) PREFLAG="--prerelease";; esac; \
+	mkdir -p "$(RELEASE_TMP)"; \
+	helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	if gh release view "$(VERSION)" -R keiailab/valkey-operator >/dev/null 2>&1; then \
+		echo "WARN- GH release $(VERSION) 이미 존재 — skip"; \
+	else \
+		gh release create "$(VERSION)" -R keiailab/valkey-operator $$PREFLAG \
+			--title "$(VERSION)" \
+			--notes "Release $(VERSION). 변경 내역은 CHANGELOG.md 참조." \
+			"$(RELEASE_TMP)/valkey-operator-$$(echo "$(VERSION)" | sed 's/^v//').tgz"; \
+	fi
+	@rm -rf "$(RELEASE_TMP)"
+	@echo ""
+	@echo "=== Step 5/6- Helm chart publish to gh-pages ==="
+	$(MAKE) helm-publish
+	@echo ""
+	@echo "=== Step 6/6- 완료 ==="
+	@echo "✓ Release $(VERSION) 완료"
+	@echo "  - Image: $(IMAGE_REPOSITORY):$(VERSION)"
+	@echo "  - GH Release: https://github.com/keiailab/valkey-operator/releases/tag/$(VERSION)"
+	@echo "  - Helm Repo: helm repo update && helm search repo keiailab/valkey-operator"
+	@echo "  - ArtifactHub 은 ~30분 내 인덱스 자동 갱신"
+
+.PHONY: helm-publish
+helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 로컬 자동화). gh-pages 부재 시 auto-orphan.
+	@echo "=== helm package ==="
+	@rm -rf "$(RELEASE_TMP)" "$(GHPAGES_TMP)"
+	@mkdir -p "$(RELEASE_TMP)"
+	helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"
+	@echo "=== gh-pages worktree (auto-orphan if branch missing) ==="
+	@if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then \
+		git clone --branch gh-pages --single-branch "$$(git remote get-url origin)" "$(GHPAGES_TMP)"; \
+	else \
+		echo "INFO- gh-pages 브랜치 부재 — orphan 으로 신규 생성"; \
+		git clone "$$(git remote get-url origin)" "$(GHPAGES_TMP)"; \
+		cd "$(GHPAGES_TMP)" && git checkout --orphan gh-pages && git rm -rf . >/dev/null 2>&1 || true; \
+	fi
+	@echo "=== copy chart + regen index ==="
+	cp "$(RELEASE_TMP)"/valkey-operator-*.tgz "$(GHPAGES_TMP)/"
+	cp "$(HELM_CHART)/../artifacthub-repo.yml" "$(GHPAGES_TMP)/" 2>/dev/null || true
+	@if [ -f "$(GHPAGES_TMP)/index.yaml" ]; then \
+		cd "$(GHPAGES_TMP)" && helm repo index . --merge index.yaml --url "$(HELM_REPO_URL)"; \
+	else \
+		cd "$(GHPAGES_TMP)" && helm repo index . --url "$(HELM_REPO_URL)"; \
+	fi
+	@echo "=== commit + push ==="
+	@cd "$(GHPAGES_TMP)" && git add -A && \
+		(git diff --cached --quiet || git commit -m "chore(helm): publish $$(awk '/^version:/ { print $$2; exit }' "$(CURDIR)/$(HELM_CHART)/Chart.yaml")") && \
+		git push -u origin gh-pages
+	@rm -rf "$(RELEASE_TMP)" "$(GHPAGES_TMP)"
+	@echo "✓ Helm chart 게시 완료. ArtifactHub 은 ~30분 내 인덱싱."

@@ -1,8 +1,14 @@
 # ADR-0021: Helm Chart — kubebuilder helm/v2-alpha plugin 채택
 
 - Date: 2026-05-06
-- Status: Accepted
+- Status: Superseded by ADR-0024
 - Authors: @phil
+
+> **Supersede 사유 (2026-05-06)**: 본 ADR 은 결정만 되었고 실제 chart 산출물
+> (`dist/chart/`) 은 생성되지 않은 paper-only 상태였다. 사용자 지시 ("3개 폴더 모두
+> mongodb-operator 와 동일하게 GitOps 적용") 에 따라 mongodb-operator /
+> postgres-operator 와 통일된 *수기 chart + ArtifactHub publish* 패턴 (`charts/<n>/`,
+> `charts/artifacthub-repo.yml`) 으로 전환. ADR-0024 참조.
 
 ## Context
 

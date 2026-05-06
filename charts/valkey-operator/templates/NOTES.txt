@@ -1,0 +1,55 @@
+
+Valkey Operator has been installed successfully!
+
+1. Check the operator is running:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "valkey-operator.name" . }}"
+
+2. Create a Valkey instance (single mode):
+
+   cat <<EOF | kubectl apply -f -
+   apiVersion: cache.keiailab.io/v1alpha1
+   kind: Valkey
+   metadata:
+     name: my-valkey
+     namespace: default
+   spec:
+     mode: standalone
+     replicas: 1
+     version:
+       version: "{{ .Values.valkey.version }}"
+     storage:
+       storageClassName: {{ .Values.valkey.storageClassName | default "standard" }}
+       size: 5Gi
+   EOF
+
+{{- if .Values.features.cluster.enabled }}
+
+3. Create a Valkey Cluster (Redis Cluster compatible):
+
+   cat <<EOF | kubectl apply -f -
+   apiVersion: cache.keiailab.io/v1alpha1
+   kind: ValkeyCluster
+   metadata:
+     name: my-valkey-cluster
+     namespace: default
+   spec:
+     version:
+       version: "{{ .Values.valkey.version }}"
+     shards: 3
+     replicasPerShard: 1
+     storage:
+       storageClassName: {{ .Values.valkey.storageClassName | default "standard" }}
+       size: 10Gi
+   EOF
+{{- end }}
+
+4. Check Valkey resources:
+
+   kubectl get valkey,valkeycluster,valkeybackup -A
+
+5. View operator logs:
+
+   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "valkey-operator.name" . }}" -f
+
+For more information, visit: https://github.com/keiailab/valkey-operator

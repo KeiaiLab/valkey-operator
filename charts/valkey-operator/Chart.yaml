@@ -1,0 +1,133 @@
+apiVersion: v2
+name: valkey-operator
+description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
+type: application
+# alpha 단계 — chart 자체는 0.1.0-alpha 부터 시작. semver 준수.
+version: 0.1.0-alpha
+appVersion: "0.1.0-alpha"
+kubeVersion: ">=1.26.0-0"
+
+keywords:
+  - valkey
+  - redis
+  - cache
+  - key-value
+  - in-memory
+  - operator
+  - cluster
+  - kubernetes
+
+home: https://github.com/keiailab/valkey-operator
+
+sources:
+  - https://github.com/keiailab/valkey-operator
+
+maintainers:
+  - name: Keiailab
+    email: support@keiailab.com
+    url: https://keiailab.com
+
+icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: database
+  artifacthub.io/operatorCapabilities: Basic Install
+  artifacthub.io/maturity: alpha
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/keiailab/valkey-operator/blob/main/README.md
+    - name: Source Code
+      url: https://github.com/keiailab/valkey-operator
+    - name: Valkey Project
+      url: https://valkey.io/
+  artifacthub.io/crds: |
+    - kind: Valkey
+      version: v1alpha1
+      name: valkeys.cache.keiailab.io
+      displayName: Valkey Instance
+      description: Deploys and manages a Valkey standalone or replica instance
+    - kind: ValkeyCluster
+      version: v1alpha1
+      name: valkeyclusters.cache.keiailab.io
+      displayName: Valkey Cluster
+      description: Deploys and manages a Valkey Cluster (Redis Cluster compatible)
+    - kind: ValkeyBackup
+      version: v1alpha1
+      name: valkeybackups.cache.keiailab.io
+      displayName: Valkey Backup
+      description: Creates point-in-time backups of Valkey instances/clusters
+    - kind: ValkeyBackupTarget
+      version: v1alpha1
+      name: valkeybackuptargets.cache.keiailab.io
+      displayName: Valkey Backup Target
+      description: Defines S3 / PVC backup destinations
+    - kind: ValkeyRestore
+      version: v1alpha1
+      name: valkeyrestores.cache.keiailab.io
+      displayName: Valkey Restore
+      description: Restores a Valkey instance/cluster from a backup
+  artifacthub.io/crdsExamples: |
+    - apiVersion: cache.keiailab.io/v1alpha1
+      kind: Valkey
+      metadata:
+        name: my-valkey
+        namespace: cache
+      spec:
+        mode: standalone
+        replicas: 1
+        version:
+          version: "8.0"
+        storage:
+          storageClassName: standard
+          size: 5Gi
+    - apiVersion: cache.keiailab.io/v1alpha1
+      kind: ValkeyCluster
+      metadata:
+        name: my-valkey-cluster
+        namespace: cache
+      spec:
+        version:
+          version: "8.0"
+        shards: 3
+        replicasPerShard: 1
+        storage:
+          storageClassName: standard
+          size: 10Gi
+    - apiVersion: cache.keiailab.io/v1alpha1
+      kind: ValkeyBackup
+      metadata:
+        name: my-valkey-backup
+        namespace: cache
+      spec:
+        sourceRef:
+          name: my-valkey
+          kind: Valkey
+        targetRef:
+          name: s3-target
+        compression: true
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/images: |
+    - name: valkey-operator
+      image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha
+    - name: valkey
+      image: valkey/valkey:8.0
+  artifacthub.io/prerelease: "true"
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial alpha release. Valkey + ValkeyCluster + ValkeyBackup + ValkeyBackupTarget + ValkeyRestore CRDs (cache.keiailab.io/v1alpha1).
+    - kind: added
+      description: Standalone / replica mode for Valkey instances with persistent storage and TLS support.
+    - kind: added
+      description: Cluster mode (Redis Cluster compatible) — opt-in via features.cluster.enabled.
+    - kind: added
+      description: Backup/restore controllers (S3, PVC targets) — opt-in via features.backup.enabled.
+    - kind: added
+      description: Optional HPA via features.autoscaling.enabled, PodDisruptionBudget, and NetworkPolicy automation.
+    - kind: added
+      description: ServiceMonitor + Prometheus rules templates for cluster-native metrics.
+  artifacthub.io/recommendations: |
+    - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+    - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+
+dependencies: []

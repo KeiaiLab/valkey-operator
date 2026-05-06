@@ -1,0 +1,212 @@
+---
+# Valkey Operator Helm Chart Values
+# This is a YAML-formatted file.
+
+# -- Number of operator replicas
+replicaCount: 1
+
+# Operator image configuration
+image:
+  # -- Image repository
+  repository: ghcr.io/keiailab/valkey-operator
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag (default: chart appVersion)
+  tag: ""
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Override the name of the chart
+nameOverride: ""
+
+# -- Override the full name of the chart
+fullnameOverride: ""
+
+# ServiceAccount configuration
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use
+  name: ""
+
+# -- Additional annotations for the operator deployment
+podAnnotations: {}
+
+# -- Additional labels for the operator deployment
+podLabels: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+# Operator service configuration
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Metrics port
+  metricsPort: 8443
+  # -- Health probe port
+  healthPort: 8081
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# -- Node selector for operator pod scheduling
+nodeSelector: {}
+
+# -- Tolerations for operator pod scheduling
+tolerations: []
+
+# -- Affinity rules for operator pod scheduling
+affinity: {}
+
+# Leader election configuration
+leaderElection:
+  # -- Enable leader election for controller manager
+  enabled: true
+  # -- Namespace for leader election lease
+  namespace: ""
+
+# Metrics configuration
+metrics:
+  # -- Enable metrics endpoint
+  enabled: true
+  # -- Enable secure metrics (HTTPS)
+  secure: true
+  # -- Create ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    # -- ServiceMonitor scrape interval
+    interval: 30s
+    # -- Additional labels for ServiceMonitor
+    labels: {}
+    # -- Metric relabeling configs
+    metricRelabelings: []
+    # -- Relabeling configs
+    relabelings: []
+
+# Webhook configuration (for future use)
+webhook:
+  # -- Enable admission webhooks
+  enabled: false
+  # -- Webhook service port
+  port: 9443
+
+# RBAC configuration
+rbac:
+  # -- Create RBAC resources
+  create: true
+  # -- Use ClusterRole (true) or Role (false)
+  clusterScope: true
+
+# CRD configuration
+crds:
+  # -- Install CRDs with the chart
+  install: true
+  # -- Keep CRDs on chart uninstall
+  keep: true
+
+# Valkey default configuration (used as defaults for Valkey CRs)
+valkey:
+  # -- Default Valkey version (Redis OSS fork; AGPL-free baseline)
+  version: "8.0"
+  # -- Default storage class for persistent volumes
+  storageClassName: ""
+
+# Logging configuration
+logging:
+  # -- Log level (debug, info, error)
+  level: info
+  # -- Log format (json, console)
+  format: json
+  # -- Enable development mode logging
+  development: false
+
+# Watch configuration
+watch:
+  # -- Namespaces to watch (empty = all namespaces)
+  namespaces: []
+
+# Health probes configuration
+probes:
+  liveness:
+    # -- Initial delay seconds for liveness probe
+    initialDelaySeconds: 15
+    # -- Period seconds for liveness probe
+    periodSeconds: 20
+  readiness:
+    # -- Initial delay seconds for readiness probe
+    initialDelaySeconds: 5
+    # -- Period seconds for readiness probe
+    periodSeconds: 10
+
+# -- Extra environment variables for the operator
+extraEnvVars: []
+# - name: MY_VAR
+#   value: "my-value"
+
+# -- Extra volume mounts for the operator
+extraVolumeMounts: []
+
+# -- Extra volumes for the operator
+extraVolumes: []
+
+# ----------------------------------------------------------------------------
+# Carve-out feature gates (v0.1.0-alpha)
+# alpha 출시 범위: Valkey 단일 인스턴스. 다음 기능은 alpha 단계로 기본 비활성화.
+# enable=true 로 켤 경우 운영자가 잔여 위험을 인지한 것으로 간주됨.
+# ----------------------------------------------------------------------------
+features:
+  # ValkeyCluster — 분산 클러스터 (Redis Cluster 호환 모드). alpha 안정화 진행 중.
+  cluster:
+    enabled: false
+  # ValkeyBackup + ValkeyBackupTarget + ValkeyRestore — S3/PVC 대상 백업/복원. alpha.
+  backup:
+    enabled: false
+  # Auto-scaling (HPA) — alpha 단계, drift-guard mutex 검증 미완료.
+  autoscaling:
+    enabled: false
+
+# Network Policy configuration
+networkPolicy:
+  # -- Enable network policy
+  enabled: false
+  # -- Ingress rules
+  ingress: []
+  # -- Egress rules
+  egress: []
+
+# Pod Disruption Budget configuration
+podDisruptionBudget:
+  # -- Enable PodDisruptionBudget
+  enabled: false
+  # -- Minimum available pods
+  minAvailable: 1
+  # -- Maximum unavailable pods
+  maxUnavailable: ""
+
+# Priority class configuration
+priorityClassName: ""
+
+# Topology spread constraints
+topologySpreadConstraints: []

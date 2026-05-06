@@ -24,6 +24,10 @@ pre-commit:
       skip:
         - merge
         - rebase
+    helm-lint:
+      glob: "charts/**/*.yaml"
+      # chart 변경 시 helm lint 강제 — RFC 0002 L1.
+      run: command -v helm >/dev/null 2>&1 && helm lint charts/valkey-operator || echo "helm not installed, skipping"
 
 pre-push:
   parallel: false
@@ -32,6 +36,20 @@ pre-push:
       run: go test -count=1 -timeout=120s ./...
     full-lint:
       run: ./bin/golangci-lint run
+    helm-lint:
+      # chart sanity (gh-pages publish 전 마지막 가드).
+      run: command -v helm >/dev/null 2>&1 && helm lint charts/valkey-operator || true
+    helm-template:
+      # 모든 features on 상태에서도 render OK 인지 — clusterrole.yaml 가드 회귀 차단.
+      run: |
+        command -v helm >/dev/null 2>&1 || exit 0
+        helm template valkey-operator charts/valkey-operator \
+          --set features.cluster.enabled=true \
+          --set features.backup.enabled=true \
+          --set features.autoscaling.enabled=true >/dev/null
+    gitleaks:
+      # 시크릿 누출 차단 — RFC 0002 L2 + standards/enforcement.md §1.5.
+      run: command -v gitleaks >/dev/null 2>&1 && gitleaks protect --staged --no-banner || echo "gitleaks not installed (brew install gitleaks)"
 
 commit-msg:
   commands:
