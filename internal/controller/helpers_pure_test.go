@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	vk "github.com/keiailab/valkey-operator/internal/valkey"
 )
 
 func TestPrimaryOrdinal(t *testing.T) {
@@ -165,6 +166,51 @@ func TestSetBuildInfo(t *testing.T) {
 			}
 		})
 	}
+}
+
+// sortPrimariesBySlotStart + primaryFirstSlot 회귀 보호 (cycle 133) —
+// ValkeyCluster reconcile 의 *shard ordering 안정성* invariant. slot 시작점
+// 기준 정렬 — Index 부여 의 deterministic.
+func TestSortPrimariesBySlotStart(t *testing.T) {
+	t.Parallel()
+	t.Run("sorted by first slot start", func(t *testing.T) {
+		t.Parallel()
+		nodes := []vk.NodeView{
+			{ID: "n3", Slots: []vk.SlotRange{{Start: 10923, End: 16383}}},
+			{ID: "n1", Slots: []vk.SlotRange{{Start: 0, End: 5460}}},
+			{ID: "n2", Slots: []vk.SlotRange{{Start: 5461, End: 10922}}},
+		}
+		sortPrimariesBySlotStart(nodes)
+		if nodes[0].ID != "n1" || nodes[1].ID != "n2" || nodes[2].ID != "n3" {
+			t.Errorf("정렬 후 ID 순서: %s, %s, %s (want n1, n2, n3)",
+				nodes[0].ID, nodes[1].ID, nodes[2].ID)
+		}
+	})
+	t.Run("unassigned (no slots) → sorted last", func(t *testing.T) {
+		t.Parallel()
+		nodes := []vk.NodeView{
+			{ID: "no-slots"},
+			{ID: "first", Slots: []vk.SlotRange{{Start: 0, End: 100}}},
+		}
+		sortPrimariesBySlotStart(nodes)
+		if nodes[0].ID != "first" || nodes[1].ID != "no-slots" {
+			t.Errorf("미할당 노드 가 마지막 으로 정렬되어야: %v", nodes)
+		}
+	})
+	t.Run("primaryFirstSlot empty → max int", func(t *testing.T) {
+		t.Parallel()
+		got := primaryFirstSlot(vk.NodeView{})
+		if got != 1<<30 {
+			t.Errorf("empty slots → 1<<30, got %d", got)
+		}
+	})
+	t.Run("primaryFirstSlot returns first slot", func(t *testing.T) {
+		t.Parallel()
+		n := vk.NodeView{Slots: []vk.SlotRange{{Start: 5461, End: 10922}, {Start: 11000, End: 12000}}}
+		if got := primaryFirstSlot(n); got != 5461 {
+			t.Errorf("first slot start = 5461, got %d", got)
+		}
+	})
 }
 
 // filterConditionsByType — applyErrorCondition 의 helper. 특정 type 의 condition
