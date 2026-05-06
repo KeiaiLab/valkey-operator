@@ -8,6 +8,49 @@
 
 ## [Unreleased]
 
+### Added (cycles 20-90 — Quality systems + production-grade UX)
+
+**Quality 시스템 (39 SSOT 게이트)**:
+- ADR governance (4 게이트): file/INDEX/Status/Superseded/Nygard 3-section.
+- Alert rules (4): schema/fields/metric/runbook anchor 동기.
+- RBAC (2 양방향): kubebuilder:rbac ↔ role.yaml.
+- Sample CR (3): strict unmarshal + dir-mapping + metadata.
+- ClusterRef.Kind (2 — 3-way): enum ↔ switch case.
+- LICENSE + Chart annotation (2).
+- Chart artifacts (6): images/CRDExamples/CRD sync/values/NOTES/README YAML.
+- Markdown links + anchors (2).
+- Webhook + Reconciler 등록 (2).
+- dist/install.yaml (2): structure + OPERATOR_IMAGE env.
+- Release-checklist self-sync (1, 양방향 cycle 60).
+- Kustomize ↔ chart sync family (3): resources/probes/securityContext.
+- Cross-feature interaction family (3): NP+webhook/tracing/backup.
+- features.* RBAC + reconciler 동기 (1).
+- value↔template binding (1).
+- chart args ↔ operator flags (1).
+
+**자동화 (실수 발생 자체 차단)**:
+- `make manifests` chart CRD 자동 sync.
+- pre-push lefthook 6-hook (full-lint + gitleaks + go-mod-tidy + helm-lint +
+  helm-template + unit-test).
+- `make sbom` (syft SPDX) + trivy post-scan release pipeline 자동 첨부.
+
+**Production-grade UX**:
+- ldflags chain (cycles 53-57): cmd/main.go → Dockerfile → docker-build →
+  docker-buildx → release.sh → Prometheus build_info gauge.
+- chart features 5 (cycles 65/72/73/74/82): tracing + NetworkPolicy + webhook +
+  watch.namespaces + autoscaling 정직 표시.
+- 6-layer documentation: README + chart README + NOTES.txt + CONTRIBUTING +
+  release-checklist + HANDOFF (모든 사용자 역할별 entry point).
+- runbook §7.1 환경변수 진단 가이드.
+- 3-layer DX: lefthook auto + `make ssot-check` (1.4s) + `make gate` (30s).
+
+**구현된 기능 (cycles 72-74 — chart 4 unused values 중 3 해결)**:
+- charts/valkey-operator/templates/networkpolicy.yaml — operator pod default-deny.
+- charts/valkey-operator/templates/webhook.yaml — cert-manager 의존 admission webhook.
+- WATCH_NAMESPACES env — namespace-scoped watch (cache.DefaultNamespaces).
+
+**production gap 발견·수정 (23건)** + **내부 부채 cleanup (3건)** + **5 hot-path benchmark**.
+
 ### Added (iter 7+ — 부트스트랩·검증 사이클)
 - README quickstart (kind 기반): 5 단계 부트스트랩 + 데이터 plane smoke + 운영 시나리오 매트릭스. [iter 6]
 - ADR-0011: Required 필드 (omitempty 부재) 의 mutating webhook defaulting 패턴. [iter 4]
