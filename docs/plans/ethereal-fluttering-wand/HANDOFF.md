@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 8 짧은 종료)
+**최종 갱신**: 2026-05-06 (cycle 9 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
-**현재 진행**: Track A **100%** + Track B **핵심 Failover 완성** + Track C
-사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish 진행
-+ Track E 50%.
+**현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
+Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
+진행 + Track E 50%.
 
 ---
 
@@ -163,6 +163,22 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 10. Cycle 9 추가분 (2 commits — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 53 | `e81beec` | `test(e2e): Replication Failover 시나리오 (ADR-0017)` | Track B Failover e2e — primary kill → 30s+ → Status.CurrentPrimary 전환 + 새 primary role=master 검증 |
+| 54 | `aa622da` | `fix(valkey): appsv1 import 복원 — build 복원` | cycle 8 evaluateScalePolicy partial revert 의 build fail 해소 + backup_restore_test.go (Standalone PVC e2e — set foo=bar1 → backup → set foo=bar2 → restore → foo=bar1 검증) 함께 commit |
+
+**Cycle 9 의 가치**: Track A + Track B 의 *e2e 자동화* 진입 — 영역 무관 한
+가치 큰 step. 실제 실행은 `make test-e2e` (kind cluster + cert-manager 5분+).
+
+**다음 cycle 진입 권고**:
+- Track F (Conversion webhook v1alpha1 → v1beta1 준비 또는 OTEL tracing)
+- 사용자 외부 작업 (HANDOFF.md / TASKS.md / ADR-0024) 통합 — *uncommitted*
+  변경 점검
+- e2e 실측 검증 (kind cluster) → README "운영 시나리오 검증 (실측)" 표 갱신
 
 ## 9. Cycle 8 추가분 (1 commit — 본 세션, 짧은 종료)
 
