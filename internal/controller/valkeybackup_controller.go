@@ -288,11 +288,17 @@ func (r *ValkeyBackupReconciler) dialBackupTarget(ctx context.Context, b *cachev
 }
 
 // tlsConfigForBackupTarget — dial_helpers.go 의 tlsConfigForClusterRef thin wrapper.
+// 후속 backup target TLS reconcile 단계에서 호출 예정 (진행 중).
+//
+//nolint:unused // wrapper API 보존, 후속 phase 가 호출.
 func (r *ValkeyBackupReconciler) tlsConfigForBackupTarget(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (*tls.Config, error) {
 	return tlsConfigForClusterRef(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
 }
 
 // fetchBackupTargetPassword — dial_helpers.go 의 fetchClusterRefPassword thin wrapper.
+// 후속 backup auth 단계에서 호출 예정 (진행 중).
+//
+//nolint:unused // wrapper API 보존, 후속 phase 가 호출.
 func (r *ValkeyBackupReconciler) fetchBackupTargetPassword(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (string, error) {
 	return fetchClusterRefPassword(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
 }
