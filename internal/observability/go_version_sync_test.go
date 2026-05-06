@@ -51,4 +51,19 @@ func TestGoVersionDockerfileVsGoMod(t *testing.T) {
 	if !strings.Contains(string(gomodRaw), "go ") {
 		t.Fatal("go.mod 형식 회귀")
 	}
+
+	// 4. CONTRIBUTING.md 의 Go 버전 table 동기 — `| Go | X.Y | go.mod 와 일치 |` 형식.
+	contribRaw, _ := os.ReadFile(filepath.Join(repo, "CONTRIBUTING.md"))
+	contribRe := regexp.MustCompile(`\|\s*Go\s*\|\s*(\d+)\.(\d+)\s*\|`)
+	cm := contribRe.FindStringSubmatch(string(contribRaw))
+	if cm == nil {
+		t.Log("CONTRIBUTING.md 의 Go version table 추출 실패 — 정규식 또는 doc 변경 — skip")
+		return
+	}
+	contribMajor, _ := strconv.Atoi(cm[1])
+	contribMinor, _ := strconv.Atoi(cm[2])
+	if contribMajor != gomodMajor || contribMinor != gomodMinor {
+		t.Errorf("CONTRIBUTING.md 의 Go %d.%d ≠ go.mod %d.%d — 환경 요구사항 table 갱신 필요",
+			contribMajor, contribMinor, gomodMajor, gomodMinor)
+	}
 }
