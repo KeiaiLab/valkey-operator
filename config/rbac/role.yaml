@@ -64,6 +64,7 @@ rules:
   - valkeybackups
   - valkeybackuptargets
   - valkeyclusters
+  - valkeyrestores
   - valkeys
   verbs:
   - create
@@ -79,6 +80,7 @@ rules:
   - valkeybackups/finalizers
   - valkeybackuptargets/finalizers
   - valkeyclusters/finalizers
+  - valkeyrestores/finalizers
   - valkeys/finalizers
   verbs:
   - update
@@ -88,6 +90,7 @@ rules:
   - valkeybackups/status
   - valkeybackuptargets/status
   - valkeyclusters/status
+  - valkeyrestores/status
   - valkeys/status
   verbs:
   - get
