@@ -66,10 +66,10 @@ metadata:
   name: my-valkey
   namespace: cache
 spec:
-  mode: standalone
+  mode: Standalone
   replicas: 1
   version:
-    version: "8.0"
+    version: "8.1.6"
   storage:
     storageClassName: standard
     size: 5Gi
@@ -90,7 +90,7 @@ metadata:
   namespace: cache
 spec:
   version:
-    version: "8.0"
+    version: "8.1.6"
   shards: 3
   replicasPerShard: 1
   storage:
