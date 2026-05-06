@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -78,7 +79,8 @@ func sourceRDBPath(rest *cachev1alpha1.ValkeyRestore) string {
 // 원복 + paused 정리. 정상 Completed 흐름에서는 이미 정리되어 no-op.
 type ValkeyRestoreReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeyrestores,verbs=get;list;watch;create;update;patch;delete
@@ -680,6 +682,9 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 
 	// → Completed.
 	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Completed").Inc()
+	if r.Recorder != nil {
+		r.Recorder.Event(rest, "Normal", "Completed", "ValkeyRestore completed")
+	}
 	now := metav1.Now()
 	rest.Status.Phase = cachev1alpha1.RestorePhaseCompleted
 	rest.Status.CompletedAt = &now
@@ -751,6 +756,9 @@ func (r *ValkeyRestoreReconciler) markFailed(
 	reason, msg string,
 ) (ctrl.Result, error) {
 	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Failed").Inc()
+	if r.Recorder != nil {
+		r.Recorder.Event(rest, "Warning", reason, msg)
+	}
 	now := metav1.Now()
 	rest.Status.Phase = cachev1alpha1.RestorePhaseFailed
 	rest.Status.CompletedAt = &now
@@ -770,6 +778,7 @@ func (r *ValkeyRestoreReconciler) markFailed(
 
 // SetupWithManager — manager 에 등록.
 func (r *ValkeyRestoreReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Recorder = mgr.GetEventRecorderFor("valkeyrestore-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyRestore{}).
 		Owns(&appsv1.StatefulSet{}).

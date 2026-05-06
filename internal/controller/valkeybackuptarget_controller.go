@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -56,7 +57,8 @@ func defaultS3ClientBuilder(s3 *cachev1alpha1.S3Spec, ak, sk string) (s3Reachabl
 // ADR-0016 + ADR-0022.
 type ValkeyBackupTargetReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 
 	// S3ClientBuilder — 테스트 주입. nil 시 기본 minio-go wrapper.
 	S3ClientBuilder s3ClientBuilder
@@ -257,6 +259,7 @@ func (r *ValkeyBackupTargetReconciler) verifyEndpoint(
 
 // SetupWithManager — manager 에 등록.
 func (r *ValkeyBackupTargetReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Recorder = mgr.GetEventRecorderFor("valkeybackuptarget-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyBackupTarget{}).
 		Named("valkeybackuptarget").
