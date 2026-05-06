@@ -1,0 +1,120 @@
+# Prometheus alert rules — valkey-operator 가 노출하는 metrics 기반.
+# Day-N₁ 게이트 (Plan §2 Track E).
+#
+# 적용:
+#   kubectl apply -f config/prometheus/alert-rules.yaml
+#
+# 의존성: prometheus-operator (PrometheusRule CRD).
+# Prometheus 가 본 namespace 의 PrometheusRule 을 watch 하도록 설정 필요.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: valkey-operator-alerts
+  labels:
+    app.kubernetes.io/name: valkey-operator
+    app.kubernetes.io/managed-by: kustomize
+    # Prometheus 의 ruleSelector 가 본 label 과 일치해야 picked up.
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: valkey-cluster.rules
+      interval: 30s
+      rules:
+        # 1. ValkeyCluster cluster_state != ok 5분 지속 → critical.
+        - alert: ValkeyClusterStateNotOK
+          expr: valkey_cluster_state_ok == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyCluster {{ $labels.namespace }}/{{ $labels.name }} state != ok 5분 지속"
+            description: |
+              CLUSTER INFO 의 cluster_state 가 ok 가 아닙니다. slot 분배 또는 quorum
+              이슈일 가능성. `valkey-cli cluster info` 로 진단.
+            runbook_url: docs/operations/runbook.md#23-valkeycluster-cluster_statefail
+
+        # 2. assigned_slots != 16384 5분 지속 → critical.
+        - alert: ValkeyClusterSlotsMismatch
+          expr: valkey_cluster_assigned_slots != 16384
+          for: 5m
+          labels:
+            severity: critical
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyCluster {{ $labels.namespace }}/{{ $labels.name }} 슬롯 미스매치 ({{ $value }} != 16384)"
+            description: |
+              할당된 hash slot 수가 16384 가 아닙니다. cluster reshard 진행 중이거나
+              shard 분실 상태. `valkey-cli cluster nodes` 로 토폴로지 확인.
+
+        # 3. ready_replicas < spec replicas 5분 지속 → warning.
+        # 본 alert 는 spec replicas 정보 부재 — 단순히 ready=0 시 critical, ready<2 시 warning.
+        - alert: ValkeyClusterNoReadyReplicas
+          expr: valkey_cluster_ready_replicas == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyCluster {{ $labels.namespace }}/{{ $labels.name }} 모든 pod NotReady"
+            description: |
+              STS 의 readyReplicas=0. PV pending / image pull / liveness probe 실패
+              가능성. `kubectl describe sts {{ $labels.name }}` 으로 진단.
+
+        - alert: ValkeyClusterDegraded
+          expr: valkey_cluster_ready_replicas < 2 and valkey_cluster_ready_replicas > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyCluster {{ $labels.namespace }}/{{ $labels.name }} 일부 pod NotReady"
+            description: |
+              일부 pod 만 Ready (ready={{ $value }}). HA 정족수 부족 위험.
+              `kubectl get pods -l app=valkey-cluster` 로 진단.
+
+        # 4. Phase=Failed 1분 지속 → critical.
+        - alert: ValkeyClusterPhaseFailed
+          expr: valkey_cluster_phase{phase="Failed"} == 1
+          for: 1m
+          labels:
+            severity: critical
+            component: valkey-operator
+          annotations:
+            summary: "ValkeyCluster {{ $labels.namespace }}/{{ $labels.name }} Phase=Failed"
+            description: |
+              CR Phase 가 Failed. Status.Conditions 의 Reason/Message 로 원인 분류.
+              `kubectl describe vc {{ $labels.name }}` 으로 상세.
+
+        # 5. reconcile_errors rate > 0.1/s 5분 지속 → warning.
+        - alert: ValkeyOperatorReconcileErrorsHigh
+          expr: rate(valkey_cluster_reconcile_errors_total[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "valkey-operator reconcile error rate 높음 ({{ $value | humanize }} /sec)"
+            description: |
+              {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.component }})
+              의 reconcile 실패 rate 가 0.1/s 초과. operator log 점검:
+              `kubectl logs -n valkey-operator-system -l control-plane=controller-manager --tail=200`
+
+    - name: valkey-operator.rules
+      interval: 30s
+      rules:
+        # 6. operator manager pod down 2분 지속.
+        # controller-runtime metric (workqueue_depth 또는 process_start_time) 기반.
+        - alert: ValkeyOperatorDown
+          expr: up{job=~"valkey-operator.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: valkey-operator
+          annotations:
+            summary: "valkey-operator manager 미응답 ({{ $labels.namespace }}/{{ $labels.pod }})"
+            description: |
+              metrics endpoint 도달 불가. controller-manager pod 가 down 또는
+              metrics server 가 listen 안 함.
+              `kubectl -n valkey-operator-system get pods` 로 확인.
