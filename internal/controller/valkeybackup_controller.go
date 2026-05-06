@@ -15,6 +15,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -32,6 +33,12 @@ import (
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/resources"
 	vk "github.com/keiailab/valkey-operator/internal/valkey"
+)
+
+const (
+	// operatorImageEnv — Upload Job 의 image 결정 env. Deployment manifest 에서 주입.
+	operatorImageEnv     = "OPERATOR_IMAGE"
+	defaultOperatorImage = "controller:latest"
 )
 
 // ValkeyBackupReconciler — RDB / AOF backup 트리거 + 상태 추적.
@@ -54,6 +61,7 @@ type ValkeyBackupReconciler struct {
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackups/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackups/finalizers,verbs=update
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeys;valkeyclusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackuptargets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -163,9 +171,26 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	case cachev1alpha1.BackupPhaseCopying:
 		return r.reconcileCopyingPhase(ctx, b)
+
+	case cachev1alpha1.BackupPhaseUploading:
+		return r.reconcileUploadingPhase(ctx, b)
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// operatorImage — Upload Job 의 image. OPERATOR_IMAGE env 미설정 시 default.
+func (r *ValkeyBackupReconciler) operatorImage() string {
+	if v := os.Getenv(operatorImageEnv); v != "" {
+		return v
+	}
+	return defaultOperatorImage
+}
+
+// hasExternalDestination — Spec.Destination 이 TargetRef 인지.
+func hasExternalDestination(b *cachev1alpha1.ValkeyBackup) bool {
+	return b.Spec.Destination != nil &&
+		b.Spec.Destination.Type == cachev1alpha1.BackupDestTargetRef
 }
 
 // validateClusterRef — Spec.ClusterRef 가 가리키는 Valkey / ValkeyCluster 존재 확인.
@@ -409,6 +434,25 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 
 	// 3. Job 상태 폴링.
 	if existingJob.Status.Succeeded > 0 {
+		// Destination=TargetRef 시 → Uploading, 그 외 → Completed (M3.5 호환).
+		if hasExternalDestination(b) {
+			b.Status.Phase = cachev1alpha1.BackupPhaseUploading
+			b.Status.PVCName = pvcName
+			b.Status.Message = fmt.Sprintf("RDB on PVC %s — uploading to external target", pvcName)
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "Uploading",
+				Message:            b.Status.Message,
+				ObservedGeneration: b.Generation,
+			})
+			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			}
+			logger.Info("Backup copy Job succeeded — transitioning to Uploading", "pvc", pvcName)
+			return ctrl.Result{Requeue: true}, nil
+		}
+
 		now := metav1.Now()
 		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
 		b.Status.CompletedAt = &now
@@ -433,6 +477,128 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 	}
 	// 진행 중.
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+// reconcileUploadingPhase — backup PVC 의 RDB 를 외부 저장 (S3) 으로 업로드.
+//
+// 흐름:
+//  1. Spec.Destination.TargetRef 검증 + ValkeyBackupTarget CR Get + Phase=Reachable 검증.
+//  2. ObjectKey 결정 (Spec.Destination.TargetRef.Path 명시 시 그 값,
+//     아니면 DefaultBackupObjectPath).
+//  3. Upload Job 보장 (멱등) — operator image 의 `upload` sub-command 호출.
+//  4. Job status 폴링: Succeeded → Completed, Failed → Failed.
+func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
+	ctx context.Context, b *cachev1alpha1.ValkeyBackup,
+) (ctrl.Result, error) {
+	logger := logf.FromContext(ctx)
+
+	if !hasExternalDestination(b) || b.Spec.Destination.TargetRef == nil {
+		return r.markFailed(ctx, b, "InvalidDestination",
+			"Phase=Uploading 이지만 Spec.Destination.TargetRef 미설정")
+	}
+
+	// 1. Target CR Get.
+	tgt := &cachev1alpha1.ValkeyBackupTarget{}
+	if err := r.Get(ctx, types.NamespacedName{
+		Name:      b.Spec.Destination.TargetRef.Name,
+		Namespace: b.Namespace,
+	}, tgt); err != nil {
+		if errors.IsNotFound(err) {
+			return r.markFailed(ctx, b, "TargetNotFound",
+				fmt.Sprintf("ValkeyBackupTarget %s/%s 미존재",
+					b.Namespace, b.Spec.Destination.TargetRef.Name))
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+	if tgt.Status.Phase != cachev1alpha1.BackupTargetPhaseReachable {
+		// Reachable 이 아니면 — 잠시 대기 후 재확인. 영구 차단 방지.
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+	}
+	if tgt.Spec.S3 == nil {
+		return r.markFailed(ctx, b, "TargetMissingS3",
+			"ValkeyBackupTarget.Spec.S3 미설정")
+	}
+
+	// 2. ObjectKey 결정.
+	objectKey := b.Spec.Destination.TargetRef.Path
+	if objectKey == "" {
+		startedAt := ""
+		if b.Status.StartedAt != nil {
+			startedAt = b.Status.StartedAt.UTC().Format(time.RFC3339)
+		}
+		objectKey = cachev1alpha1.DefaultBackupObjectPath(b.Name, startedAt)
+	}
+	objectKey = tgt.Spec.S3.Prefix + objectKey
+
+	// 3. Upload Job 보장.
+	pvcName := b.Status.PVCName
+	if pvcName == "" {
+		pvcName = resources.BackupPVCName(b.Name)
+	}
+	uploadJob := resources.BuildUploadJob(resources.UploadJobParams{
+		BackupName:               b.Name,
+		Namespace:                b.Namespace,
+		OperatorImage:            r.operatorImage(),
+		PVCName:                  pvcName,
+		FilePath:                 resources.BackupVolumeMountPath + "/" + resources.BackupRDBFileName,
+		Endpoint:                 tgt.Spec.S3.Endpoint,
+		Region:                   tgt.Spec.S3.Region,
+		Bucket:                   tgt.Spec.S3.Bucket,
+		ObjectKey:                objectKey,
+		ForcePathStyle:           tgt.Spec.S3.ForcePathStyle,
+		CredentialsSecretName:    tgt.Spec.S3.CredentialsSecretRef.Name,
+		AccessKeyIDSecretKey:     keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.AccessKeyIDKey, "AWS_ACCESS_KEY_ID"),
+		SecretAccessKeySecretKey: keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.SecretAccessKeyKey, "AWS_SECRET_ACCESS_KEY"),
+	})
+	if err := controllerutil.SetControllerReference(b, uploadJob, r.Scheme); err != nil {
+		return r.markFailed(ctx, b, "JobOwnerRef", err.Error())
+	}
+	existing := &batchv1.Job{}
+	if err := r.Get(ctx, types.NamespacedName{Name: uploadJob.Name, Namespace: uploadJob.Namespace}, existing); err != nil {
+		if errors.IsNotFound(err) {
+			if err := r.Create(ctx, uploadJob); err != nil {
+				return r.markFailed(ctx, b, "UploadJobCreateFailed", err.Error())
+			}
+			logger.Info("Upload Job created", "name", uploadJob.Name, "object", objectKey)
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	// 4. Job 상태 폴링.
+	if existing.Status.Succeeded > 0 {
+		now := metav1.Now()
+		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
+		b.Status.CompletedAt = &now
+		b.Status.Message = fmt.Sprintf("Uploaded to %s/%s — Completed", tgt.Spec.S3.Bucket, objectKey)
+		setCondition(b.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionTrue,
+			Reason:             "Completed",
+			Message:            b.Status.Message,
+			ObservedGeneration: b.Generation,
+		})
+		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		logger.Info("Upload Job succeeded — Backup Completed",
+			"object", objectKey, "bucket", tgt.Spec.S3.Bucket)
+		return ctrl.Result{}, nil
+	}
+	if existing.Status.Failed > 0 {
+		return r.markFailed(ctx, b, "UploadJobFailed",
+			fmt.Sprintf("Upload Job %s failed (failed=%d)", uploadJob.Name, existing.Status.Failed))
+	}
+	// 진행 중.
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+// keyOrDefault — empty 시 default 반환.
+func keyOrDefault(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
 }
 
 // buildBackupJob — 대상 CR 의 image / TLS 설정을 조회 한 후 Job spec 빌드.
