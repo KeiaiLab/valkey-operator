@@ -1,0 +1,39 @@
+# 디렉토리/파일별 자동 리뷰어 매핑 (3-repo 통일)
+# 형식: <pattern> <owner>
+# 참고: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+
+# 전체 기본 소유자
+* @eightynine01
+
+# 핵심 도메인 (valkey-operator)
+/api/                       @eightynine01
+/cmd/                       @eightynine01
+/internal/controller/       @eightynine01
+/internal/valkey/           @eightynine01
+/internal/resources/        @eightynine01
+/internal/storage/          @eightynine01
+/internal/observability/    @eightynine01
+/internal/webhook/          @eightynine01
+/internal/cli/              @eightynine01
+/internal/assets/           @eightynine01
+
+# 빌드/배포
+/charts/                    @eightynine01
+/config/                    @eightynine01
+/.github/                   @eightynine01
+/Dockerfile                 @eightynine01
+/Makefile                   @eightynine01
+/.lefthook.yml              @eightynine01
+/scripts/                   @eightynine01
+/renovate.json              @eightynine01
+
+# 문서/거버넌스
+/docs/                      @eightynine01
+/CHANGELOG.md               @eightynine01
+/README.md                  @eightynine01
+/SECURITY.md                @eightynine01
+/CONTRIBUTING.md            @eightynine01
+/AGENTS.md                  @eightynine01
+/PROJECT                    @eightynine01
+/HANDOFF.md                 @eightynine01
+/TASKS.md                   @eightynine01
