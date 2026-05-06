@@ -701,6 +701,7 @@ func backupTargetTLSSecret(t *cachev1alpha1.TLSSpec, crName string) string {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ValkeyBackupReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	//nolint:staticcheck // SA1019: ADR-0002 — events API migration deferred until controller-runtime 의 GetEventRecorder API 가 stable.
 	r.Recorder = mgr.GetEventRecorderFor("valkeybackup-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyBackup{}).

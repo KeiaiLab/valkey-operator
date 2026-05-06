@@ -778,6 +778,7 @@ func (r *ValkeyRestoreReconciler) markFailed(
 
 // SetupWithManager — manager 에 등록.
 func (r *ValkeyRestoreReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	//nolint:staticcheck // SA1019: ADR-0002 — events API migration deferred until controller-runtime 의 GetEventRecorder API 가 stable.
 	r.Recorder = mgr.GetEventRecorderFor("valkeyrestore-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyRestore{}).
