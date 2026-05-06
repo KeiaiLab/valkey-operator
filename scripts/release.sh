@@ -73,8 +73,11 @@ fi
 #    git tag 만으로 version 식별.
 
 # 6. 멀티아키 이미지 빌드 + push.
-echo "==> Building multi-arch image: $IMAGE"
-make docker-buildx IMG="$IMAGE"
+# VERSION 명시 전달 — cycle 56 발견: 본 변수 미전달 시 Makefile fallback "dev"
+# → production GHCR image 가 `--version` 명령에서 "dev" 출력 (cycle 53/54/55
+# 의 ldflags chain 마지막 link).
+echo "==> Building multi-arch image: $IMAGE (VERSION=$VERSION)"
+make docker-buildx IMG="$IMAGE" VERSION="$VERSION"
 echo "✓ image pushed: $IMAGE"
 
 # 7. install.yaml 생성.
