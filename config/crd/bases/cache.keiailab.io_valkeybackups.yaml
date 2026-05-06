@@ -71,6 +71,32 @@ spec:
                 - kind
                 - name
                 type: object
+              destination:
+                description: Destination — 결과물의 저장 위치. 미명시 시 type=PVC (기존 동작).
+                properties:
+                  targetRef:
+                    description: Type=TargetRef 시 필수.
+                    properties:
+                      name:
+                        description: 같은 namespace 의 ValkeyBackupTarget CR 이름.
+                        type: string
+                      path:
+                        description: |-
+                          target prefix + 본 path = 최종 object key.
+                          미명시 시 default "<backup-name>/<startedAt-RFC3339>/dump.rdb".
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  type:
+                    default: PVC
+                    description: BackupDestinationType — PVC 보존 (M3.5 호환) 또는 외부 저장
+                      (ADR-0016).
+                    enum:
+                    - PVC
+                    - TargetRef
+                    type: string
+                type: object
               retainPVC:
                 default: true
                 description: 백업 후 PVC 보존. 기본 true (false 면 operator 가 PVC 삭제).
@@ -182,6 +208,8 @@ spec:
                 enum:
                 - Pending
                 - InProgress
+                - Copying
+                - Uploading
                 - Completed
                 - Failed
                 type: string
