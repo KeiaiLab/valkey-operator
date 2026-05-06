@@ -171,6 +171,18 @@ go test -count=1 -timeout=120s ./...
 
 ---
 
+## 20. Cycle 19 추가분 (1 commit — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 84 | `19cce40` | `feat(events): EventRecorder 통합 — 3 reconcilers (Backup/Restore/BackupTarget)` | 5 reconcilers 모두 EventRecorder. markFailed/Completed Event 발행. nil-check 안전. |
+
+**Day-N₁ 운영 가시성 추가**: `kubectl describe vkb/vkr/vbt` 의 phase 전환
+event 가시. 5 reconcilers 의 *EventRecorder 패턴 통일*.
+
+**다음 cycle 권고**: 외부 trigger 의존 큰 step (e2e / Track B / Conversion /
+HPA) 또는 추가 작은 가치.
+
 ## 19. Cycle 18 추가분 (2 commits — 본 세션)
 
 | # | SHA | Subject | 의미 |
