@@ -1,0 +1,177 @@
+/*
+Copyright 2026 Keiailab.
+*/
+
+package resources
+
+import (
+	"fmt"
+
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+)
+
+// BackupPVCName — 백업 결과 PVC 이름. ValkeyBackup CR 이름 + "-backup".
+func BackupPVCName(backupName string) string { return backupName + "-backup" }
+
+// BackupJobName — RDB 복사 Job 이름.
+func BackupJobName(backupName string) string { return backupName + "-rdb-copy" }
+
+// BackupVolumeMountPath — Job 컨테이너 안의 backup PVC 마운트 경로.
+const BackupVolumeMountPath = "/backup"
+
+// BackupRDBFileName — Job 이 생성하는 RDB 파일명 (PVC 안 의 상대 경로).
+const BackupRDBFileName = "dump.rdb"
+
+// BuildBackupPVC — TargetPVC 미명시 시 동적 PVC 생성.
+//
+// AccessMode: ReadWriteOnce (Job 단일 mount 가정 — 외부 도구 가 RWO 환경 에서도
+// snapshot 복사 후 별도 분석 가능).
+// StorageSize: Spec.StorageSize 기본 8Gi.
+func BuildBackupPVC(b *cachev1alpha1.ValkeyBackup) *corev1.PersistentVolumeClaim {
+	size := b.Spec.StorageSize
+	if size == "" {
+		size = "8Gi"
+	}
+	q := resource.MustParse(size)
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      BackupPVCName(b.Name),
+			Namespace: b.Namespace,
+			Labels:    BackupLabels(b.Name),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: q},
+			},
+		},
+	}
+}
+
+// BackupLabels — 본 백업 의 모든 보조 리소스 (PVC, Job) 공통 label.
+func BackupLabels(backupName string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":       "valkey-backup",
+		"app.kubernetes.io/instance":   backupName,
+		"app.kubernetes.io/managed-by": "valkey-operator",
+		"app.kubernetes.io/component":  "backup",
+	}
+}
+
+// BackupJobParams — backup Job 빌드 파라미터.
+type BackupJobParams struct {
+	BackupName     string
+	Namespace      string
+	PVCName        string
+	Image          string // valkey 이미지 (valkey-cli 포함)
+	TargetHost     string // 대상 노드 FQDN
+	TargetPort     int32  // 6379 (plain) 또는 6380 (TLS)
+	PasswordSecret *corev1.SecretKeySelector
+	UseTLS         bool
+	TLSSecretName  string // TLS 활성 시 cert mount 용 (ca.crt, tls.crt, tls.key)
+}
+
+// BuildBackupJob — `valkey-cli --rdb` 를 실행하는 Job. RDB 가 backup PVC 에 저장.
+//
+// `valkey-cli --rdb /backup/dump.rdb` 는 SYNC 프로토콜 로 fresh RDB 를 클라이언트
+// 측에 다운로드 — 서버의 /data/dump.rdb 와 무관하게 일관된 스냅샷 보장.
+// TLS 활성 시 --tls --cacert/cert/key 추가.
+func BuildBackupJob(p BackupJobParams) *batchv1.Job {
+	args := []string{
+		"-h", p.TargetHost, "-p", fmt.Sprintf("%d", p.TargetPort),
+		"-a", "$VALKEY_PASSWORD",
+		"--rdb", BackupVolumeMountPath + "/" + BackupRDBFileName,
+	}
+	if p.UseTLS {
+		args = append(args,
+			"--tls",
+			"--cacert", "/tls/ca.crt",
+			"--cert", "/tls/tls.crt",
+			"--key", "/tls/tls.key",
+			"--sni", p.TargetHost,
+		)
+	}
+	// shell 로 감싸서 -a $VALKEY_PASSWORD 의 env expansion 보장 + size record.
+	cmd := []string{"sh", "-c",
+		fmt.Sprintf("set -eu; valkey-cli %s && ls -la %s/%s",
+			joinArgs(args), BackupVolumeMountPath, BackupRDBFileName),
+	}
+
+	volumeMounts := []corev1.VolumeMount{
+		{Name: "backup", MountPath: BackupVolumeMountPath},
+	}
+	volumes := []corev1.Volume{
+		{Name: "backup", VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: p.PVCName},
+		}},
+	}
+	if p.UseTLS && p.TLSSecretName != "" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: "tls", MountPath: "/tls", ReadOnly: true,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  p.TLSSecretName,
+					DefaultMode: ptrInt32(0o400),
+				},
+			},
+		})
+	}
+
+	backoff := int32(2)
+	ttl := int32(86400) // 24h — Job 자체 는 24시간 후 자동 정리, PVC 는 보존.
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      BackupJobName(p.BackupName),
+			Namespace: p.Namespace,
+			Labels:    BackupLabels(p.BackupName),
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit:            &backoff,
+			TTLSecondsAfterFinished: &ttl,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: BackupLabels(p.BackupName)},
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+					Containers: []corev1.Container{{
+						Name:    "rdb-copy",
+						Image:   p.Image,
+						Command: cmd,
+						Env: []corev1.EnvVar{{
+							Name: "VALKEY_PASSWORD",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: p.PasswordSecret,
+							},
+						}},
+						VolumeMounts: volumeMounts,
+					}},
+					Volumes: volumes,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: ptrBool(true),
+						RunAsUser:    ptrInt64(999),
+						FSGroup:      ptrInt64(999),
+					},
+				},
+			},
+		},
+	}
+}
+
+// joinArgs — `valkey-cli` 인자 를 shell-safe 하게 한 줄 로 결합. 본 함수는 매우 단순한
+// 케이스 만 처리 (인자 에 공백 / 따옴표 없음 가정).
+func joinArgs(args []string) string {
+	out := ""
+	for i, a := range args {
+		if i > 0 {
+			out += " "
+		}
+		out += a
+	}
+	return out
+}

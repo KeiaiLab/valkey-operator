@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -53,6 +55,8 @@ type ValkeyBackupReconciler struct {
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackups/finalizers,verbs=update
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeys;valkeyclusters,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx)
@@ -139,26 +143,26 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			// 아직 진행 중.
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
-		// 완료. 실제 dump.rdb 파일 의 PVC 복사 는 M3.5 (Job 기반) — 본 iter 는 LASTSAVE
-		// 기준 RDB 스냅샷 발생만 보장.
-		now := metav1.Now()
-		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
-		b.Status.CompletedAt = &now
-		b.Status.Message = fmt.Sprintf("RDB snapshot completed at %s (PVC copy pending — M3.5)",
+		// LASTSAVE advanced — RDB 가 노드 에 생성됨. 다음 단계: PVC 복사 Job spawn.
+		b.Status.Phase = cachev1alpha1.BackupPhaseCopying
+		b.Status.Message = fmt.Sprintf("RDB snapshot at %s — copying to PVC",
 			curLastSave.Format(time.RFC3339))
 		setCondition(b.GetConditions(), metav1.Condition{
 			Type:               "Ready",
-			Status:             metav1.ConditionTrue,
-			Reason:             "Completed",
+			Status:             metav1.ConditionFalse,
+			Reason:             "Copying",
 			Message:            b.Status.Message,
 			ObservedGeneration: b.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
-		logger.Info("Backup LASTSAVE advanced — RDB completed",
+		logger.Info("Backup LASTSAVE advanced — transitioning to Copying",
 			"name", b.Name, "lastSave", curLastSave)
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+
+	case cachev1alpha1.BackupPhaseCopying:
+		return r.reconcileCopyingPhase(ctx, b)
 	}
 
 	return ctrl.Result{}, nil
@@ -351,10 +355,159 @@ func (r *ValkeyBackupReconciler) fetchBackupTargetPassword(ctx context.Context, 
 	return string(s.Data[resources.SecretPasswordKey]), nil
 }
 
+// reconcileCopyingPhase — Copying phase 의 reconcile loop.
+//
+// 처리 흐름:
+//  1. backup PVC 보장 (Spec.TargetPVC 미명시 시 동적 생성).
+//  2. backup Job 보장 (`valkey-cli --rdb /backup/dump.rdb`).
+//  3. Job 상태 폴링: Succeeded → Completed, Failed → Failed, 진행 중 → requeue.
+//
+// TargetPVC 명시 시 PVC 생성 skip — 사용자 가 미리 만든 PVC 사용.
+func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (ctrl.Result, error) {
+	logger := logf.FromContext(ctx)
+
+	// 1. PVC 보장.
+	pvcName := resources.BackupPVCName(b.Name)
+	if b.Spec.TargetPVC != nil && b.Spec.TargetPVC.Name != "" {
+		pvcName = b.Spec.TargetPVC.Name
+	} else {
+		pvc := resources.BuildBackupPVC(b)
+		if err := controllerutil.SetControllerReference(b, pvc, r.Scheme); err != nil {
+			return r.markFailed(ctx, b, "PVCOwnerRef", err.Error())
+		}
+		existing := &corev1.PersistentVolumeClaim{}
+		if err := r.Get(ctx, types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}, existing); err != nil {
+			if errors.IsNotFound(err) {
+				if err := r.Create(ctx, pvc); err != nil {
+					return r.markFailed(ctx, b, "PVCCreateFailed", err.Error())
+				}
+			} else {
+				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			}
+		}
+	}
+
+	// 2. Job 보장.
+	job, err := r.buildBackupJob(ctx, b, pvcName)
+	if err != nil {
+		return r.markFailed(ctx, b, "JobBuildFailed", err.Error())
+	}
+	if err := controllerutil.SetControllerReference(b, job, r.Scheme); err != nil {
+		return r.markFailed(ctx, b, "JobOwnerRef", err.Error())
+	}
+	existingJob := &batchv1.Job{}
+	if err := r.Get(ctx, types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, existingJob); err != nil {
+		if errors.IsNotFound(err) {
+			if err := r.Create(ctx, job); err != nil {
+				return r.markFailed(ctx, b, "JobCreateFailed", err.Error())
+			}
+			logger.Info("Backup copy Job created", "name", job.Name)
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	// 3. Job 상태 폴링.
+	if existingJob.Status.Succeeded > 0 {
+		now := metav1.Now()
+		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
+		b.Status.CompletedAt = &now
+		b.Status.PVCName = pvcName
+		b.Status.Message = fmt.Sprintf("RDB copied to PVC %s by Job %s", pvcName, job.Name)
+		setCondition(b.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionTrue,
+			Reason:             "Completed",
+			Message:            b.Status.Message,
+			ObservedGeneration: b.Generation,
+		})
+		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		logger.Info("Backup copy Job succeeded — Completed", "pvc", pvcName)
+		return ctrl.Result{}, nil
+	}
+	if existingJob.Status.Failed > 0 {
+		return r.markFailed(ctx, b, "CopyJobFailed",
+			fmt.Sprintf("Job %s failed (failed=%d)", job.Name, existingJob.Status.Failed))
+	}
+	// 진행 중.
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+// buildBackupJob — 대상 CR 의 image / TLS 설정을 조회 한 후 Job spec 빌드.
+func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1alpha1.ValkeyBackup, pvcName string) (*batchv1.Job, error) {
+	var (
+		image         = "docker.io/valkey/valkey:8.1.6"
+		tlsEnabled    bool
+		tlsSecretName string
+		nsName        = types.NamespacedName{Name: b.Spec.ClusterRef.Name, Namespace: b.Namespace}
+	)
+	switch b.Spec.ClusterRef.Kind {
+	case "Valkey":
+		obj := &cachev1alpha1.Valkey{}
+		if err := r.Get(ctx, nsName, obj); err != nil {
+			return nil, err
+		}
+		if obj.Spec.Version.Image != "" && obj.Spec.Version.Version != "" {
+			image = fmt.Sprintf("%s:%s", obj.Spec.Version.Image, obj.Spec.Version.Version)
+		}
+		if obj.Spec.TLS != nil && obj.Spec.TLS.Enabled {
+			tlsEnabled = true
+			tlsSecretName = backupTargetTLSSecret(obj.Spec.TLS, obj.Name)
+		}
+	case "ValkeyCluster":
+		obj := &cachev1alpha1.ValkeyCluster{}
+		if err := r.Get(ctx, nsName, obj); err != nil {
+			return nil, err
+		}
+		if obj.Spec.Version.Image != "" && obj.Spec.Version.Version != "" {
+			image = fmt.Sprintf("%s:%s", obj.Spec.Version.Image, obj.Spec.Version.Version)
+		}
+		if obj.Spec.TLS != nil && obj.Spec.TLS.Enabled {
+			tlsEnabled = true
+			tlsSecretName = backupTargetTLSSecret(obj.Spec.TLS, obj.Name)
+		}
+	}
+	port := int32(resources.PortClient)
+	if tlsEnabled {
+		port = resources.PortTLS
+	}
+	return resources.BuildBackupJob(resources.BackupJobParams{
+		BackupName: b.Name,
+		Namespace:  b.Namespace,
+		PVCName:    pvcName,
+		Image:      image,
+		TargetHost: resources.PodFQDN(b.Spec.ClusterRef.Name, 0, b.Namespace),
+		TargetPort: port,
+		PasswordSecret: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: resources.DefaultSecretName(b.Spec.ClusterRef.Name),
+			},
+			Key: resources.SecretPasswordKey,
+		},
+		UseTLS:        tlsEnabled,
+		TLSSecretName: tlsSecretName,
+	}), nil
+}
+
+// backupTargetTLSSecret — TLS Spec 으로 부터 secret 이름 결정 (CustomCert 우선).
+func backupTargetTLSSecret(t *cachev1alpha1.TLSSpec, crName string) string {
+	if t.CustomCert != nil && t.CustomCert.SecretName != "" {
+		return t.CustomCert.SecretName
+	}
+	if t.CertManager != nil && t.CertManager.IssuerRef.Name != "" {
+		return resources.CertificateSecretName(crName)
+	}
+	return ""
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ValkeyBackupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyBackup{}).
+		Owns(&batchv1.Job{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
 		Named("valkeybackup").
 		Complete(r)
 }

@@ -8,6 +8,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - persistentvolumeclaims
   - secrets
   - services
   verbs:
@@ -37,6 +38,18 @@ rules:
   - apps
   resources:
   - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
   verbs:
   - create
   - delete

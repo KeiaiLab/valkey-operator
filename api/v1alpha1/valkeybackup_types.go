@@ -31,8 +31,11 @@ type BackupPhase string
 const (
 	BackupPhasePending    BackupPhase = "Pending"
 	BackupPhaseInProgress BackupPhase = "InProgress"
-	BackupPhaseCompleted  BackupPhase = "Completed"
-	BackupPhaseFailed     BackupPhase = "Failed"
+	// BackupPhaseCopying — RDB 가 valkey 노드 에 생성된 후 외부 PVC 로 복사 중.
+	// (M3.5: valkey-cli --rdb 를 실행하는 Job 이 backup PVC 에 RDB 스트림.)
+	BackupPhaseCopying   BackupPhase = "Copying"
+	BackupPhaseCompleted BackupPhase = "Completed"
+	BackupPhaseFailed    BackupPhase = "Failed"
 )
 
 // ValkeyBackupSpec — backup 트리거 정의.
