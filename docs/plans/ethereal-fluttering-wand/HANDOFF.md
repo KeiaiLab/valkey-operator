@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 13 완료)
+**최종 갱신**: 2026-05-06 (cycle 14 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50% + Track F **OTEL infrastructure + 20 trace spans**.
+진행 + Track E 50% + Track F **OTEL infrastructure + 22 trace spans (operations-level 사실상 완료)**.
 
 ---
 
@@ -163,6 +163,22 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 15. Cycle 14 추가분 (1 commit — 본 세션, 짧은 종료)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 68 | `bb7c7e0` | `feat(observability): Restore 잔여 child span — EnsureTargetRefSource + VerifyDataPlane` | Source.TargetRef 외부 다운로드 + 데이터 plane 검증 (INFO keyspace) trace. |
+
+**Track F 누적 trace 22 spans** (cycle 11+12+13+14):
+- 5 root + 3 Failover + 5 Backup/Restore phase + 4 ClusterBus + 3 Backup/Target +
+  2 Restore 잔여 = 22 spans 발행. operations-level instrumentation **사실상 완료**.
+
+**다음 cycle 진입 권고 (큰 step)**:
+- Conversion webhook (v1alpha1 → v1beta1) — Day-N₁ 마감 + Day-N₂ 진입 단계
+- e2e 실측 (`make test-e2e` — kind cluster 5분+, RFC-0004 §3 라이브 사실 게이트)
+- Production hardening (HPA / priorityClass / topologySpreadConstraints
+  default)
 
 ## 14. Cycle 13 추가분 (2 commits — 본 세션)
 
