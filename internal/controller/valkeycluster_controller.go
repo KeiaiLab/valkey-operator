@@ -561,6 +561,9 @@ func (r *ValkeyClusterReconciler) fetchSTS(ctx context.Context, key types.Namesp
 func (r *ValkeyClusterReconciler) ensureClusterMeet(
 	ctx context.Context, vc *cachev1alpha1.ValkeyCluster, password string,
 ) error {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyCluster/EnsureClusterMeet")
+	defer span.End()
+
 	addresses := podAddresses(vc)
 
 	if info, _, err := r.queryAnyNode(ctx, vc, password); err == nil &&
@@ -570,10 +573,17 @@ func (r *ValkeyClusterReconciler) ensureClusterMeet(
 
 	tlsCfg, err := r.tlsConfigForCluster(ctx, vc)
 	if err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("tls config: %w", err)
 	}
 	dial := func(addr string) *redis.Client { return dialPod(addr, password, tlsCfg) }
-	return vk.CreateCluster(ctx, dial, addresses, int(vc.Spec.Shards), int(vc.Spec.ReplicasPerShard))
+	createCtx, createSpan := observability.StartCallSpan(ctx, "ValkeyCluster/CreateCluster")
+	defer createSpan.End()
+	if err := vk.CreateCluster(createCtx, dial, addresses, int(vc.Spec.Shards), int(vc.Spec.ReplicasPerShard)); err != nil {
+		createSpan.RecordError(err)
+		return err
+	}
+	return nil
 }
 
 // pollClusterState — 임의의 응답 가능한 노드에서 cluster state + nodes 조회.
@@ -600,6 +610,9 @@ func (r *ValkeyClusterReconciler) pollClusterState(
 //
 // 타임아웃: 전체 30s 안에 완료. 그 이상은 STS 삭제로 진행.
 func (r *ValkeyClusterReconciler) gracefulClusterTeardown(ctx context.Context, vc *cachev1alpha1.ValkeyCluster) error {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyCluster/GracefulTeardown")
+	defer span.End()
+
 	logger := log.FromContext(ctx)
 	teardownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -669,12 +682,16 @@ func (r *ValkeyClusterReconciler) gracefulClusterTeardown(ctx context.Context, v
 func (r *ValkeyClusterReconciler) queryAnyNode(
 	ctx context.Context, vc *cachev1alpha1.ValkeyCluster, password string,
 ) (*vk.ClusterInfo, []vk.NodeView, error) {
+	ctx, span := observability.StartCallSpan(ctx, "ValkeyCluster/QueryAnyNode")
+	defer span.End()
+
 	addresses := podAddresses(vc)
 	if len(addresses) == 0 {
 		return nil, nil, fmt.Errorf("no pod addresses")
 	}
 	tlsCfg, tlsErr := r.tlsConfigForCluster(ctx, vc)
 	if tlsErr != nil {
+		span.RecordError(tlsErr)
 		return nil, nil, fmt.Errorf("tls config: %w", tlsErr)
 	}
 	var lastErr error
