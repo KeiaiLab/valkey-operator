@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
 	vk "github.com/keiailab/valkey-operator/internal/valkey"
 )
@@ -136,7 +137,12 @@ func (r *ValkeyReconciler) reconcileFailover(
 		addr := fmt.Sprintf("%s:%d",
 			resources.PodFQDN(v.Name, int(i), v.Namespace), port)
 		c := dialValkey(addr, password, tlsCfg)
-		info, infoErr := c.Info(ctx, "replication").Result()
+		infoCtx, infoSpan := observability.StartCallSpan(ctx, "Failover/INFO_replication")
+		info, infoErr := c.Info(infoCtx, "replication").Result()
+		if infoErr != nil {
+			infoSpan.RecordError(infoErr)
+		}
+		infoSpan.End()
 		_ = c.Close()
 		if infoErr != nil {
 			logger.V(1).Info("INFO replication failed — skip replica",
@@ -163,7 +169,13 @@ func (r *ValkeyReconciler) reconcileFailover(
 	newPrimaryAddr := fmt.Sprintf("%s:%d",
 		resources.PodFQDN(v.Name, newOrdinal, v.Namespace), port)
 	newPrimaryClient := dialValkey(newPrimaryAddr, password, tlsCfg)
-	if promoteErr := vk.PromoteToPrimary(ctx, newPrimaryClient); promoteErr != nil {
+	promoteCtx, promoteSpan := observability.StartCallSpan(ctx, "Failover/PromoteToPrimary")
+	promoteErr := vk.PromoteToPrimary(promoteCtx, newPrimaryClient)
+	if promoteErr != nil {
+		promoteSpan.RecordError(promoteErr)
+	}
+	promoteSpan.End()
+	if promoteErr != nil {
 		_ = newPrimaryClient.Close()
 		return fmt.Errorf("PromoteToPrimary %s: %w", newPrimaryPod, promoteErr)
 	}
@@ -171,21 +183,23 @@ func (r *ValkeyReconciler) reconcileFailover(
 
 	// 다른 replicas 에 EnsureReplicaOf.
 	newPrimaryHost := resources.PodFQDN(v.Name, newOrdinal, v.Namespace)
+	replicaCtx, replicaSpan := observability.StartCallSpan(ctx, "Failover/EnsureReplicaOf_all")
 	for i := int32(0); i < v.Spec.Replicas; i++ {
 		if int(i) == newOrdinal {
 			continue
 		}
 		// 기존 primary 도 살아 돌아왔을 수 있음 — 무관하게 새 primary 가리키도록.
-		ok, _, _ := r.podReadyState(ctx, fmt.Sprintf("%s-%d", v.Name, i), v.Namespace)
+		ok, _, _ := r.podReadyState(replicaCtx, fmt.Sprintf("%s-%d", v.Name, i), v.Namespace)
 		if !ok {
 			continue
 		}
 		addr := fmt.Sprintf("%s:%d",
 			resources.PodFQDN(v.Name, int(i), v.Namespace), port)
 		c := dialValkey(addr, password, tlsCfg)
-		_ = vk.EnsureReplicaOf(ctx, c, newPrimaryHost, int(port))
+		_ = vk.EnsureReplicaOf(replicaCtx, c, newPrimaryHost, int(port))
 		_ = c.Close()
 	}
+	replicaSpan.End()
 
 	// Status.CurrentPrimary 갱신 (in-memory).
 	v.Status.CurrentPrimary = newPrimaryPod

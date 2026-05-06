@@ -99,3 +99,12 @@ func StartReconcileSpan(
 	)
 	return ctx, span
 }
+
+// StartCallSpan — reconcile path *내부* 의 child span (외부 호출 / 비싼
+// computation 등). caller 가 defer span.End() 의무.
+//
+// 사용 예: redis client 호출 (INFO replication / PromoteToPrimary), S3 client
+// 호출 (FPut / FGet), Pod ready 검증 등. operation 별 latency + error 추적.
+func StartCallSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	return otel.Tracer(TracerName).Start(ctx, name)
+}
