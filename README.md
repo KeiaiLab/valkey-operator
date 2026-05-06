@@ -152,6 +152,41 @@ spec:
 Download Job spawn → S3 → 임시 PVC) → Restoring (init container 가 PVC 의
 RDB 를 /data/dump.rdb 로 cp) → Verifying → Completed.
 
+## ValkeyCluster Restore — 신규 (cycle 5)
+
+ADR-0015 의 *Standalone-only* 제약 완전 해소. ValkeyCluster mode 도 restore
+가능 — 단일 STS 의 ordinal 기반 shard mapping init container 활용.
+
+```yaml
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyRestore
+metadata:
+  name: vkr-cluster-recovery
+  namespace: default
+spec:
+  clusterRef:
+    kind: ValkeyCluster
+    name: valkeycluster-sample
+  source:
+    pvc:
+      name: backup-cluster-pvc           # ROX accessMode 필수 (multi-pod 동시 mount)
+      shardLayout:                       # shard 별 source path 매핑 (옵션)
+        "0": shard-0/dump.rdb
+        "1": shard-1/dump.rdb
+        "2": shard-2/dump.rdb
+        # 미명시 시 default `shard-{N}/dump.rdb` 자동 적용
+  restoreType: RDB
+```
+
+흐름: 단일 STS 의 모든 pod 가 동일 init container 사용 → shell 에서
+`${HOSTNAME##*-}` ordinal 추출 → shard index 계산 (0..shards-1 = primary,
+shards..total-1 = replica) → 적절한 source path 의 RDB cp.
+
+**ROX accessMode 필수** — RWO source 는 multi-pod 동시 mount 불가. EFS /
+NFS / GlusterFS / Ceph FS 등 file system 기반 storage class 사용. 외부
+저장 (Source.TargetRef) 사용 시 `Spec.SourcePVCAccessMode: ReadOnlyMany`
+명시 필수.
+
 ## ValkeyRestore (Standalone PVC) 사용법 — 신규
 
 전제: 이미 ValkeyBackup 으로 backup PVC (`<backup-name>-backup`) 가 생성됨.
