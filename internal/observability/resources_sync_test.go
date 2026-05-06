@@ -96,3 +96,86 @@ func toResourceMap(r map[string]any) map[string]map[string]string {
 	}
 	return out
 }
+
+// TestKustomizeChartProbesSync — liveness/readiness probe 의 initialDelaySeconds /
+// periodSeconds 가 kustomize manager Deployment ↔ chart values.yaml 정합.
+//
+// 사고 패턴: kustomize 사용자가 cluster 에서 *느린 startup* 감지 → liveness
+// probe 가 너무 짧아 무한 restart loop. Helm 사용자는 정상. cycle 61 (resources)
+// 와 동일 패턴.
+func TestKustomizeChartProbesSync(t *testing.T) {
+	repo := findRepoRoot(t)
+
+	// 1. config/manager/manager.yaml 의 probes.
+	mgrPath := filepath.Join(repo, "config/manager/manager.yaml")
+	mgrRaw, err := os.ReadFile(mgrPath)
+	if err != nil {
+		t.Fatalf("read manager: %v", err)
+	}
+	deployProbes := map[string]map[string]int{}
+	for _, doc := range strings.Split(string(mgrRaw), "\n---\n") {
+		body := strings.TrimSpace(doc)
+		if body == "" {
+			continue
+		}
+		var m map[string]any
+		if err := yaml.Unmarshal([]byte(body), &m); err != nil {
+			continue
+		}
+		if k, _ := m["kind"].(string); k != "Deployment" {
+			continue
+		}
+		spec, _ := m["spec"].(map[string]any)
+		tmpl, _ := spec["template"].(map[string]any)
+		podSpec, _ := tmpl["spec"].(map[string]any)
+		containers, _ := podSpec["containers"].([]any)
+		for _, c := range containers {
+			cm, _ := c.(map[string]any)
+			if cm["name"] == "manager" {
+				for _, probe := range []string{"livenessProbe", "readinessProbe"} {
+					if p, ok := cm[probe].(map[string]any); ok {
+						deployProbes[probe] = map[string]int{
+							"initialDelaySeconds": toInt(p["initialDelaySeconds"]),
+							"periodSeconds":       toInt(p["periodSeconds"]),
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(deployProbes) != 2 {
+		t.Fatal("manager Deployment 의 liveness + readiness probe 추출 실패")
+	}
+
+	// 2. chart values.yaml 의 probes.liveness / probes.readiness.
+	chartPath := filepath.Join(repo, "charts/valkey-operator/values.yaml")
+	chartRaw, _ := os.ReadFile(chartPath)
+	var chartValues map[string]any
+	if err := yaml.Unmarshal(chartRaw, &chartValues); err != nil {
+		t.Fatalf("parse values: %v", err)
+	}
+	probes, _ := chartValues["probes"].(map[string]any)
+	mapping := map[string]string{"livenessProbe": "liveness", "readinessProbe": "readiness"}
+	for deployKey, valuesKey := range mapping {
+		v, _ := probes[valuesKey].(map[string]any)
+		for _, field := range []string{"initialDelaySeconds", "periodSeconds"} {
+			cv := toInt(v[field])
+			dv := deployProbes[deployKey][field]
+			if cv != dv {
+				t.Errorf("probe drift: %s.%s — kustomize=%d ≠ chart=%d", deployKey, field, dv, cv)
+			}
+		}
+	}
+}
+
+func toInt(v any) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	}
+	return 0
+}

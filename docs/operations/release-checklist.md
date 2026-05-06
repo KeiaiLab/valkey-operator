@@ -55,6 +55,7 @@ push 도 동일 통과 필수.
 | 28 | `TestInstallYAMLStructure` | dist/install.yaml 구조 검증 (5 CRD + Deployment + RBAC + Webhook + Service) |
 | 29 | `TestKustomizeManifestLabelChainSync` | pod labels ⊇ Deployment selector ⊇ Service selector + ServiceMonitor selector ⊆ Service metadata.labels |
 | 30 | `TestKustomizeChartResourcesSync` | config/manager/manager.yaml ↔ charts/.../values.yaml 의 resources (limits + requests × cpu + memory) |
+| 31 | `TestKustomizeChartProbesSync` | manager Deployment ↔ chart values.yaml 의 liveness/readiness probe initialDelay/period |
 
 검증 명령: `go test ./internal/observability/`
 
