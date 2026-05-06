@@ -25,23 +25,40 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/storage"
 )
+
+// s3ClientBuilder — 테스트에서 mock client 주입을 위한 indirection.
+//
+// nil 시 기본 storage.BuildS3Client 사용.
+type s3ClientBuilder func(s3 *cachev1alpha1.S3Spec, ak, sk string) (s3Reachable, error)
+
+// s3Reachable — Reconciler 가 S3 client 에서 사용할 단일 메서드.
+type s3Reachable interface {
+	Reachable(ctx context.Context) (bool, error)
+	EndpointHost() string
+}
+
+func defaultS3ClientBuilder(s3 *cachev1alpha1.S3Spec, ak, sk string) (s3Reachable, error) {
+	return storage.BuildS3Client(s3, ak, sk)
+}
 
 // ValkeyBackupTargetReconciler — 외부 저장 target 의 reachability 검증.
 //
-// 본 commit (Track A AI-002 첫 단계) 책임:
-//  1. Spec 기반 자격증명 Secret 존재 + key 검증.
-//  2. Phase 전이: Pending → Reachable | Unreachable.
-//  3. LastVerifiedAt 갱신.
-//  4. 5분 requeue — Secret 회전 / endpoint 변경 감지.
+// 책임:
+//  1. Spec schema 검증 (verifyCredentials).
+//  2. 실제 S3 endpoint reachability — BucketExists 호출 (verifyEndpoint, ADR-0022).
+//  3. Phase 전이: Pending → Reachable | Unreachable.
+//  4. LastVerifiedAt 갱신.
+//  5. 5분 requeue — Secret 회전 / endpoint 변경 / bucket 권한 변경 감지.
 //
-// 별개 commit (AWS SDK 통합 후):
-//   - 실제 S3 reachability ping (HEAD bucket / ListObjects v2).
-//
-// ADR-0016.
+// ADR-0016 + ADR-0022.
 type ValkeyBackupTargetReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// S3ClientBuilder — 테스트 주입. nil 시 기본 minio-go wrapper.
+	S3ClientBuilder s3ClientBuilder
 }
 
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackuptargets,verbs=get;list;watch;create;update;patch;delete
@@ -75,31 +92,47 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	// 자격증명 검증.
-	reason, msg, ok := r.verifyCredentials(ctx, t)
+	// 1. Schema 검증.
+	schemaReason, schemaMsg, ak, sk, schemaOK := r.verifyCredentials(ctx, t)
 	now := metav1.Now()
 
-	if ok {
-		t.Status.Phase = cachev1alpha1.BackupTargetPhaseReachable
-		t.Status.LastVerifiedAt = &now
-		t.Status.Message = msg
-		setCondition(t.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionTrue,
-			Reason:             reason,
-			Message:            msg,
-			ObservedGeneration: t.Generation,
-		})
-	} else {
+	if !schemaOK {
+		// Schema 단계 실패 → Unreachable, endpoint ping 생략.
 		t.Status.Phase = cachev1alpha1.BackupTargetPhaseUnreachable
-		t.Status.Message = msg
+		t.Status.Message = schemaMsg
 		setCondition(t.GetConditions(), metav1.Condition{
 			Type:               "Ready",
 			Status:             metav1.ConditionFalse,
-			Reason:             reason,
-			Message:            msg,
+			Reason:             schemaReason,
+			Message:            schemaMsg,
 			ObservedGeneration: t.Generation,
 		})
+	} else {
+		// 2. Endpoint ping (BucketExists, ADR-0022).
+		endpointReason, endpointMsg, endpointOK := r.verifyEndpoint(ctx, t, ak, sk)
+		if !endpointOK {
+			t.Status.Phase = cachev1alpha1.BackupTargetPhaseUnreachable
+			t.Status.Message = endpointMsg
+			setCondition(t.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             endpointReason,
+				Message:            endpointMsg,
+				ObservedGeneration: t.Generation,
+			})
+		} else {
+			// 양 단계 모두 통과 → Reachable.
+			t.Status.Phase = cachev1alpha1.BackupTargetPhaseReachable
+			t.Status.LastVerifiedAt = &now
+			t.Status.Message = endpointMsg
+			setCondition(t.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionTrue,
+				Reason:             endpointReason,
+				Message:            endpointMsg,
+				ObservedGeneration: t.Generation,
+			})
+		}
 	}
 
 	t.Status.ObservedGeneration = t.Generation
@@ -112,32 +145,31 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
 
-// verifyCredentials — 자격증명 Secret 존재 + key 가 비어있지 않은지 검증.
+// verifyCredentials — Spec schema 검증 + Secret 의 access/secret key 추출.
 //
-// 본 함수는 "schema-level" 검증만 수행. 실제 S3 endpoint reachability 는
-// 별개 commit (AWS SDK 통합 후). 그때 본 함수가 verifySchema + verifyEndpoint
-// 두 단계로 분해.
+// ok=true 시 ak/sk 가 Secret data 의 raw bytes (string 변환). caller 가
+// verifyEndpoint 에 그대로 전달.
 func (r *ValkeyBackupTargetReconciler) verifyCredentials(
 	ctx context.Context,
 	t *cachev1alpha1.ValkeyBackupTarget,
-) (reason, msg string, ok bool) {
+) (reason, msg, ak, sk string, ok bool) {
 	if t.Spec.Type != cachev1alpha1.BackupTargetTypeS3 {
 		return "UnsupportedType",
-			fmt.Sprintf("type %s not yet implemented", t.Spec.Type), false
+			fmt.Sprintf("type %s not yet implemented", t.Spec.Type), "", "", false
 	}
 	if t.Spec.S3 == nil {
-		return "MissingS3Spec", "spec.s3 required when type=S3", false
+		return "MissingS3Spec", "spec.s3 required when type=S3", "", "", false
 	}
 	s3 := t.Spec.S3
 	if s3.Endpoint == "" || s3.Region == "" || s3.Bucket == "" {
 		return "MissingFields",
-			"spec.s3 endpoint/region/bucket all required", false
+			"spec.s3 endpoint/region/bucket all required", "", "", false
 	}
 
 	secretName := s3.CredentialsSecretRef.Name
 	if secretName == "" {
 		return "MissingSecretRef",
-			"spec.s3.credentialsSecretRef.name required", false
+			"spec.s3.credentialsSecretRef.name required", "", "", false
 	}
 
 	accessKey := s3.CredentialsSecretRef.AccessKeyIDKey
@@ -157,21 +189,63 @@ func (r *ValkeyBackupTargetReconciler) verifyCredentials(
 		if errors.IsNotFound(err) {
 			return "SecretNotFound",
 				fmt.Sprintf("Secret %s/%s not found", t.Namespace, secretName),
-				false
+				"", "", false
 		}
-		return "SecretGetFailed", err.Error(), false
+		return "SecretGetFailed", err.Error(), "", "", false
 	}
 	if len(sec.Data[accessKey]) == 0 {
 		return "MissingAccessKey",
-			fmt.Sprintf("Secret %s key %q empty", secretName, accessKey), false
+			fmt.Sprintf("Secret %s key %q empty", secretName, accessKey),
+			"", "", false
 	}
 	if len(sec.Data[secretKey]) == 0 {
 		return "MissingSecretKey",
-			fmt.Sprintf("Secret %s key %q empty", secretName, secretKey), false
+			fmt.Sprintf("Secret %s key %q empty", secretName, secretKey),
+			"", "", false
 	}
 	return "CredentialsValid",
-		fmt.Sprintf("S3 endpoint=%s bucket=%s region=%s — credentials present (S3 ping pending SDK)",
+		fmt.Sprintf("S3 endpoint=%s bucket=%s region=%s — credentials present",
 			s3.Endpoint, s3.Bucket, s3.Region),
+		string(sec.Data[accessKey]), string(sec.Data[secretKey]),
+		true
+}
+
+// verifyEndpoint — 실제 S3 endpoint 에 BucketExists 호출하여 reachability +
+// 자격증명 + 버킷 존재를 동시 검증 (ADR-0022).
+//
+// 10초 타임아웃 — invalid endpoint / 자격증명 시 reconcile 무한 대기 방지.
+//
+// 첫 commit 의 의도적 한계 (별개 commit 보강):
+//   - 실패 사유 분류 (AccessDenied / InvalidAccessKeyId / NoSuchBucket /
+//     network) 가 단일 "EndpointPingFailed" reason 으로 통합. 추후 minio-go
+//     ErrorResponse 파싱.
+func (r *ValkeyBackupTargetReconciler) verifyEndpoint(
+	ctx context.Context,
+	t *cachev1alpha1.ValkeyBackupTarget,
+	ak, sk string,
+) (reason, msg string, ok bool) {
+	build := r.S3ClientBuilder
+	if build == nil {
+		build = defaultS3ClientBuilder
+	}
+	s3c, err := build(t.Spec.S3, ak, sk)
+	if err != nil {
+		return "ClientBuildFailed", err.Error(), false
+	}
+	pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	exists, err := s3c.Reachable(pingCtx)
+	if err != nil {
+		return "EndpointPingFailed",
+			fmt.Sprintf("BucketExists failed: %s", err.Error()), false
+	}
+	if !exists {
+		return "BucketNotFound",
+			fmt.Sprintf("bucket %s not found at %s", t.Spec.S3.Bucket, s3c.EndpointHost()),
+			false
+	}
+	return "EndpointReachable",
+		fmt.Sprintf("S3 bucket %s @ %s reachable", t.Spec.S3.Bucket, s3c.EndpointHost()),
 		true
 }
 

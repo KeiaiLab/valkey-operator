@@ -9,6 +9,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +73,7 @@ func TestBackupTarget_unsupportedType(t *testing.T) {
 	tgt.Spec.Type = cachev1alpha1.BackupTargetTypeGCS
 	r := fakeTargetReconciler(tgt, nil)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "UnsupportedType" {
 		t.Fatalf("expected UnsupportedType, got reason=%s ok=%v", reason, ok)
 	}
@@ -86,7 +87,7 @@ func TestBackupTarget_missingS3Spec(t *testing.T) {
 	}
 	r := fakeTargetReconciler(tgt, nil)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "MissingS3Spec" {
 		t.Fatalf("expected MissingS3Spec, got reason=%s ok=%v", reason, ok)
 	}
@@ -98,7 +99,7 @@ func TestBackupTarget_missingFields(t *testing.T) {
 	tgt.Spec.S3.Bucket = "" // 누락
 	r := fakeTargetReconciler(tgt, nil)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "MissingFields" {
 		t.Fatalf("expected MissingFields, got reason=%s ok=%v", reason, ok)
 	}
@@ -109,7 +110,7 @@ func TestBackupTarget_missingSecretRef(t *testing.T) {
 	tgt := validS3Target("vbt", "ns", "")
 	r := fakeTargetReconciler(tgt, nil)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "MissingSecretRef" {
 		t.Fatalf("expected MissingSecretRef, got reason=%s ok=%v", reason, ok)
 	}
@@ -120,7 +121,7 @@ func TestBackupTarget_secretNotFound(t *testing.T) {
 	tgt := validS3Target("vbt", "ns", "missing-secret")
 	r := fakeTargetReconciler(tgt, nil)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "SecretNotFound" {
 		t.Fatalf("expected SecretNotFound, got reason=%s ok=%v", reason, ok)
 	}
@@ -133,7 +134,7 @@ func TestBackupTarget_missingAccessKey(t *testing.T) {
 	tgt := validS3Target("vbt", "ns", "creds")
 	r := fakeTargetReconciler(tgt, sec)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "MissingAccessKey" {
 		t.Fatalf("expected MissingAccessKey, got reason=%s ok=%v", reason, ok)
 	}
@@ -146,39 +147,115 @@ func TestBackupTarget_missingSecretKey(t *testing.T) {
 	tgt := validS3Target("vbt", "ns", "creds")
 	r := fakeTargetReconciler(tgt, sec)
 
-	reason, _, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, _, _, _, ok := r.verifyCredentials(context.Background(), tgt)
 	if ok || reason != "MissingSecretKey" {
 		t.Fatalf("expected MissingSecretKey, got reason=%s ok=%v", reason, ok)
 	}
 }
 
-// 8. 모두 OK → CredentialsValid.
+// 8. 모두 OK → CredentialsValid + ak/sk 추출.
 func TestBackupTarget_credentialsValid(t *testing.T) {
 	sec := validCredsSecret("creds", "ns")
 	tgt := validS3Target("vbt", "ns", "creds")
 	r := fakeTargetReconciler(tgt, sec)
 
-	reason, msg, ok := r.verifyCredentials(context.Background(), tgt)
+	reason, msg, ak, sk, ok := r.verifyCredentials(context.Background(), tgt)
 	if !ok || reason != "CredentialsValid" {
 		t.Fatalf("expected CredentialsValid, got reason=%s ok=%v msg=%s", reason, ok, msg)
+	}
+	if ak != "AKIAEXAMPLE" || sk != "secret" {
+		t.Fatalf("expected ak=AKIAEXAMPLE sk=secret, got ak=%s sk=%s", ak, sk)
+	}
+}
+
+// fakeS3Client — verifyEndpoint 단위 테스트용 mock.
+type fakeS3Client struct {
+	exists  bool
+	pingErr error
+	host    string
+}
+
+func (f *fakeS3Client) Reachable(_ context.Context) (bool, error) { return f.exists, f.pingErr }
+func (f *fakeS3Client) EndpointHost() string                      { return f.host }
+
+func mockBuilder(client *fakeS3Client, buildErr error) s3ClientBuilder {
+	return func(_ *cachev1alpha1.S3Spec, _, _ string) (s3Reachable, error) {
+		if buildErr != nil {
+			return nil, buildErr
+		}
+		return client, nil
+	}
+}
+
+// 9. verifyEndpoint: BucketExists 가 true → EndpointReachable.
+func TestBackupTarget_endpoint_reachable(t *testing.T) {
+	tgt := validS3Target("vbt", "ns", "creds")
+	r := fakeTargetReconciler(tgt, nil)
+	r.S3ClientBuilder = mockBuilder(&fakeS3Client{exists: true, host: "s3.fake"}, nil)
+
+	reason, _, ok := r.verifyEndpoint(context.Background(), tgt, "ak", "sk")
+	if !ok || reason != "EndpointReachable" {
+		t.Fatalf("expected EndpointReachable, got reason=%s ok=%v", reason, ok)
+	}
+}
+
+// 10. verifyEndpoint: BucketExists 가 false → BucketNotFound.
+func TestBackupTarget_endpoint_bucketNotFound(t *testing.T) {
+	tgt := validS3Target("vbt", "ns", "creds")
+	r := fakeTargetReconciler(tgt, nil)
+	r.S3ClientBuilder = mockBuilder(&fakeS3Client{exists: false, host: "s3.fake"}, nil)
+
+	reason, _, ok := r.verifyEndpoint(context.Background(), tgt, "ak", "sk")
+	if ok || reason != "BucketNotFound" {
+		t.Fatalf("expected BucketNotFound, got reason=%s ok=%v", reason, ok)
+	}
+}
+
+// 11. verifyEndpoint: BucketExists 가 error → EndpointPingFailed.
+func TestBackupTarget_endpoint_pingError(t *testing.T) {
+	tgt := validS3Target("vbt", "ns", "creds")
+	r := fakeTargetReconciler(tgt, nil)
+	r.S3ClientBuilder = mockBuilder(
+		&fakeS3Client{pingErr: fmt.Errorf("network unreachable")},
+		nil,
+	)
+
+	reason, _, ok := r.verifyEndpoint(context.Background(), tgt, "ak", "sk")
+	if ok || reason != "EndpointPingFailed" {
+		t.Fatalf("expected EndpointPingFailed, got reason=%s ok=%v", reason, ok)
+	}
+}
+
+// 12. verifyEndpoint: client build 실패 → ClientBuildFailed.
+func TestBackupTarget_endpoint_clientBuildFailed(t *testing.T) {
+	tgt := validS3Target("vbt", "ns", "creds")
+	r := fakeTargetReconciler(tgt, nil)
+	r.S3ClientBuilder = mockBuilder(nil, fmt.Errorf("invalid endpoint"))
+
+	reason, _, ok := r.verifyEndpoint(context.Background(), tgt, "ak", "sk")
+	if ok || reason != "ClientBuildFailed" {
+		t.Fatalf("expected ClientBuildFailed, got reason=%s ok=%v", reason, ok)
 	}
 }
 
 // Reconcile 통합 — Phase 전이 + LastVerifiedAt 기록.
+//
+// mock S3ClientBuilder 주입 → endpoint ping 도 통과 → Reachable.
 func TestBackupTarget_reconcile_phaseTransition(t *testing.T) {
 	sec := validCredsSecret("creds", "ns")
 	tgt := validS3Target("vbt", "ns", "creds")
 	r := fakeTargetReconciler(tgt, sec)
+	r.S3ClientBuilder = mockBuilder(&fakeS3Client{exists: true, host: "s3.fake"}, nil)
 	ctx := context.Background()
 	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "vbt", Namespace: "ns"}}
 
-	// 1차 reconcile — 신규 → Pending → 즉시 검증 → Reachable.
+	// 1차 reconcile — 신규 → Pending → 즉시 검증 → endpoint ping → Reachable.
 	res, err := r.Reconcile(ctx, req)
 	if err != nil {
 		t.Fatalf("reconcile error: %v", err)
 	}
 	if res.RequeueAfter == 0 {
-		t.Fatalf("expected requeue after credentials valid, got %v", res)
+		t.Fatalf("expected requeue after Reachable, got %v", res)
 	}
 
 	got := &cachev1alpha1.ValkeyBackupTarget{}
@@ -191,7 +268,7 @@ func TestBackupTarget_reconcile_phaseTransition(t *testing.T) {
 	if got.Status.LastVerifiedAt == nil {
 		t.Fatalf("expected LastVerifiedAt non-nil")
 	}
-	// Ready=True 인 condition 확인.
+	// Ready=True + Reason=EndpointReachable.
 	var ready *metav1.Condition
 	for i := range got.Status.Conditions {
 		if got.Status.Conditions[i].Type == "Ready" {
@@ -202,8 +279,42 @@ func TestBackupTarget_reconcile_phaseTransition(t *testing.T) {
 	if ready == nil || ready.Status != metav1.ConditionTrue {
 		t.Fatalf("expected Ready=True, got %+v", ready)
 	}
-	if ready.Reason != "CredentialsValid" {
-		t.Fatalf("expected Reason=CredentialsValid, got %s", ready.Reason)
+	if ready.Reason != "EndpointReachable" {
+		t.Fatalf("expected Reason=EndpointReachable, got %s", ready.Reason)
+	}
+}
+
+// Reconcile — endpoint ping 실패 시 Phase=Unreachable + Reason=EndpointPingFailed.
+func TestBackupTarget_reconcile_endpointFails(t *testing.T) {
+	sec := validCredsSecret("creds", "ns")
+	tgt := validS3Target("vbt", "ns", "creds")
+	r := fakeTargetReconciler(tgt, sec)
+	r.S3ClientBuilder = mockBuilder(
+		&fakeS3Client{pingErr: fmt.Errorf("dial tcp: connection refused")},
+		nil,
+	)
+	ctx := context.Background()
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "vbt", Namespace: "ns"}}
+
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := &cachev1alpha1.ValkeyBackupTarget{}
+	if err := r.Get(ctx, req.NamespacedName, got); err != nil {
+		t.Fatalf("get target: %v", err)
+	}
+	if got.Status.Phase != cachev1alpha1.BackupTargetPhaseUnreachable {
+		t.Fatalf("expected Unreachable, got %s", got.Status.Phase)
+	}
+	var ready *metav1.Condition
+	for i := range got.Status.Conditions {
+		if got.Status.Conditions[i].Type == "Ready" {
+			ready = &got.Status.Conditions[i]
+			break
+		}
+	}
+	if ready == nil || ready.Reason != "EndpointPingFailed" {
+		t.Fatalf("expected Reason=EndpointPingFailed, got %+v", ready)
 	}
 }
 
