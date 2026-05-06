@@ -1,15 +1,14 @@
 # Artifact Hub repository metadata for keiailab/valkey-operator
 # https://artifacthub.io/docs/topics/repositories/
 #
-# repositoryID 는 ArtifactHub 에 신규 등록 후 부여되는 UUID 로 교체해야 합니다.
-# 등록 절차:
-#   1. https://artifacthub.io/control-panel/repositories 접속 (keiailab org)
-#   2. ADD REPOSITORY → Helm Chart → URL: https://keiailab.github.io/valkey-operator
-#   3. 생성된 ID 를 아래 repositoryID 에 채워 넣고 PR 머지
+# ArtifactHub 등록 완료 (2026-05-06):
+#   name: keiailab-valkey-operator (다른 vendor 의 'valkey-operator' 와 충돌 회피)
+#   URL:  https://keiailab.github.io/valkey-operator
+#   path: https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator
 #
 # signingKey 는 keiailab 공통 PGP key (mongodb-operator/postgres-operator 와 동일 owner) 재사용.
 
-repositoryID: 00000000-0000-0000-0000-000000000000  # TODO(artifacthub-onboarding): ArtifactHub 등록 후 실제 UUID 로 교체
+repositoryID: 16085dd0-0f19-4c6b-ab90-bd97105bdf42
 
 signingKey:
   fingerprint: "89A409476828CB992338C378651E51AF520BCB78"

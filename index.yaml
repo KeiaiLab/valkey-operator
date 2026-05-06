@@ -103,7 +103,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-05-06T12:50:50.278192+09:00"
+    created: "2026-05-06T13:20:21.479088+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: f9c3d86e7c59f5848104405796fb21c521eeff03ebf91d7adf6d02dae7b2e320
@@ -130,4 +130,4 @@ entries:
     urls:
     - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-05-06T12:50:50.275806+09:00"
+generated: "2026-05-06T13:20:21.477449+09:00"
