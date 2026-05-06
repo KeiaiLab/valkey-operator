@@ -1,0 +1,39 @@
+{{- /*
+metrics-auth ClusterRole + Binding (cycle 104). secure metrics (.Values.metrics.secure=
+true, default) 활성 시 operator 가 *Prometheus 의 token* 을 K8s TokenReview /
+SubjectAccessReview API 로 검증. 본 RBAC 부재 시 *모든 Prometheus 호출 401* —
+metrics scrape silent fail.
+
+config/rbac/metrics_auth_role.yaml + metrics_auth_role_binding.yaml 의 chart
+이식. cycle 102/103 의 *kustomize ↔ Helm parity family* 의 sibling.
+*/}}
+{{- if and .Values.metrics.enabled .Values.metrics.secure -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "valkey-operator.fullname" . }}-metrics-auth
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [authentication.k8s.io]
+    resources: [tokenreviews]
+    verbs: [create]
+  - apiGroups: [authorization.k8s.io]
+    resources: [subjectaccessreviews]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "valkey-operator.fullname" . }}-metrics-auth
+  labels:
+    {{- include "valkey-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "valkey-operator.fullname" . }}-metrics-auth
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "valkey-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
