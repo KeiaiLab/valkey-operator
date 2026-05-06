@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 12 완료)
+**최종 갱신**: 2026-05-06 (cycle 13 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50% + Track F **OTEL infrastructure + 13 trace spans**.
+진행 + Track E 50% + Track F **OTEL infrastructure + 20 trace spans**.
 
 ---
 
@@ -163,6 +163,25 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 14. Cycle 13 추가분 (2 commits — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 65 | `d1ff3df` | `feat(observability): ValkeyCluster cluster bus child span — 4 spans 추가` | EnsureClusterMeet, CreateCluster (nested), QueryAnyNode, GracefulTeardown. RecordError. |
+| 66 | `e0faebb` | `feat(observability): Backup operator + BackupTarget redis/S3 호출 child span — 3 spans` | TriggerBGSAVE, LASTSAVE, BucketExists (S3 reachability). |
+
+**Track F 누적 trace 20 spans** (cycle 11+12+13):
+- 5 root (cycle 11): {Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore, ValkeyBackupTarget}/Reconcile
+- 3 Failover (cycle 12 첫): INFO_replication, PromoteToPrimary, EnsureReplicaOf_all
+- 5 Backup/Restore phase (cycle 12 둘째): Backup/{Copying, Uploading} + Restore/{Mounting, Restoring, Verifying}
+- 4 ClusterBus (cycle 13 첫): EnsureClusterMeet, CreateCluster, QueryAnyNode, GracefulTeardown
+- 3 Backup/Target (cycle 13 둘째): TriggerBGSAVE, LASTSAVE, BucketExists
+
+**다음 cycle 진입 권고**:
+- Conversion webhook (v1alpha1 → v1beta1 준비) — 큰 작업
+- e2e 실측 (`make test-e2e` — kind cluster + cert-manager 5분+)
+- ValkeyRestoreReconciler 의 Download Job 폴링 + ensureTargetRefSource child span
 
 ## 13. Cycle 12 추가분 (2 commits — 본 세션)
 
