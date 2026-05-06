@@ -1,6 +1,6 @@
 # ADR-0029: GitOps deploy 오버레이 도입 (3-repo 정합)
 
-- Date: 2026-05-06
+- Date: 2026-05-06 (revised 2026-05-06: cluster live 인벤토리 반영 — ns 통합 + storageClass)
 - Status: Accepted
 - Authors: @eightynine01
 
@@ -12,11 +12,31 @@
 2. 자동 생성된 Namespace 리소스가 prod ns 사전생성 정책과 충돌.
 3. 3 repo 중 mongodb-operator 만 `deploy/overlays/prod/` 진입점을 가져 운영자 인지 부하.
 
-### 현 운영 상태 (2026-05-06 인벤토리)
+### 현 운영 상태 (2026-05-06 인벤토리, kubectl 직접 조회)
 
-- `keiailab/argos-platform-data/valkey` (ApplicationSet path) 는 **bitnami/valkey 5.6.1** (replication 1+1) 로 운영 중. **keiailab/valkey-operator 는 클러스터 미배포 상태**.
-- 본 deploy/ 는 따라서 *유일한 ArgoCD source 가 되도록 강제하는 것이 아니라*, 향후 bitnami → keiailab/valkey-operator 마이그레이션의 **Day-0 GitOps 진입점 후보** 로 정의된다. RFC-0004 §3 "Day-0 첫 배포" 적용.
-- 마이그레이션 시 argos-platform-data/valkey/Chart.yaml 의 dependencies 가 (bitnami → keiailab) 바뀌고 본 deploy/ 의 sharded 토폴로지가 적용 대상이 된다.
+```
+$ kubectl config current-context
+argos
+$ kubectl get ns data prod db
+data    Active   4h55m
+Error from server (NotFound): namespaces "prod" not found
+Error from server (NotFound): namespaces "db" not found
+$ kubectl get application -n argocd platform-data-valkey \
+    -o jsonpath='{.spec.destination.namespace}{" "}{.status.sync.status}{"/"}{.status.health.status}'
+data OutOfSync/Degraded
+$ kubectl get storageclass | grep -E "ceph-rbd|ceph-block"
+ceph-rbd (default)   rook-ceph.rbd.csi.ceph.com
+# ceph-block 부재
+```
+
+<!-- live-verified: 2026-05-06 -->
+
+도출 결정:
+
+- **ns 통합 정책 적용**: argos 2026-05-06 사용자 명시 cycle 으로 5 차트 모두 `data` ns 단일. 본 ADR 의 `kustomization.yaml` 도 `namespace: data` 정합. envName=prod 는 식별자로만 유지.
+- **StorageClass 정합**: `ceph-block` 부재 → `ceph-rbd` (default) 사용. CR sample 의 `storageClassName: ceph-rbd`.
+- **bitnami 운영 사실**: `keiailab/argos-platform-data/valkey` ApplicationSet path 가 **bitnami/valkey 5.6.1** (replication 1+1) 로 운영 중 (OutOfSync/Degraded — 진행 중 변경 흔적). `keiailab/valkey-operator` 는 클러스터 *미배포*.
+- 본 deploy/ 는 *bitnami → keiailab* 마이그레이션 **Day-0 진입점 후보**. 마이그레이션 plan 은 별도 문서 (`docs/migration/bitnami-to-keiailab.md`) 로 분리 — 운영 데이터 영향 (sidekiq, web session) 결정은 사용자 명시 영역.
 
 ## Decision
 

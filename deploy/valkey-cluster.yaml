@@ -2,7 +2,7 @@ apiVersion: cache.keiailab.io/v1alpha1
 kind: ValkeyCluster
 metadata:
   name: valkey-cluster
-  namespace: db
+  namespace: data
 spec:
   shards: 3
   replicasPerShard: 1
@@ -11,7 +11,7 @@ spec:
     version: "8.1.6"
   storage:
     size: 10Gi
-    storageClassName: ceph-block
+    storageClassName: ceph-rbd
   resources:
     requests:
       cpu: 500m

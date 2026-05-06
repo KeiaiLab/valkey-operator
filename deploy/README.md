@@ -8,33 +8,27 @@ ADR-0029 의 결정에 따라 mongodb-operator / postgresql-operator 와 동일 
 
 ```
 deploy/
-├── overlays/prod/                 # ArgoCD application path: operator 자체
-│   ├── kustomization.yaml         # config/{crd,rbac,manager} → namespace=prod
+├── overlays/prod/                 # ArgoCD application path: operator 자체 (envName=prod, ns=data)
+│   ├── kustomization.yaml         # config/{crd,rbac,manager} → namespace=data
 │   └── delete-namespace.yaml      # 자동 생성 Namespace 제거
-└── valkey-cluster.yaml            # ArgoCD application path: workload (ValkeyCluster, db ns)
+└── valkey-cluster.yaml            # ArgoCD application path: workload (ValkeyCluster, ns=data)
 ```
 
-운영 모델: **operator 와 workload 는 별개 ArgoCD application** — operator 는 prod ns, 데이터는 db ns.
+운영 모델: argos 클러스터 ns 통합 정책 (2026-05-06 cycle: 5 차트 모두 `data` ns 단일) 에 따라 operator 와 CR 이 *동일 data ns* 를 공유한다.
 
 ## 현 운영 상태 (2026-05-06)
 
 `keiailab/argos-platform-data/valkey` (ApplicationSet path) 는 **bitnami/valkey 5.6.1** (replication 1+1) 로 운영 중. **keiailab/valkey-operator 는 클러스터 미배포 상태**.
 
-본 디렉터리는 따라서 *bitnami → keiailab* 마이그레이션의 **Day-0 GitOps 진입점 후보** 이다. 마이그레이션 시:
-
-1. argos-platform-data/valkey/Chart.yaml 의 dependencies 가 bitnami → keiailab 으로 전환되거나, 또는 argos ApplicationSet 의 valkey path 가 본 repo 의 deploy/overlays/prod 를 가리키도록 변경.
-2. 기존 bitnami Valkey 의 데이터 (sidekiq queue, web session 등 ESS=infisical-cloud-valkey-shared-valkey-auth) 마이그레이션 절차 사전 정의.
-3. 본 deploy/valkey-cluster.yaml 의 sharded 토폴로지 (3×1) 는 *현 1+1 replication 보다 격상* — 다운타임 허용 또는 dual-write 패턴 필요.
-
-본 디렉터리 단독 적용은 위 사전 작업 없이는 *프로덕션 영향* 가능. 현 단계는 *진입점 마련* 까지로 한정한다.
+본 디렉터리는 *bitnami → keiailab* 마이그레이션의 **Day-0 GitOps 진입점 후보** 이다. 마이그레이션은 별도 plan (`docs/migration/bitnami-to-keiailab.md` 향후 작성) 에서 다룬다 — 본 디렉터리 단독 적용은 *운영 데이터 영향 (sidekiq queue, web session ESS=infisical-cloud-valkey-shared-valkey-auth)* 위험.
 
 ## 사전 조건 (cluster)
 
-- [ ] `prod` namespace 사전 생성.
-- [ ] `db` namespace 사전 생성.
-- [ ] StorageClass `ceph-block` 이용 가능.
-- [ ] cert-manager (TLS 활성화 시 — ADR-0010 cert-manager auto-discovery 가정. 본 sample 은 tls 블록 주석 처리).
+- [x] `data` namespace 사전 생성 (argos 2026-05-06 cycle).
+- [x] StorageClass `ceph-rbd` (default) — argos 클러스터 검증.
+- [ ] cert-manager (TLS 활성화 시 — ADR-0010 cert-manager auto-discovery. 본 sample 은 tls 블록 주석 처리).
 - [ ] auth Secret 은 operator 가 자동 생성 (ADR-0013 auth always-enabled).
+- [ ] **bitnami/valkey 5.6.1 와의 충돌 방지** — 데이터 마이그레이션 또는 dual-write 패턴 사전 결정.
 
 ## 적용 (수동 검증)
 
@@ -45,11 +39,11 @@ kustomize build deploy/overlays/prod | grep -c "kind: Namespace"   # 0
 
 # 2) operator 적용
 kustomize build deploy/overlays/prod | kubectl apply -f -
-kubectl -n prod rollout status deploy/valkey-operator-controller-manager
+kubectl -n data rollout status deploy/valkey-operator-controller-manager
 
-# 3) workload 적용
+# 3) workload 적용 (bitnami 와 충돌 위험 — 마이그레이션 plan 후)
 kubectl apply -f deploy/valkey-cluster.yaml
-kubectl -n db get valkeycluster valkey-cluster \
+kubectl -n data get valkeycluster valkey-cluster \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
 ```
 
