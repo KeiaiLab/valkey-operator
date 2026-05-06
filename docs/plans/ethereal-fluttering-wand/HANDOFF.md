@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 11 완료)
+**최종 갱신**: 2026-05-06 (cycle 12 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50% + Track F **OTEL tracer infrastructure + manual span**.
+진행 + Track E 50% + Track F **OTEL infrastructure + 13 trace spans**.
 
 ---
 
@@ -163,6 +163,27 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 13. Cycle 12 추가분 (2 commits — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 62 | `3c16de0` | `feat(observability): Failover child span — INFO/Promote/EnsureReplicaOf 3건` | StartCallSpan helper + reconcileFailover 의 3 redis 호출 trace. RecordError 적용. |
+| 63 | `e6e60e1` | `feat(observability): Backup/Restore phase handler child span — 5 spans 추가` | ValkeyBackup/Copying + Uploading + ValkeyRestore/Mounting + Restoring + Verifying. |
+
+**Track F 누적 trace 13 spans**:
+- 5 root span (cycle 11): {Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore,
+  ValkeyBackupTarget}/Reconcile
+- 3 Failover child span (cycle 12 첫): INFO_replication, PromoteToPrimary,
+  EnsureReplicaOf_all
+- 5 Backup/Restore phase span (cycle 12 둘째): Backup/Copying + Uploading,
+  Restore/Mounting + Restoring + Verifying
+
+**다음 cycle 진입 권고**:
+- Conversion webhook (v1alpha1 → v1beta1 준비) — 큰 작업
+- e2e 실측 (`make test-e2e` — kind cluster 5분+)
+- ValkeyClusterReconciler 의 cluster bus 호출 (CLUSTER MEET / ADDSLOTS /
+  REPLICATE) child span — operations 별 trace
 
 ## 12. Cycle 11 추가분 (1 commit — 본 세션)
 
