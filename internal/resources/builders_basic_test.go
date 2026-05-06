@@ -194,6 +194,105 @@ func TestBuildClientService(t *testing.T) {
 	}
 }
 
+// BuildStatefulSet 회귀 보호 (cycle 127) — Valkey 의 핵심 STS. 본 builder 의
+// regression 은 *전체 operator 동작* 에 영향. 가장 중요한 contract.
+func TestBuildStatefulSet(t *testing.T) {
+	t.Parallel()
+	makeParams := func() STSParams {
+		return STSParams{
+			CRName:    "rs",
+			Namespace: "ns",
+			Replicas:  3,
+			Image:     "docker.io/valkey/valkey:8.1.6",
+			PasswordRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "rs-auth"},
+				Key:                  "password",
+			},
+		}
+	}
+	t.Run("default standalone", func(t *testing.T) {
+		t.Parallel()
+		sts := BuildStatefulSet(makeParams())
+		if sts.Name != "rs" || sts.Namespace != "ns" {
+			t.Errorf("name/ns: %q/%q", sts.Name, sts.Namespace)
+		}
+		if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 3 {
+			t.Errorf("replicas 3 기대, got %v", sts.Spec.Replicas)
+		}
+		if sts.Spec.ServiceName != "rs-headless" {
+			t.Errorf("ServiceName 'rs-headless' 기대, got %q", sts.Spec.ServiceName)
+		}
+		// Selector 안정성 (cycle 24 의 SelectorLabels) — component 라벨 미포함.
+		ml := sts.Spec.Selector.MatchLabels
+		if _, ok := ml[LabelComponent]; ok {
+			t.Error("Selector 에 component 라벨 포함 — Service selector 안정성 위반")
+		}
+	})
+	t.Run("cluster mode adds cluster-bus port", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.ClusterMode = true
+		sts := BuildStatefulSet(p)
+		c := sts.Spec.Template.Spec.Containers[0]
+		hasBus := false
+		for _, port := range c.Ports {
+			if port.ContainerPort == int32(PortClusterBus) {
+				hasBus = true
+			}
+		}
+		if !hasBus {
+			t.Error("cluster mode → cluster-bus port (16379) 누락")
+		}
+	})
+	t.Run("password env via SecretKeyRef", func(t *testing.T) {
+		t.Parallel()
+		sts := BuildStatefulSet(makeParams())
+		c := sts.Spec.Template.Spec.Containers[0]
+		var hasPwEnv bool
+		for _, e := range c.Env {
+			if e.Name == "VALKEY_PASSWORD" || e.Name == "REDIS_PASSWORD" {
+				if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
+					t.Errorf("password env 가 SecretKeyRef 사용 안 함: %+v", e)
+				}
+				hasPwEnv = true
+			}
+		}
+		if !hasPwEnv {
+			t.Error("VALKEY_PASSWORD env 미설정")
+		}
+	})
+	t.Run("VolumeClaimTemplate persistent storage", func(t *testing.T) {
+		t.Parallel()
+		sts := BuildStatefulSet(makeParams())
+		if len(sts.Spec.VolumeClaimTemplates) != 1 {
+			t.Errorf("VolumeClaimTemplate 1 기대 (data PVC), got %d", len(sts.Spec.VolumeClaimTemplates))
+		}
+		vct := sts.Spec.VolumeClaimTemplates[0]
+		if vct.Name != "data" {
+			t.Errorf("VolumeClaimTemplate name='data' 기대, got %q", vct.Name)
+		}
+	})
+	t.Run("exporter sidecar when ExporterImg set", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.ExporterImg = "oliver006/redis_exporter:latest"
+		sts := BuildStatefulSet(p)
+		containers := sts.Spec.Template.Spec.Containers
+		if len(containers) < 2 {
+			t.Fatalf("exporter 활성 시 containers ≥ 2 기대, got %d", len(containers))
+		}
+		var hasExporter bool
+		for _, c := range containers {
+			if strings.Contains(c.Image, "redis_exporter") || c.Name == "metrics-exporter" {
+				hasExporter = true
+			}
+		}
+		if !hasExporter {
+			t.Error("exporter sidecar container 누락")
+		}
+	})
+}
+
 // BuildBackupJob 회귀 보호 (cycle 126) — RDB 복사 Job. plain + TLS 분기,
 // password env-var injection, security context (non-root + FSGroup), TTL.
 func TestBuildBackupJob(t *testing.T) {
