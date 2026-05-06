@@ -277,8 +277,14 @@ kubectl exec vk-standalone-0 -- valkey-cli -a "$PASS" get <키>
 | TLS+mTLS Valkey Standalone (cert-manager) | Phase=Running, ping/set/get on 6380 ✓ | — |
 | TLS+mTLS Valkey Replication (3 replicas) | master_link_status:up, write propagation 모든 replica ✓ | — |
 | ValkeyBackup (RDB) | Pending → InProgress → Completed, /data/dump.rdb 89 bytes 생성 | — |
+| ValkeyBackup M3.5 (Job-based PVC) | Copying → Completed, `<name>-backup` PVC 에 dump.rdb 보존 | TLS 자동 전파 |
+| ValkeyRestore (Standalone PVC) | Mounting → Restoring → Verifying → Completed, init container 가 /data/dump.rdb cp | RestoredKeys status 채움 |
+| ValkeyRestore (Source.TargetRef, S3) | 임시 PVC + Download Job → 기존 init container 흐름 | cross-cluster restore 가능 |
+| ValkeyRestore (ValkeyCluster, ROX) | shard 별 ordinal → SHARD_IDX shell 매핑 + per-pod cp | ROX source PVC 필수 |
+| Replication 자동 Failover (ADR-0017) | primary NotReady 30s+ → 가장 큰 offset replica REPLICAOF NO ONE → Status.CurrentPrimary 갱신 | e2e: test/e2e/failover_test.go |
 | NetworkPolicy 리소스 생성 | selfPeer + 6379(/16379) ingress + ownerReferences | (CNI 의존) |
 | operator metrics endpoint (HTTPS:8443) | controller_runtime_* + valkey_cluster_* 노출 | — |
+| Prometheus alert rules | 6 alerts (state / slots / replicas / phase / errors / operator down) | config/prometheus/alert-rules.yaml |
 
 ## 잠재적 운영 이슈 (현재 알려진 한계)
 
