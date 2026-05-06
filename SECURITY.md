@@ -11,8 +11,10 @@
 
 1. **GitHub Security Advisory** (권장):
    `https://github.com/keiailab/valkey-operator/security/advisories/new`
-2. **이메일**: `security@keiailab.com` (PGP 옵션 — 키는 GitHub
-   profile 의 verified PGP key)
+2. **이메일**: `security@keiailab.com` (PGP 옵션):
+   - PGP fingerprint: `89A4 0947 6828 CB99 2338  C378 651E 51AF 520B CB78`
+   - public key: gh-pages 의 `artifacthub-repo.yml` 또는 https://keiailab.github.io/valkey-operator/artifacthub-repo.yml
+   - 동일 key 가 mongodb-operator + postgres-operator 에서도 사용 (3-repo 통일).
 
 ### 포함 정보
 
