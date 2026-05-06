@@ -14,12 +14,17 @@ import (
 	"os"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// TracerName — global tracer 이름. 모든 reconciler 가 동일.
+const TracerName = "github.com/keiailab/valkey-operator"
 
 const (
 	envOTLPEndpoint       = "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -78,3 +83,19 @@ func SetupTracing(ctx context.Context) (shutdown func(context.Context) error, er
 }
 
 func noopShutdown(_ context.Context) error { return nil }
+
+// StartReconcileSpan — reconcile path 의 root span 시작. caller 가 defer
+// span.End() 의무. attributes: k8s.namespace + k8s.name (semconv 표준).
+//
+// noop tracer (env 미설정) 시 zero overhead — span 객체 자체가 noop.
+func StartReconcileSpan(
+	ctx context.Context, kind, namespace, name string,
+) (context.Context, trace.Span) {
+	ctx, span := otel.Tracer(TracerName).Start(ctx, kind+"/Reconcile")
+	span.SetAttributes(
+		attribute.String("k8s.namespace", namespace),
+		attribute.String("k8s.name", name),
+		attribute.String("k8s.kind", kind),
+	)
+	return ctx, span
+}

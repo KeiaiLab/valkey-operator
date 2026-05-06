@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
 	vk "github.com/keiailab/valkey-operator/internal/valkey"
 )
@@ -57,6 +58,9 @@ type ValkeyReconciler struct {
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := observability.StartReconcileSpan(ctx, "Valkey", req.Namespace, req.Name)
+	defer span.End()
+
 	logger := log.FromContext(ctx)
 
 	v := &cachev1alpha1.Valkey{}

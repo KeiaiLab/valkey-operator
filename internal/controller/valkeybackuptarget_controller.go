@@ -25,6 +25,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/storage"
 )
 
@@ -66,6 +67,9 @@ type ValkeyBackupTargetReconciler struct {
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackuptargets/finalizers,verbs=update
 
 func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := observability.StartReconcileSpan(ctx, "ValkeyBackupTarget", req.Namespace, req.Name)
+	defer span.End()
+
 	logger := logf.FromContext(ctx)
 
 	t := &cachev1alpha1.ValkeyBackupTarget{}
