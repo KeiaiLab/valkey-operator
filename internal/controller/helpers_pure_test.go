@@ -137,3 +137,33 @@ func TestOperatorImageEnvOverride(t *testing.T) {
 		t.Errorf("env override: got %q", got)
 	}
 }
+
+// SetBuildInfo (cycle 57) 의 회귀 보호 — Prometheus build_info gauge 의 label
+// 값 들 정확히 set. Grafana dashboard 의 *현재 운영 version 식별* contract.
+func TestSetBuildInfo(t *testing.T) {
+	t.Parallel()
+	// 본 함수는 *side-effect only* (gauge.Set) — panic 안 함을 확인.
+	// 실제 metric value 검증 은 prometheus 의 gather 호출 — 본 unit test
+	// 는 invocation contract (다양한 input 으로 panic 0) 만 검증.
+	cases := []struct {
+		name, version, commit, date string
+	}{
+		{"defaults", "dev", "none", "unknown"},
+		{"release", "v0.1.0-alpha.1", "abc1234", "2026-05-06"},
+		{"empty values", "", "", ""},
+		{"long values", "v999.999.999-rc.1+build.20260101", "deadbeef" + "cafebabe", "2026-12-31T23:59:59Z"},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			// panic 안 함을 확인 — defer recover.
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("SetBuildInfo panicked: %v", r)
+				}
+			}()
+			SetBuildInfo(c.version, c.commit, c.date)
+		})
+	}
+}
