@@ -1,0 +1,28 @@
+# ValkeyRestore — backup PVC 또는 외부 저장 (S3) 의 RDB 를 cluster 로 복원.
+# ADR-0015 (Init Container 패턴 + STS template patch + 원복).
+#
+# Source 는 PVC 또는 TargetRef 둘 중 하나 (XOR). 동시 명시 시 Failed.
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyRestore
+metadata:
+  labels:
+    app.kubernetes.io/name: valkey-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: valkeyrestore-sample
+spec:
+  clusterRef:
+    kind: Valkey                           # 또는 ValkeyCluster (shard 별 source 후속)
+    name: valkey-sample
+  # 옵션 1: 기존 backup PVC 에서 복원 (single-cluster, 동일 namespace)
+  source:
+    pvc:
+      name: valkeybackup-sample-backup     # ValkeyBackup 결과 PVC
+      path: dump.rdb                       # default
+  # 옵션 2: 외부 저장 (S3) 에서 복원 (cross-cluster 가능). 위 source.pvc 와 *동시* 명시 금지.
+  # source:
+  #   targetRef:
+  #     name: valkeybackuptarget-sample
+  #     path: 2026-05-06/dump.rdb
+  restoreType: RDB
+  # Replication / Cluster (replicas>1) + Source.TargetRef 시 ROX 명시 필수.
+  # sourcePVCAccessMode: ReadOnlyMany

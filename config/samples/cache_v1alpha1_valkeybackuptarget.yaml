@@ -1,0 +1,30 @@
+# ValkeyBackupTarget — 외부 저장 (S3/GCS/Azure) endpoint + 자격증명 추상화.
+# ValkeyBackup ↔ ValkeyRestore 가 동일 target 참조 (ADR-0016).
+#
+# 자격증명 Secret (별도 생성):
+#   apiVersion: v1
+#   kind: Secret
+#   metadata: { name: s3-creds, namespace: default }
+#   stringData:
+#     AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE..."
+#     AWS_SECRET_ACCESS_KEY: "secret..."
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyBackupTarget
+metadata:
+  labels:
+    app.kubernetes.io/name: valkey-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: valkeybackuptarget-sample
+spec:
+  type: S3                                 # 첫 구현. GCS/Azure 추후.
+  s3:
+    endpoint: https://s3.ap-northeast-2.amazonaws.com
+    region: ap-northeast-2
+    bucket: valkey-backups
+    prefix: cluster-A/                     # backup object key 의 prefix
+    forcePathStyle: false                  # MinIO/Ceph RGW 시 true
+    credentialsSecretRef:
+      name: s3-creds
+      # accessKeyIDKey: AWS_ACCESS_KEY_ID   # default
+      # secretAccessKeyKey: AWS_SECRET_ACCESS_KEY  # default
+    # serverSideEncryption: AES256          # 옵션 (AWS:kms 등)

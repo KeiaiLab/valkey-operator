@@ -6,4 +6,32 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: valkeycluster-sample
 spec:
-  # TODO(user): Add fields here
+  # Sharded Cluster (16384 슬롯 자동 분배). 최소 3 shards 권장.
+  shards: 3
+  replicasPerShard: 1                      # shard 당 1 primary + 1 replica = 6 노드
+  version:
+    image: docker.io/valkey/valkey
+    version: "8.1.6"
+  storage:
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  auth:
+    enabled: true                          # ADR-0013
+  # tls:                                   # cert-manager 사용 시 활성화
+  #   enabled: true
+  #   certManager:
+  #     issuerRef:
+  #       kind: ClusterIssuer
+  #       name: ca-issuer
+  autoFailover: true                       # primary 장애 시 자동 promote (ADR 진행 중)
+  podDisruptionBudget:
+    enabled: true
+  monitoring:
+    serviceMonitor:
+      enabled: true

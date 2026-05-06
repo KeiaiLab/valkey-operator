@@ -3,4 +3,6 @@ resources:
 - cache_v1alpha1_valkey.yaml
 - cache_v1alpha1_valkeycluster.yaml
 - cache_v1alpha1_valkeybackup.yaml
+- cache_v1alpha1_valkeybackuptarget.yaml
+- cache_v1alpha1_valkeyrestore.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

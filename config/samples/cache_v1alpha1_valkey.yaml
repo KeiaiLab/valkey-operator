@@ -6,4 +6,32 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: valkey-sample
 spec:
-  # TODO(user): Add fields here
+  # Standalone (단일 인스턴스). Replication 은 mode=Replication + replicas>=2.
+  mode: Standalone
+  replicas: 1
+  version:
+    image: docker.io/valkey/valkey
+    version: "8.1.6"
+  storage:
+    size: 8Gi
+    # storageClassName: standard           # 클러스터의 기본 SC 사용 시 생략 가능
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  auth:
+    enabled: true                          # ADR-0013 — 사실상 항상 enabled
+  # tls:                                   # cert-manager 사용 시 활성화
+  #   enabled: true
+  #   certManager:
+  #     issuerRef:
+  #       kind: ClusterIssuer
+  #       name: ca-issuer
+  podDisruptionBudget:
+    enabled: true                          # 운영 환경 권장
+  monitoring:
+    serviceMonitor:
+      enabled: true                        # Prometheus Operator 사용 시
