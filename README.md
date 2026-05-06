@@ -203,7 +203,17 @@ env 미설정 시 noop (zero overhead). 설정 시 OTLP gRPC exporter 로 22 spa
 
 ### 활성화
 
-operator Deployment 의 env 추가:
+**Helm chart 사용자** (cycle 65 추가):
+
+```sh
+helm upgrade valkey-operator charts/valkey-operator \
+  --set tracing.endpoint=tempo.observability.svc:4317 \
+  --set tracing.serviceName=valkey-operator
+```
+
+`tracing.endpoint` 비어있으면 OTEL 비활성 (no-op tracer, 성능 영향 0).
+
+**Kustomize / 직접 manifest 편집** 사용자: operator Deployment 의 env 추가:
 
 ```yaml
 env:
