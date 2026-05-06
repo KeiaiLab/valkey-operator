@@ -78,6 +78,80 @@ kubectl exec valkeycluster-sample-0 -- valkey-cli -a "$PASS" cluster info | head
 - **NetworkPolicy** (`Spec.NetworkPolicy.Enabled=true`): pod-to-pod 6379/16379
   외 모든 인그레스 차단.
 
+## ValkeyBackupTarget + 외부 저장 (S3) 사용법 — 신규
+
+ADR-0016 + ADR-0022 + ADR-0023. ValkeyBackupTarget 으로 외부 저장 endpoint /
+자격증명을 *추상화* — Backup ↔ Restore 가 동일 target 참조 (대칭).
+
+### 1. ValkeyBackupTarget + 자격증명 Secret 생성
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-creds
+  namespace: default
+stringData:
+  AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE..."
+  AWS_SECRET_ACCESS_KEY: "secret..."
+---
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyBackupTarget
+metadata:
+  name: s3-prod
+  namespace: default
+spec:
+  type: S3
+  s3:
+    endpoint: https://s3.ap-northeast-2.amazonaws.com  # MinIO 사내: https://minio.local:9000
+    region: ap-northeast-2
+    bucket: valkey-backups-prod
+    prefix: cluster-A/
+    forcePathStyle: false   # MinIO/Ceph RGW 시 true
+    credentialsSecretRef:
+      name: s3-creds
+```
+
+operator 가 BucketExists 호출하여 reachability 검증 → Status.Phase=Reachable.
+
+### 2. ValkeyBackup → S3 업로드
+
+```yaml
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyBackup
+metadata: { name: vkb-s3, namespace: default }
+spec:
+  clusterRef: { kind: Valkey, name: vk-standalone }
+  type: RDB
+  destination:
+    type: TargetRef
+    targetRef:
+      name: s3-prod
+      path: 2026-05-06/dump.rdb     # 미명시 시 default <backup>/<startedAt>/dump.rdb
+```
+
+흐름: Pending → InProgress → Copying (PVC 저장) → **Uploading** (Upload Job
+이 operator image 의 `upload` sub-command 호출 → S3 업로드) → Completed.
+
+### 3. ValkeyRestore from S3 (cross-cluster 가능)
+
+```yaml
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyRestore
+metadata: { name: vkr-from-s3, namespace: default }
+spec:
+  clusterRef: { kind: Valkey, name: vk-standalone }
+  source:
+    targetRef:
+      name: s3-prod
+      path: 2026-05-06/dump.rdb     # ValkeyBackup 의 path 와 동일
+  restoreType: RDB
+```
+
+흐름: Pending → **Mounting** (target Reachable 검증 + 임시 PVC 생성 +
+Download Job spawn → S3 → 임시 PVC) → Restoring (init container 가 PVC 의
+RDB 를 /data/dump.rdb 로 cp) → Verifying → Completed.
+
 ## ValkeyRestore (Standalone PVC) 사용법 — 신규
 
 전제: 이미 ValkeyBackup 으로 backup PVC (`<backup-name>-backup`) 가 생성됨.
@@ -144,10 +218,13 @@ kubectl exec vk-standalone-0 -- valkey-cli -a "$PASS" get <키>
   valkey-server 가 표준 RDB 자동 로드. paused annotation 으로 ValkeyController
   와의 충돌 차단. **현재 한계**: Standalone Valkey (replicas=1) + Source.PVC
   만 지원. Replication / Cluster + 외부 source (TargetRef) 는 후속 commit.
-- **외부 저장 (S3/GCS) 미통합** — ValkeyBackupTarget CRD + Reconciler
-  (commits 307371a, 123944a) 는 schema + 자격증명 검증까지. 실제 S3 ping +
-  Backup Job 의 외부 업로드 + Restore 외부 다운로드 는 AWS SDK 통합 후 별개
-  commit. **TTL 기반 자동 삭제** 도 별개.
+- **외부 저장 (S3 호환) 통합 완료** (commits 505c6c1, fc04cdd, bc6e28b,
+  ADR-0022 + ADR-0023): minio-go v7 채택 (CVE 0건 검증). ValkeyBackupTarget
+  실제 BucketExists ping. ValkeyBackup.Spec.Destination.Type=TargetRef 시
+  Uploading phase 가 별도 Upload Job 으로 외부 저장 업로드. ValkeyRestore.
+  Source.TargetRef 시 임시 PVC + Download Job 으로 다운로드 → cross-cluster
+  restore 가능. **TTL 기반 자동 삭제 + GCS/Azure** 는 별개. AWS S3 + MinIO
+  + Ceph RGW 호환 (forcePathStyle 옵션).
 - ~~Replication 모드 + TLS 미구현~~ → **iter 9 에서 구현 완료** (ADR-0014 AI-007):
   `tlsConfigForValkey` + `dialValkey` 추가 + `tls-replication yes` 디렉티브.
   3-replica + cert-manager 검증 통과 (master_link_status:up, write propagation).
