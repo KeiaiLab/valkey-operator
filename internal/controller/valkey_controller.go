@@ -174,6 +174,16 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
+	// 9a. Replication 자동 failover 검토 (ADR-0017) — primary NotReady 30s+ 시
+	// 새 primary 선출. readyReplicas 가 desired 미만일 때만 의미. non-fatal —
+	// 실패 시 다음 reconcile 재시도.
+	if v.Spec.Mode == cachev1alpha1.ModeReplication && v.Spec.Replicas > 1 {
+		tlsCfg, _ := r.tlsConfigForValkey(ctx, v)
+		if err := r.reconcileFailover(ctx, v, password, tlsCfg); err != nil {
+			logger.Info("failover reconciliation failed", "error", err.Error())
+		}
+	}
+
 	// 9. Replication: primary 가 ready 되면 모든 replica 가 REPLICAOF primary 호출.
 	if v.Spec.Mode == cachev1alpha1.ModeReplication && desiredReplicas(v) > 1 && stsObj.readyReplicas == desiredReplicas(v) {
 		tlsCfg, tlsErr := r.tlsConfigForValkey(ctx, v)
@@ -244,15 +254,17 @@ func desiredReplicas(v *cachev1alpha1.Valkey) int32 { return v.Spec.Replicas }
 
 // determinePrimary — primary pod 결정 (ADR-0017).
 //
-// 본 commit (Track B AI-001) 의 첫 cut: 항상 `<name>-0` 반환 (기존 동작 보존).
-//
-// 별개 commit (AI-002, AI-003) 보강:
-//   - Status.CurrentPrimary 기존 값이 있으면 보존 (failover 후 다음 reconcile
+// 우선순위:
+//  1. Status.CurrentPrimary 가 set 되어 있으면 보존 (failover 후 다음 reconcile
 //     이 pod-0 으로 되돌리지 않도록).
-//   - Ready 검증 — primary 가 NotReady 30s+ 면 reconcileFailover 분기.
+//  2. 미설정 (첫 부트스트랩) 시 pod-0 default.
 //
-// 본 helper 는 향후 확장의 *추출 점* — 호출 site 통일로 변경 영향 최소화.
+// reconcileFailover 가 Status.CurrentPrimary 를 갱신하면 다음 reconcile 의
+// 본 helper 가 새 primary 보존.
 func (r *ValkeyReconciler) determinePrimary(v *cachev1alpha1.Valkey) string {
+	if v.Status.CurrentPrimary != "" {
+		return v.Status.CurrentPrimary
+	}
 	return fmt.Sprintf("%s-0", v.Name)
 }
 
@@ -340,19 +352,20 @@ func (r *ValkeyReconciler) fetchSTS(ctx context.Context, key types.NamespacedNam
 	}, nil
 }
 
-// ensureReplication — replica pod 들이 primary 를 가리키게 한다 (M2).
-// pod-0 = primary, pod-1..N = replica.
+// ensureReplication — replica pod 들이 *현재 primary* (Status.CurrentPrimary
+// 또는 pod-0) 를 가리키게 한다.
+//
+// ADR-0017 통합: primaryOrdinal(v) 가 Status.CurrentPrimary 우선 → failover
+// 후 새 primary 기준 정렬. 기존 부트스트랩 (Status 미설정) 시 pod-0 fallback.
 //
 // TLS 활성 (tlsCfg != nil) 시 control-plane 통신 은 tls-port (6380) 사용.
-// Valkey 자체 의 replication 은 tls-replication 설정 (configmap) 으로 cluster bus
-// 와 무관 — primary host:6379 또는 :6380 어느 쪽으로 REPLICAOF 해도 server 가
-// 자체 결정. 본 함수는 *operator → 각 노드* 의 명령 채널 을 TLS 로 보장.
 func (r *ValkeyReconciler) ensureReplication(ctx context.Context, v *cachev1alpha1.Valkey, password string, tlsCfg *tls.Config) error {
 	port := int32(resources.PortClient)
 	if tlsCfg != nil {
 		port = resources.PortTLS
 	}
-	primaryAddr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, 0, v.Namespace), port)
+	primaryIdx := primaryOrdinal(v)
+	primaryAddr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, primaryIdx, v.Namespace), port)
 	primary := dialValkey(primaryAddr, password, tlsCfg)
 	if err := vk.PromoteToPrimary(ctx, primary); err != nil {
 		_ = primary.Close()
@@ -360,8 +373,11 @@ func (r *ValkeyReconciler) ensureReplication(ctx context.Context, v *cachev1alph
 	}
 	_ = primary.Close()
 
-	primaryHost := resources.PodFQDN(v.Name, 0, v.Namespace)
-	for i := int32(1); i < v.Spec.Replicas; i++ {
+	primaryHost := resources.PodFQDN(v.Name, primaryIdx, v.Namespace)
+	for i := int32(0); i < v.Spec.Replicas; i++ {
+		if int(i) == primaryIdx {
+			continue
+		}
 		addr := fmt.Sprintf("%s:%d", resources.PodFQDN(v.Name, int(i), v.Namespace), port)
 		c := dialValkey(addr, password, tlsCfg)
 		err := vk.EnsureReplicaOf(ctx, c, primaryHost, int(port))
