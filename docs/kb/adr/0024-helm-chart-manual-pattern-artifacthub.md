@@ -107,8 +107,17 @@ ArtifactHub publish 모델:
 - [x] `Makefile` 에 release/helm-publish/gate/audit/setup-hooks 타겟 추가
 - [x] `.lefthook.yml` 에 helm-lint + helm-template + gitleaks hook 추가
 - [x] ADR-0021 → Superseded 처리
-- [ ] AI-0024-1: ArtifactHub UI 에서 valkey-operator repo 신규 등록 (수동) →
-      `repositoryID` placeholder 교체 후 follow-up commit
-- [ ] AI-0024-2: 첫 release `make release VERSION=v0.1.0-alpha.1` 트리거 (사용자 결정)
-- [ ] AI-0024-3: postgres-operator 의 `release` 타겟 buildx 보강 (별 commit, RFC 0002
-      glob §2 강제)
+- [x] AI-0024-2: 첫 release `make release VERSION=v0.1.0-alpha.1` 완료 (2026-05-06).
+      GHCR `ghcr.io/keiailab/valkey-operator:v0.1.0-alpha.1` (sha256 2d1463bf...) +
+      GH Release prerelease=true + gh-pages orphan branch (commit 37716ff) +
+      Pages 자동 활성화 (status: built) + index.yaml live (5063 bytes).
+- [x] AI-0024-3: postgres-operator 의 `release` 타겟 buildx 보강 (commit 314af15).
+- [x] AI-0024-4: grpc CVE-2026-33186 (CRITICAL) v1.72.2→v1.81.0 (commit a353b44).
+- [x] AI-0024-5: otel SDK GO-2026-4394 v1.36.0→v1.43.0 (commit c05b251).
+- [x] AI-0024-6: Makefile audit trivy fail-handling 보강 (silent-fail → exit 1,
+      postgres 패턴 정합, commit a353b44).
+- [x] AI-0024-7: `scripts/artifacthub-register.sh` helper (UUID 검증 + sed 교체 +
+      검증 명령 echo, commit a353b44).
+- [ ] AI-0024-1: **ArtifactHub UI 에서 valkey-operator repo 신규 등록** (수동) →
+      `scripts/artifacthub-register.sh <uuid>` 로 placeholder 교체 후 follow-up
+      commit + `make helm-publish` 재실행. 자동화 불가 (UI 만 지원).
