@@ -70,6 +70,12 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 integration-test: fmt vet ## Run real-Valkey integration tests (requires Docker daemon). Tag: integration.
 	go test -tags=integration -count=1 -timeout=180s -v ./internal/valkey/...
 
+.PHONY: ssot-check
+ssot-check: ## SSOT 게이트 (35+) 만 빠른 검증 (~1s, no envtest). PR 작성 중 iteration.
+	@echo "=== SSOT gates only — internal/observability/ ==="
+	go test -count=1 -run "^Test" ./internal/observability/
+	@echo "✓ all 35+ SSOT gates PASS — release-checklist §2 인벤토리 참조"
+
 # TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
 # kubectl kuberc is disabled by default for test isolation; enable with:
