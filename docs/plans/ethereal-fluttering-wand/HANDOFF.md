@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 14 완료)
+**최종 갱신**: 2026-05-06 (cycle 15 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
 **현재 진행**: Track A **100%** + Track B **핵심 Failover 완성 + e2e 시나리오** +
 Track C 사용자 외부 보안/릴리스 진행 + Track D 사용자 외부 ArtifactHub publish
-진행 + Track E 50% + Track F **OTEL infrastructure + 22 trace spans (operations-level 사실상 완료)**.
+진행 + Track E 50% + Track F **OTEL infrastructure + 22 trace spans + 사용자 가이드**.
 
 ---
 
@@ -163,6 +163,23 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 16. Cycle 15 추가분 (1 commit — 본 세션, 짧은 종료)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 70 | `9b1863d` | `docs: README OTEL Tracing 사용 가이드 — 22 spans 운영자 가시` | 활성화 절차 + Trace hierarchy 22 spans 표 + 운영 활용 + 한계. |
+
+**Track F 사용자 가시 마무리**: README 의 "관측성 (OTEL Tracing)" 섹션 추가 —
+사용자가 즉시 활성화 가능. 5 cycles (10-14) Track F 진행 후 *operations-level
+instrumentation 완전*.
+
+**다음 cycle 진입 시 큰 step 전환 권고**:
+- Conversion webhook (v1alpha1 → v1beta1) — 다단계 cycle 분할 진행
+- e2e 실측 (`make test-e2e` — RFC-0004 §3 라이브 사실 게이트) — kind 환경
+  의존
+- Application-level metrics 추가 (controller-runtime 외)
+- HPA (Spec.Autoscaling) — 큰 변경, 별개 ADR 필요
 
 ## 15. Cycle 14 추가분 (1 commit — 본 세션, 짧은 종료)
 
