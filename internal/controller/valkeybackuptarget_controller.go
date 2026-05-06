@@ -98,6 +98,9 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	// Phase 전환 시점에만 Event 발행 — 5분 polling noise 회피.
+	previousPhase := t.Status.Phase
+
 	// 1. Schema 검증.
 	schemaReason, schemaMsg, ak, sk, schemaOK := r.verifyCredentials(ctx, t)
 	now := metav1.Now()
@@ -145,6 +148,23 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := updateStatusWithRetry(ctx, r.Client, t); err != nil {
 		logger.V(1).Info("status update conflict — requeue", "name", t.Name)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	// Phase 전환 시 운영자 시점 Event 발행 (kubectl describe 가시).
+	if r.Recorder != nil && previousPhase != t.Status.Phase {
+		eventType := "Warning"
+		if t.Status.Phase == cachev1alpha1.BackupTargetPhaseReachable {
+			eventType = "Normal"
+		}
+		reason := string(t.Status.Phase)
+		msg := t.Status.Message
+		for _, c := range *t.GetConditions() {
+			if c.Type == "Ready" {
+				reason = c.Reason
+				break
+			}
+		}
+		r.Recorder.Event(t, eventType, reason, msg)
 	}
 
 	// 5분마다 재검증 (Secret 회전 / endpoint 변경 감지).
