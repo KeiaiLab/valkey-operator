@@ -4,7 +4,20 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
-## 현재 상태 (2026-05-06, release pipeline 정합 + image ref 버그 수정)
+## 현재 상태 (2026-05-07, governance 표준 정합 — P0+P1 baseline 도달)
+
+- **이번 세션 (상용 제품 수준 trajectory)**:
+  - **ADR INDEX 정렬**: ID 오름차순 + 0018-0020 Reserved 슬롯 명시 (재사용 금지 정책 가시화).
+  - **작성 가이드 + Reserved 슬롯 정책** 신규 추가.
+  - **deps log seed**: `docs/kb/deps/2026-05.md` (P1 추적성, enforcement.md §2.4) — ADR-0022 (minio-go v7) 의존성 결정 + 이전 발견 (otel GO-2026-4394, grpc CVE-2026-33186 CRITICAL fix) 참조.
+- **검증 인용**:
+  ```
+  $ make lint                      # ./bin/golangci-lint run → 0 issues ✓
+  ```
+- **3-repo governance 정합**: postgres 의 ADR 경로 표준화 (`docs/adr/` → `docs/kb/adr/`) + ADR-0007 신규 (pre-commit 분기 정당화). mongodb 도 ADR-0011 동일 패턴. valkey 는 lefthook 으로 표준 정합 ✓.
+- **다음 단계 (열린 트랙)**: T06 이후 GitOps overlay 실 클러스터 검증 (RFC-0004 클러스터 라이브 게이트 발동 영역), 0018 Cluster Resharding ADR 작성.
+
+## 이전 상태 (2026-05-06, release pipeline 정합 + image ref 버그 수정)
 
 - **HEAD `9a93f4c`**: `chore(deploy): image controller tag v0.1.0 → 0.1.0-alpha.1 (실재 GHCR tag 정합)`
 - **HEAD~1 `96f4139`**: `fix(scripts): smoke-test step 번호 [N/5] → [N/6] 정합 + .gitignore (dist/)`
