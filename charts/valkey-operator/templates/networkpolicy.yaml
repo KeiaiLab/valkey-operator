@@ -33,6 +33,13 @@ spec:
     - ports:
         - protocol: TCP
           port: {{ .Values.service.metricsPort | default 8443 }}
+    {{- if .Values.webhook.enabled }}
+    # cycle 86: Admission webhook (9443) — kube-apiserver 호출. cycles 72/73
+    # 결합 시 본 rule 부재 → webhook silent reject. webhook.enabled 분기 동기.
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.webhook.port | default 9443 }}
+    {{- end }}
     {{- with .Values.networkPolicy.ingress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
