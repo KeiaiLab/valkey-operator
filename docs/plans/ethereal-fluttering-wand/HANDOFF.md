@@ -1,10 +1,10 @@
 # HANDOFF — valkey-operator 상용제품수준 도달 작업
 
-**최종 갱신**: 2026-05-06 (cycle 6 일부 완료)
+**최종 갱신**: 2026-05-06 (cycle 7 완료)
 **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
-**현재 진행**: Track A **100%** + Track B 디자인+인프라 (실제 reconcileFailover
-미구현) + Track C 50% + Track D 사용자 외부 ArtifactHub publish 진행 +
-Track E 50%.
+**현재 진행**: Track A **100%** + Track B **핵심 Failover 완성** (Scale apply
+/ Resharding 잔여) + Track C 50% + Track D 사용자 외부 ArtifactHub publish
+진행 + Track E 50%.
 
 ---
 
@@ -163,6 +163,24 @@ go test -count=1 -timeout=120s ./...
 ```
 
 ---
+
+## 8. Cycle 7 추가분 (3 commits — 본 세션)
+
+| # | SHA | Subject | 의미 |
+|---|---|---|---|
+| 47 | `05d6b97` | `feat(valkey): ParseReplicationOffset — Track B AI-003 (재시도)` | cycle 6 lost 재시도. INFO replication 응답 파싱 helper. 4 단위 테스트. |
+| 48 | `cfbb562` | `feat(failover): selectFailoverCandidate — replica with largest offset 선출` | 순수 함수. tie-break ordinal 작은 것. 6 단위 테스트. |
+| 49 | `85f715e` | `feat(failover): reconcileFailover() 본문 + ensureReplication primaryOrdinal 사용` | **Track B 핵심 Failover 완성**. determinePrimary 강화 (Status.CurrentPrimary 보존). |
+
+**Track B Failover 핵심 동작 완성** — Day-N₁ 의 *Auto failover 부재* 차단점
+해소. primary NotReady 30s+ 감지 → 가장 latest replica 선출 → REPLICAOF NO
+ONE → 다른 replicas EnsureReplicaOf → Status.CurrentPrimary 갱신.
+
+잔여 (별개 cycles):
+- reconcileFailover 통합 테스트 (redis client mock + fake Pod)
+- e2e 시나리오 (kind cluster 에서 primary kill → failover 통과)
+- Track B Scale apply (ScalePolicy.Deliberate 실제 적용)
+- Track B Resharding (ValkeyCluster MIGRATE/ASKING)
 
 ## 7. Cycle 6 추가분 (3 commits)
 
