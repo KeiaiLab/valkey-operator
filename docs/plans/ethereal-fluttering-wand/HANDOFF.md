@@ -107,22 +107,63 @@ make install && make deploy IMG=valkey-operator:dev
 
 **현재 차단점 없음**.
 
-**다음 진입 시 결정**:
-1. **Track B Failover 알고리즘** (ADR-0017): replica replication offset 기준
-   (most recent) vs healthy 기준 (Sentinel 스타일). 전자가 데이터 손실
-   최소화.
-2. **e2e MinIO 환경**: in-cluster (kind 안에 minio Pod) vs 외부 (docker run).
-   in-cluster 가 portable.
+**다음 진입 시 결정** (cycle 51 시점 확정 정리):
+1. **Track B Failover 알고리즘** (ADR-0017 *기 작성*): replica replication
+   offset 기준 (largest master_repl_offset) — 데이터 손실 최소화 결정 완료.
+   *구현* 만 남음 (~1.5d).
+2. **Track B Resharding** (ADR 미작성): slot batch size + ASKING 처리 + MOVED
+   redirect 정책. 외부 의사결정 필요.
+3. **e2e MinIO 환경** (외부 결정): in-cluster (kind 안에 minio Pod) vs 외부
+   (docker run). in-cluster 가 portable — 권장.
+4. **Conversion Webhook** (ADR-0026 deferred): v1alpha1 stable 도달 후. 현재
+   v1alpha1 단계 — 진입 시점 미정.
+5. **HPA 통합** (ADR-0027 deferred): Replication mode only + operator-managed.
+   진입 시점 미정.
 
 ---
 
 ## 4. 근거 링크
 
 - **Plan SSOT**: `~/.claude/plans/ethereal-fluttering-wand.md`
-- **ADR**: `docs/kb/adr/INDEX.md` (0015~0024, 10건. 0021 superseded by 0024.)
-- **Cycle 1/2/3/4 HANDOFF**: 본 파일 git history 보존
-- **사용자 외부 작업**: `charts/valkey-operator/` + `Makefile release` +
-  `.lefthook.yml helm hooks` (cycle 5 종료 시점 미커밋, 사용자 책임)
+- **ADR INDEX**: [docs/kb/adr/INDEX.md](../../kb/adr/INDEX.md) (24건, 0001-0027,
+  0021 superseded by 0024).
+- **release-checklist**: [docs/operations/release-checklist.md](../../operations/release-checklist.md)
+  (29 SSOT 게이트 + release tag 절차).
+- **runbook**: [docs/operations/runbook.md](../../operations/runbook.md) §9 alert 별
+  대응 (10 alert × 4-단 구조).
+- **Cycle 1-50 HANDOFF**: 본 파일 git history 보존.
+
+---
+
+## Quality 시스템 종합 (cycle 47 갱신 — Phase 2 quality)
+
+본 세션 (cycles 20-51) 의 quality 작업이 *체계적 production-grade 시스템* 으로
+정리됨. 상세는 [release-checklist.md](../../operations/release-checklist.md).
+
+### 자동 차단 game (PR 머지 전)
+- **6 lefthook pre-push** — full-lint, gitleaks, go-mod-tidy, helm-lint,
+  helm-template, unit-test.
+- **29 SSOT 동기 게이트** (internal/observability/) — alert/runbook/RBAC/CRD/
+  sample/chart artifacts/markdown links 모두 drift 차단.
+- **5 hot-path benchmark** (internal/valkey/) — performance 회귀 baseline.
+
+### 자동화 (실수 발생 자체 차단)
+- `make manifests` → chart CRD 자동 sync (cycle 38).
+- pre-push hook → go.mod direct/indirect drift 자동 차단 (cycle 47).
+- `make release` → SBOM (syft) + trivy scan 자동 첨부 (cycle 6).
+
+### 발견·수정한 production gap (10건)
+1. cycle 29 — config/samples/ 의 `monitoring.serviceMonitor.enabled` silent ignore.
+2. cycle 32 — LICENSE 파일 부재 (OSS 법적 보호).
+3. cycle 33 — Issue triage 부재.
+4. cycle 34 — README#roadmap broken anchor.
+5. cycle 35 — `.github/PULL_REQUEST_TEMPLATE.md` broken link.
+6. cycle 36 — `artifacthub.io/crdsExamples` 4 drift (mode 대소문자 + 필드).
+7. cycle 37 — chart CRD `cache.keiailab.io_valkeys.yaml` 의 autoFailover 누락
+   (Helm vs kustomize 사용자 다른 기능 세트 — 가장 위험한 silent failure).
+8. cycle 41 — NOTES.txt mode lowercase + values.yaml version drift.
+9. cycle 42 — chart README YAML codeblock mode + version drift.
+10. cycle 46 — go.mod direct/indirect drift (본 세션 SSOT gate 도입 후 발생).
 
 ---
 
