@@ -67,3 +67,50 @@ func TestGoVersionDockerfileVsGoMod(t *testing.T) {
 			contribMajor, contribMinor, gomodMajor, gomodMinor)
 	}
 }
+
+// TestKubernetesVersionSync — Chart.yaml kubeVersion ↔ README 의 K8s badge ↔
+// chart README "Kubernetes X.Y+" 동기 (cycle 97).
+//
+// 사고 패턴: K8s 호환 minimum bump (e.g., 1.28+) 시 *3 표면 동시 갱신* 누락 →
+// 사용자가 *어떤 표면 보았는가* 에 따라 *다른 minimum* 로 알게 됨 — 신뢰 저하.
+func TestKubernetesVersionSync(t *testing.T) {
+	repo := findRepoRoot(t)
+
+	// 1. Chart.yaml kubeVersion: ">=X.Y.Z-W".
+	chartRaw, _ := os.ReadFile(filepath.Join(repo, "charts/valkey-operator/Chart.yaml"))
+	kvRe := regexp.MustCompile(`kubeVersion:\s*"?>=(\d+)\.(\d+)`)
+	cm := kvRe.FindStringSubmatch(string(chartRaw))
+	if cm == nil {
+		t.Fatal("Chart.yaml kubeVersion 추출 실패")
+	}
+	chartMajor, _ := strconv.Atoi(cm[1])
+	chartMinor, _ := strconv.Atoi(cm[2])
+
+	// 2. README badge: "Kubernetes-X.Y+".
+	readmeRaw, _ := os.ReadFile(filepath.Join(repo, "README.md"))
+	badgeRe := regexp.MustCompile(`Kubernetes-(\d+)\.(\d+)\+`)
+	rm := badgeRe.FindStringSubmatch(string(readmeRaw))
+	if rm == nil {
+		t.Fatal("README.md K8s badge 추출 실패")
+	}
+	readmeMajor, _ := strconv.Atoi(rm[1])
+	readmeMinor, _ := strconv.Atoi(rm[2])
+
+	// 3. chart README "- Kubernetes X.Y+".
+	chartReadmeRaw, _ := os.ReadFile(filepath.Join(repo, "charts/valkey-operator/README.md"))
+	listRe := regexp.MustCompile(`Kubernetes\s+(\d+)\.(\d+)\+`)
+	crm := listRe.FindStringSubmatch(string(chartReadmeRaw))
+	if crm == nil {
+		t.Fatal("chart README Kubernetes prerequisite 추출 실패")
+	}
+	chartReadmeMajor, _ := strconv.Atoi(crm[1])
+	chartReadmeMinor, _ := strconv.Atoi(crm[2])
+
+	// 3 표면 모두 동일.
+	if chartMajor != readmeMajor || chartMinor != readmeMinor {
+		t.Errorf("Chart.yaml kubeVersion %d.%d ≠ README badge %d.%d", chartMajor, chartMinor, readmeMajor, readmeMinor)
+	}
+	if chartMajor != chartReadmeMajor || chartMinor != chartReadmeMinor {
+		t.Errorf("Chart.yaml kubeVersion %d.%d ≠ chart README %d.%d", chartMajor, chartMinor, chartReadmeMajor, chartReadmeMinor)
+	}
+}
