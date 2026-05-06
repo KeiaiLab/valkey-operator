@@ -140,3 +140,20 @@ ArtifactHub publish 모델:
       차단 + linear history + conversation resolution) + 3-repo CODEOWNERS 통일
       (@eightynine01 직접 매핑) + 3-repo `scripts/release-smoke-test.sh` (10항목,
       모두 10/10 PASS).
+- [x] AI-0024-13: 3-repo README badges 7종 (License/Go/DB/K8s/GHCR/Helm/ArtifactHub
+      shields.io + ArtifactHub native badge endpoint). 시각적 신뢰 + 즉시 link.
+      commits: postgres e5cba5d, valkey 13e1294 (mongodb 는 사전 보유).
+- [x] AI-0024-14: 3-repo PR template (`.github/PULL_REQUEST_TEMPLATE.md`) +
+      SECURITY.md 의 PGP fingerprint (`89A4 0947 6828 CB99 ...`) 직접 명시 통일.
+      commits: valkey 13e1294/2a57330, postgres e5cba5d (mongodb PR 사전 보유).
+- [x] AI-0024-15: 3-repo `make release-notes` 타겟 — git-cliff 로 conventional
+      commits → release notes 자동 (Bug Fixes / Chores / Documentation 분류).
+      release 타겟의 `gh release create` 가 `--notes-file /tmp/release-notes-*.md`
+      로 자동 사용 (git-cliff 미설치 시 fallback "변경 내역은 CHANGELOG 참조").
+      commits: valkey 248201a, postgres 9ce90cd, mongodb 3009f1e.
+- [x] AI-0024-16: 3-repo `helm-publish HELM_SIGN=1` 옵션 — `helm package --sign
+      --key $HELM_GPG_KEY --keyring $HELM_KEYRING` 으로 .prov 파일 자동 생성.
+      gh-pages cp 가 `*.tgz.prov` + `artifacthub-repo.yml` 도 자동 동기 (있으면).
+      기본 default 0 (unsigned, 기존 동작 보존). 사용자가 PGP private key import
+      후 `make release HELM_SIGN=1` 활성. commits: valkey 248201a, postgres
+      9ce90cd, mongodb 3009f1e.
