@@ -49,7 +49,15 @@
 - charts/valkey-operator/templates/webhook.yaml — cert-manager 의존 admission webhook.
 - WATCH_NAMESPACES env — namespace-scoped watch (cache.DefaultNamespaces).
 
-**production gap 발견·수정 (23건)** + **내부 부채 cleanup (3건)** + **5 hot-path benchmark**.
+**구현된 기능 (cycles 99-106 — kubebuilder boilerplate completion + Helm parity)**:
+- cycle 100 — runbook §7.0 production TLS 강화 가이드 (insecureSkipVerify → cert-manager).
+- cycle 101 — config/manager + chart values nodeAffinity (amd64+arm64+linux) — mixed-arch ImagePullBackOff 차단.
+- cycle 102 — config/default/kustomization.yaml `- ../prometheus` 활성 — kustomize 사용자 도 ServiceMonitor + PrometheusRule 자동 설치.
+- cycle 103 — charts/.../prometheusrule.yaml — Helm 사용자 의 10 alerts silent loss 차단.
+- cycle 104 — charts/.../metrics-auth-rbac.yaml — secure metrics 의 Prometheus 401 silent fail 차단.
+- cycle 106 — charts/.../deployment.yaml webhook serving config (--webhook-cert-path + 9443 + cert mount) — webhook 활성화 시 operator 9443 listen 정확히 작동.
+
+**production gap 발견·수정 (27건)** + **내부 부채 cleanup (3건)** + **5 hot-path benchmark** + **8 결함 family progressive completion**.
 
 ### Added (iter 7+ — 부트스트랩·검증 사이클)
 - README quickstart (kind 기반): 5 단계 부트스트랩 + 데이터 plane smoke + 운영 시나리오 매트릭스. [iter 6]
