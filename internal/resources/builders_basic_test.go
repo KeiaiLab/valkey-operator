@@ -194,6 +194,99 @@ func TestBuildClientService(t *testing.T) {
 	}
 }
 
+// BuildBackupJob 회귀 보호 (cycle 126) — RDB 복사 Job. plain + TLS 분기,
+// password env-var injection, security context (non-root + FSGroup), TTL.
+func TestBuildBackupJob(t *testing.T) {
+	t.Parallel()
+	makeParams := func() BackupJobParams {
+		return BackupJobParams{
+			BackupName: "nightly",
+			Namespace:  "ns",
+			PVCName:    "nightly-backup",
+			Image:      "ghcr.io/keiailab/valkey-operator:v0.1.0",
+			TargetHost: "rs-0.rs-headless.ns.svc",
+			TargetPort: 6379,
+			PasswordSecret: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "rs-auth"},
+				Key:                  "password",
+			},
+		}
+	}
+	t.Run("plain (non-TLS) job", func(t *testing.T) {
+		t.Parallel()
+		job := BuildBackupJob(makeParams())
+		if job.Name != "nightly-rdb-copy" || job.Namespace != "ns" {
+			t.Errorf("name/ns: %q/%q", job.Name, job.Namespace)
+		}
+		c := job.Spec.Template.Spec.Containers[0]
+		// command 는 sh -c 형식 + valkey-cli + ls -la 검증.
+		if len(c.Command) != 3 || c.Command[0] != "sh" || c.Command[1] != "-c" {
+			t.Fatalf("command: %v", c.Command)
+		}
+		shCmd := c.Command[2]
+		if !strings.Contains(shCmd, "valkey-cli") {
+			t.Error("valkey-cli 호출 누락")
+		}
+		if !strings.Contains(shCmd, "$VALKEY_PASSWORD") {
+			t.Error("password env-var 사용 누락")
+		}
+		if !strings.Contains(shCmd, "rs-0.rs-headless.ns.svc") {
+			t.Error("target host 누락")
+		}
+		// plain mode → no TLS volume.
+		if len(c.VolumeMounts) != 1 {
+			t.Errorf("plain mode VolumeMounts 1 (backup only) 기대, got %d", len(c.VolumeMounts))
+		}
+	})
+	t.Run("TLS adds cert mount", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.UseTLS = true
+		p.TLSSecretName = "rs-tls"
+		p.TargetPort = 6380
+		job := BuildBackupJob(p)
+		c := job.Spec.Template.Spec.Containers[0]
+		shCmd := c.Command[2]
+		if !strings.Contains(shCmd, "--tls") {
+			t.Error("TLS mode → --tls flag 누락")
+		}
+		if !strings.Contains(shCmd, "/tls/ca.crt") {
+			t.Error("TLS mode → cert path 누락")
+		}
+		// TLS mode → 2 VolumeMounts (backup + tls).
+		if len(c.VolumeMounts) != 2 {
+			t.Errorf("TLS mode VolumeMounts 2 기대, got %d", len(c.VolumeMounts))
+		}
+		if len(job.Spec.Template.Spec.Volumes) != 2 {
+			t.Errorf("TLS mode Volumes 2 기대, got %d", len(job.Spec.Template.Spec.Volumes))
+		}
+	})
+	t.Run("security: non-root + FSGroup 999", func(t *testing.T) {
+		t.Parallel()
+		job := BuildBackupJob(makeParams())
+		sc := job.Spec.Template.Spec.SecurityContext
+		if sc == nil {
+			t.Fatal("SecurityContext nil")
+		}
+		if sc.RunAsNonRoot == nil || !*sc.RunAsNonRoot {
+			t.Error("RunAsNonRoot=true 기대")
+		}
+		if sc.FSGroup == nil || *sc.FSGroup != 999 {
+			t.Errorf("FSGroup=999 기대, got %v", sc.FSGroup)
+		}
+	})
+	t.Run("Job TTL + BackoffLimit", func(t *testing.T) {
+		t.Parallel()
+		job := BuildBackupJob(makeParams())
+		if job.Spec.TTLSecondsAfterFinished == nil || *job.Spec.TTLSecondsAfterFinished != 86400 {
+			t.Errorf("TTL 24h (86400) 기대")
+		}
+		if job.Spec.BackoffLimit == nil || *job.Spec.BackoffLimit != 2 {
+			t.Errorf("BackoffLimit 2 기대")
+		}
+	})
+}
+
 // BuildConfigMapForValkeyCluster 회귀 보호 (cycle 125) — ValkeyCluster CR 의
 // valkey.conf ConfigMap. cluster-enabled yes + cluster-node-timeout default
 // 15000ms + autoFailover→cluster-replica-no-failover 분기.
