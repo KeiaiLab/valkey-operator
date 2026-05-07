@@ -2,8 +2,8 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-version: 1.0.2
-appVersion: "1.0.2"
+version: 1.0.3
+appVersion: "1.0.3"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -110,7 +110,7 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:1.0.2
+      image: ghcr.io/keiailab/valkey-operator:1.0.3
     - name: valkey
       image: docker.io/valkey/valkey:9.0.4
   artifacthub.io/prerelease: "false"
