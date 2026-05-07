@@ -133,6 +133,17 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	}
 
 	// AutoFailover=true + ReplicasPerShard=0 → failover 불가 (replica 부재).
+	//
+	// ADR-0017 Type A' (조건부 unreachable, defensive 유지):
+	//   - ValkeyClusterSpec.ReplicasPerShard 는 'json:"replicasPerShard"' (no
+	//     omitempty), CRD '+kubebuilder:default=1', mutating defaulter (Default
+	//     함수 위) 가 명시 0→1 보강.
+	//   - webhook.enabled=true 환경 (operator 정상 운영) 에서는 mutating defaulter
+	//     가 0→1 변환 → 본 invariant 도달 안 함.
+	//   - webhook.enabled=false 환경 (CRD-only 모드, helm opt-out) 에서는 mutating
+	//     defaulter 우회 + CRD default 가 *명시 0* 무력화 못 함 → reachable.
+	//   - 따라서 *제거 금지* — defensive 가드. it47 commit 5f3f91c 의 envtest
+	//     'unreachable' 분석은 webhook.enabled=true 한정 시나리오.
 	if vc.Spec.AutoFailover && vc.Spec.ReplicasPerShard == 0 {
 		errs = append(errs, field.Forbidden(
 			specPath.Child("autoFailover"),
