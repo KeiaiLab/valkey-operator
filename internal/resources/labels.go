@@ -6,7 +6,11 @@ Copyright 2026 Keiailab.
 // mongodb-operator/internal/resources/builder.go 의 함수형 builder 패턴 차용.
 package resources
 
-import "fmt"
+import (
+	"fmt"
+
+	commonslabels "github.com/keiailab/operator-commons/pkg/labels"
+)
 
 const (
 	LabelAppName      = "app.kubernetes.io/name"
@@ -32,17 +36,24 @@ const (
 )
 
 // CommonLabels — Valkey 인스턴스의 공통 라벨.
+//
+// iteration 29 (2026-05-07): operator-commons/pkg/labels v0.3.0 위임. 5-key
+// app.kubernetes.io/* convention (mongodb / postgres 와 통일). PartOfValue 명시
+// 하여 commons Set 의 PartOf 자동 omit 회피.
 func CommonLabels(instanceName, component string) map[string]string {
-	return map[string]string{
-		LabelAppName:      "valkey",
-		LabelInstanceName: instanceName,
-		LabelComponent:    component,
-		LabelManagedBy:    ManagedByValue,
-		LabelPartOf:       PartOfValue,
-	}
+	return commonslabels.Set{
+		Name:      "valkey",
+		Instance:  instanceName,
+		Component: component,
+		ManagedBy: ManagedByValue,
+		PartOf:    PartOfValue,
+	}.All()
 }
 
 // SelectorLabels — Service / PodDisruptionBudget 의 selector 용 (안정 라벨만).
+// commons.Set.Selector() 패턴 차용 — version 제외 (k8s immutable selector field).
+// 단 valkey 는 component 도 selector 에서 제외 (cluster mode 의 다중 component
+// 가 같은 service 매칭하기 위함) — Set.Selector() 보다 더 좁은 set.
 func SelectorLabels(instanceName string) map[string]string {
 	return map[string]string{
 		LabelAppName:      "valkey",
