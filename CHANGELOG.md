@@ -8,6 +8,22 @@
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-05-07
+
+### Added
+
+- Valkey latest default 정렬: API default, CRD default, Helm values,
+  ArtifactHub examples/images, samples, GitOps workload CR 을 `9.0.4` 로 갱신.
+- `SupportedValkeyVersions` whitelist 를 `8.0.9`, `8.1.6`, `8.1.7`, `9.0.4`
+  로 명시하여 최신 + 8.0/8.1 milestone patch 호환 기준을 문서화.
+- ValkeyCluster 9.0.4 sharded 3x1 Kind smoke: 6 pod Ready, `cluster_state=ok`,
+  16384 slots, SET/GET 검증.
+
+### Fixed
+
+- Redis 8.2.x RDB 를 Valkey 9.0.4 로 직접 restore 할 때 RDB format 불일치로
+  CrashLoopBackOff 되는 경로를 `ValkeyRestore.status.phase=Failed` 로 fail-fast 처리.
+
 ## [0.1.0-alpha.2] - 2026-05-07
 
 ADR-0057 Phase A1 (argos 클러스터 사전 배포) 진행 중 발견된 chart RBAC 결함 fix.
