@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/keiailab/operator-commons/pkg/security"
+
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
@@ -135,6 +137,13 @@ func BuildBackupJob(p BackupJobParams) *batchv1.Job {
 							},
 						}},
 						VolumeMounts: volumeMounts,
+						// iteration 37 (cluster incident fix): PodSecurity restricted invariant.
+						// data ns 의 enforce=restricted 가 admission 단계에서 capabilities.drop /
+						// seccompProfile / allowPrivilegeEscalation 미설정 pod 거부 → backup
+						// job-controller 가 매 5-15s 재시도하며 ValkeyBackup Phase=Copying stuck.
+						// commons.RestrictedContainer 위임 — RunAsUser=999 (postgres-user 와 분리,
+						// valkey 표준).
+						SecurityContext: security.RestrictedContainer(security.WithRunAsUser(999)),
 					}},
 					Volumes: volumes,
 					SecurityContext: &corev1.PodSecurityContext{
