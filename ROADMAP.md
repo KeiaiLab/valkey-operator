@@ -12,7 +12,7 @@
 - [x] Backup / Restore — S3 (minio-go) + PVC ROX 다중 마운트
 - [x] **chart RBAC conditional 결함 fix** (2026-05-07 commit 06237be — `features.{cluster,backup}.enabled=false` 시 informer startup 실패) — production-grade 차단 요인 P0
 - [ ] **Valkey 9.x 지원 격상 (1.x 라인 진입)** — ROADMAP 2.x 에서 1.x 로. **Phase B 마이그레이션 prerequisite** (bitnami/valkey 9.0.4 → 자체 operator 시 RDB format v80 호환 필수). 2026-05-07 Phase B PoC 시 차단 확인.
-- [~] **version upgrade reconcile 결함** — Phase B PoC (2026-05-07) 가 `spec.version.version` patch 의 STS image 미반영을 의심. iteration 7 진단 (2026-05-07): **fresh 인스턴스 8.1.6 → 9.0.4 patch 시나리오는 정상 동작** (kind-valkey-operator-test-e2e 의 vk-bak-target 검증 — STS image propagate + Pod rotation OK). narrow scope 만 미검증: bitnami RDB restore → 자체 operator 의 valkey-migrated 인스턴스 → version patch chain. 회귀 가드 영구화: `test/e2e/version_upgrade_test.go` (가설 A/B/C 3 영역 모두 검증). narrow scope 검증은 Phase B 본격 진입 시 별도 e2e (backup_restore_test.go 확장).
+- [x] **version upgrade reconcile 결함** — Phase B PoC (2026-05-07) 가 `spec.version.version` patch 의 STS image 미반영을 의심. iteration 7 진단: **fresh 시나리오 정상**. iteration 18 (Phase 2 V2): **narrow scope (restore→patch chain) 회귀 가드 영구화** — `test/e2e/backup_restore_test.go` 의 "Restored 인스턴스의 8.1.6 → 9.0.4 version patch chain (V2)" Context 추가. 가설 A/B/C 3 영역 + RDB v80 호환성 (foo=bar1 보존) 모두 회귀 가드. 본 e2e PASS = 차단요인 2 narrow scope 까지 영구 해소.
 - [ ] PodSecurity restricted *전수* 회귀 — controller / webhook 측 podSpec 변환 경로도 가드 추가
 - [ ] webhook validation rule 통합 — RBD storageClass / topology spread / replicaCount lower bound
 
