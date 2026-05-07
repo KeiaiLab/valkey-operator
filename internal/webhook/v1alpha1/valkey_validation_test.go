@@ -56,6 +56,24 @@ func TestValidateValkeySpec(t *testing.T) {
 			t.Error("TLS.Enabled=true without cert source → expected error")
 		}
 	})
+	t.Run("TLS certManager omitempty trap — IssuerRef.Name 비움 → reject", func(t *testing.T) {
+		t.Parallel()
+		// CertManager pointer 는 non-nil 이지만 IssuerRef.Name 빈 값 — CRD 의
+		// required marker 가 통과 허용하므로 webhook 으로 보강 (it46 cross-cut audit).
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.TLS = &cachev1alpha1.TLSSpec{
+			Enabled:     true,
+			CertManager: &cachev1alpha1.CertManagerSpec{IssuerRef: cachev1alpha1.CertIssuerRef{Name: ""}},
+		}
+		errs := validateValkeySpec(v)
+		// hasCertMgr=false (Name 비어있음) + hasCustom=false → "requires either"
+		// 에러 발생 = trap 차단 성공.
+		if len(errs) == 0 {
+			t.Error("CertManager IssuerRef.Name 비움 → requires either error 발생해야 (omitempty trap)")
+		}
+	})
 	t.Run("TLS certManager + customCert → mutually exclusive", func(t *testing.T) {
 		t.Parallel()
 		v := &cachev1alpha1.Valkey{}

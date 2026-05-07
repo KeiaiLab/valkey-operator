@@ -120,7 +120,10 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 		))
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
-		hasCertMgr := v.Spec.TLS.CertManager != nil
+		// hasCertMgr: omitempty trap 가드 — CertManager pointer non-nil + IssuerRef.Name
+		// 비어있지 않을 때만 *유효* 로 간주. CRD required marker 가 struct value 빈
+		// 객체 통과 허용 (cross-cut audit, mongodb-operator 와 동일 패턴).
+		hasCertMgr := v.Spec.TLS.CertManager != nil && v.Spec.TLS.CertManager.IssuerRef.Name != ""
 		hasCustom := v.Spec.TLS.CustomCert != nil && v.Spec.TLS.CustomCert.SecretName != ""
 		if !hasCertMgr && !hasCustom {
 			errs = append(errs, field.Required(

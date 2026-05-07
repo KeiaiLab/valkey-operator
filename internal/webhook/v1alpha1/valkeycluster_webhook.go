@@ -151,7 +151,9 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 
 	// TLS.Enabled=true 면 CertManager 또는 CustomCert 중 하나는 명시.
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
-		hasCertMgr := vc.Spec.TLS.CertManager != nil
+		// hasCertMgr: omitempty trap 가드 — CertManager pointer non-nil + IssuerRef.Name
+		// 비어있지 않을 때만 *유효* 로 간주 (mongodb-operator it46 와 동일 패턴).
+		hasCertMgr := vc.Spec.TLS.CertManager != nil && vc.Spec.TLS.CertManager.IssuerRef.Name != ""
 		hasCustom := vc.Spec.TLS.CustomCert != nil && vc.Spec.TLS.CustomCert.SecretName != ""
 		if !hasCertMgr && !hasCustom {
 			errs = append(errs, field.Required(
