@@ -96,6 +96,51 @@ affinity:
               values:
                 - linux
 
+# -- Topology spread constraints for operator pod scheduling
+topologySpreadConstraints: []
+
+# -- Priority class name for operator pod (e.g., system-cluster-critical)
+priorityClassName: ""
+
+# -- Runtime class name for operator pod (e.g., gvisor, kata)
+runtimeClassName: ""
+
+# -- DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
+dnsPolicy: ""
+
+# -- DNS config — used when dnsPolicy=None or supplemental
+dnsConfig: {}
+
+# -- Host aliases — additional /etc/hosts entries
+hostAliases: []
+
+# -- Termination grace period seconds (default 10 — operator graceful drain)
+terminationGracePeriodSeconds: null
+
+# -- Operator container additional env vars from ConfigMaps (raw EnvFromSource list)
+extraEnvVarsCM: []
+
+# -- Operator container additional env vars from Secrets (raw EnvFromSource list)
+extraEnvVarsSecret: []
+
+# -- Additional init containers (raw Container list)
+extraInitContainers: []
+
+# -- Additional sidecar containers (raw Container list)
+sidecars: []
+
+# -- Custom liveness probe (overrides default if non-empty)
+customLivenessProbe: {}
+
+# -- Custom readiness probe (overrides default if non-empty)
+customReadinessProbe: {}
+
+# -- Custom startup probe
+customStartupProbe: {}
+
+# -- Container lifecycle hooks (postStart / preStop)
+lifecycleHooks: {}
+
 # Leader election configuration
 leaderElection:
   # -- Enable leader election for controller manager
