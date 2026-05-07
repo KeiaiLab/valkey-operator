@@ -8,6 +8,23 @@
 
 ## [Unreleased]
 
+## [0.1.0-alpha.4] - 2026-05-07
+
+### Fixed
+
+- **Release P0 — operator image build metadata 누락** (`Makefile`):
+  `make release`가 Dockerfile의 `VERSION`/`COMMIT`/`BUILD_DATE` build args를 전달하지 않아
+  실제 배포 이미지의 `/manager --version`과 `valkey_cluster_build_info`가
+  `dev/none/unknown`으로 노출됐다. release target에서 tag, git commit, UTC build date를
+  주입하도록 수정했다.
+- **Release P0 — chart affinity와 image platform 불일치** (`Makefile`):
+  chart 기본 affinity는 `linux/amd64`와 `linux/arm64` 노드를 허용하지만 release image는
+  `linux/amd64`만 push했다. release build를 `linux/amd64,linux/arm64` multi-arch로 변경했다.
+
+### Added
+
+- release target이 build metadata와 multi-arch platform을 강제하는 회귀 테스트 추가.
+
 ## [0.1.0-alpha.3] - 2026-05-07
 
 ### Added

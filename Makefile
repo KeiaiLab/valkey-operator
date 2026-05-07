@@ -387,9 +387,14 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 	@echo ""
 	$(MAKE) release-preflight VERSION="$(VERSION)"
 	@echo ""
-	@echo "=== Step 2/6- Docker image build + push (linux/amd64, default builder) ==="
+	@echo "=== Step 2/6- Docker image build + push (linux/amd64,linux/arm64, default builder) ==="
 	@TARGET_VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
-	docker --context=default buildx build --platform linux/amd64 \
+	COMMIT_VAL="$$(git rev-parse --short HEAD 2>/dev/null || echo none)"; \
+	DATE_VAL="$$(date -u +%Y-%m-%d)"; \
+	docker --context=default buildx build --platform linux/amd64,linux/arm64 \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg COMMIT="$$COMMIT_VAL" \
+		--build-arg BUILD_DATE="$$DATE_VAL" \
 		-t "$(IMAGE_REPOSITORY):$(VERSION)" \
 		-t "$(IMAGE_REPOSITORY):$$TARGET_VER" \
 		--push .
