@@ -106,7 +106,10 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+	// 기본값 true (B-P0-9 cross-cut, mongodb 정합) — 단일 replica 환경에서도
+	// leader-election lease 를 보유하여 graceful shutdown / restart 시 active
+	// 단일성 보장. 사용자가 명시적으로 비활성화하려면 --leader-elect=false.
+	flag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
