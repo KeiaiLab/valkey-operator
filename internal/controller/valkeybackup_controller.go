@@ -367,10 +367,14 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 	existingJob := &batchv1.Job{}
 	if err := r.Get(ctx, types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, existingJob); err != nil {
 		if errors.IsNotFound(err) {
-			if err := r.Create(ctx, job); err != nil {
+			// iteration 40: race-tolerant create. Cache stale 또는 parallel reconcile
+			// 로 *Get NotFound + Create AlreadyExists* 가능 (it40 incident: Job
+			// Complete 후 Phase=Failed cosmetic bug). IsAlreadyExists 시 *기존
+			// job reuse* — 다음 reconcile cycle 의 Get success 분기로 fall-through.
+			if err := r.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
 				return r.markFailed(ctx, b, "JobCreateFailed", err.Error())
 			}
-			logger.Info("Backup copy Job created", "name", job.Name)
+			logger.Info("Backup copy Job created (or already exists — race-tolerant)", "name", job.Name)
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
@@ -507,7 +511,8 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 	existing := &batchv1.Job{}
 	if err := r.Get(ctx, types.NamespacedName{Name: uploadJob.Name, Namespace: uploadJob.Namespace}, existing); err != nil {
 		if errors.IsNotFound(err) {
-			if err := r.Create(ctx, uploadJob); err != nil {
+			// iteration 40: race-tolerant — backup copy Job 과 동일 패턴.
+			if err := r.Create(ctx, uploadJob); err != nil && !errors.IsAlreadyExists(err) {
 				return r.markFailed(ctx, b, "UploadJobCreateFailed", err.Error())
 			}
 			logger.Info("Upload Job created", "name", uploadJob.Name, "object", objectKey)
