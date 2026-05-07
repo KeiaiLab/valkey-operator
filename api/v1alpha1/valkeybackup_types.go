@@ -89,7 +89,16 @@ type ValkeyBackupSpec struct {
 	// +kubebuilder:default="RDB"
 	Type BackupType `json:"type,omitempty"`
 
-	// 결과 저장 PVC. 미명시 시 동적 PVC 생성 (operator 가 storageClass / size 결정).
+	// 결과 저장 PVC.
+	//
+	// 미명시 (nil) 시 operator 가 *동적 PVC 생성* — controllerOwnerRef 부착,
+	// StorageSize 와 default storageClass 사용. 권장 default behavior.
+	//
+	// 명시 (Name 설정) 시 *사용자 사전 생성 PVC 사용* — operator 가 *PVC 생성 안 함*.
+	// 사용자가 사전에 같은 namespace 에 PVC 생성 의무. 미생성 시 backup Job pod 가
+	// FailedScheduling "persistentvolumeclaim X not found" 로 stuck (iteration 38 발견).
+	//
+	// 권장: TargetPVC=nil + StorageSize 만 명시 (operator 자동 관리).
 	// +optional
 	TargetPVC *corev1.LocalObjectReference `json:"targetPVC,omitempty"`
 

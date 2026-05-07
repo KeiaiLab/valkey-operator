@@ -10,3 +10,11 @@ spec:
     kind: Valkey
     name: valkey-sample
   type: RDB
+  # storageSize: backup PVC 크기 (operator 가 동적 생성). 기본 8Gi.
+  storageSize: 1Gi
+  # targetPVC: 미명시 = operator 자동 생성 (권장 default).
+  # 사용자 사전 생성 PVC 사용 시 targetPVC.name 명시 — 단 PVC 사전 생성 의무
+  # (iteration 38 incident: 명시 + 미생성 시 FailedScheduling stuck).
+  # targetPVC:
+  #   name: my-pre-created-backup-pvc
+  retainPVC: true
