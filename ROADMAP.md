@@ -7,8 +7,12 @@
 ### 안정성 / 성숙도
 - [x] PodSecurity restricted compliance (4 곳 SecurityContext helper 통일, 회귀 가드)
 - [x] Cluster mode (5 shard × replica=2) ordinal 기반 restore init container
+- [x] Cluster mode 자동 failover 검증 (Phase A3 chaos 2026-05-07 — primary kill → 자동 master 재선출, 16384 slots OK 유지, 데이터 잔존)
 - [x] HPA / PDB / NetworkPolicy 자동화 (opt-in)
 - [x] Backup / Restore — S3 (minio-go) + PVC ROX 다중 마운트
+- [x] **chart RBAC conditional 결함 fix** (2026-05-07 commit 06237be — `features.{cluster,backup}.enabled=false` 시 informer startup 실패) — production-grade 차단 요인 P0
+- [ ] **Valkey 9.x 지원 격상 (1.x 라인 진입)** — ROADMAP 2.x 에서 1.x 로. **Phase B 마이그레이션 prerequisite** (bitnami/valkey 9.0.4 → 자체 operator 시 RDB format v80 호환 필수). 2026-05-07 Phase B PoC 시 차단 확인.
+- [ ] **version upgrade reconcile 결함 fix** — `spec.version.version` patch 가 STS template image 로 propagate 안 됨 (2026-05-07 Phase B PoC 발견, valkey-migrated 의 8.1.6 → 9.0.4 patch 가 STS 에 반영 안 됨). production-grade 차단 요인 P0.
 - [ ] PodSecurity restricted *전수* 회귀 — controller / webhook 측 podSpec 변환 경로도 가드 추가
 - [ ] webhook validation rule 통합 — RBD storageClass / topology spread / replicaCount lower bound
 
