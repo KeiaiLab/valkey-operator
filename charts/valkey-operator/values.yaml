@@ -151,7 +151,7 @@ crds:
 valkey:
   # -- Default Valkey version (Redis OSS fork; AGPL-free baseline).
   # api/v1alpha1 ValkeyVersion default 와 동기 — 변경 시 양쪽 갱신.
-  version: "8.1.6"
+  version: "9.0.4"
   # -- Default storage class for persistent volumes
   storageClassName: ""
 

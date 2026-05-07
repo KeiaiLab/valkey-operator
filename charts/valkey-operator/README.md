@@ -69,7 +69,7 @@ spec:
   mode: Standalone
   replicas: 1
   version:
-    version: "8.1.6"
+    version: "9.0.4"
   storage:
     storageClassName: standard
     size: 5Gi
@@ -90,7 +90,7 @@ metadata:
   namespace: cache
 spec:
   version:
-    version: "8.1.6"
+    version: "9.0.4"
   shards: 3
   replicasPerShard: 1
   storage:
@@ -222,4 +222,3 @@ kubectl describe valkey my-valkey -n cache
 ## Values
 
 <!-- helm-docs 가 본 section 을 자동 갱신: `make helm-docs` 또는 `helm-docs --chart-search-root charts/valkey-operator`. values.yaml 의 `# --` 주석을 추출. -->
-

@@ -9,6 +9,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -347,6 +348,45 @@ func TestRestore_restoring_allReady_toVerifying(t *testing.T) {
 	got := reloadRestore(t, r, "r1", "ns")
 	if got.Status.Phase != cachev1alpha1.RestorePhaseVerifying {
 		t.Fatalf("expected Verifying, got %s", got.Status.Phase)
+	}
+}
+
+// 9b. Restoring: RDB load 실패 등으로 valkey 컨테이너가 CrashLoopBackOff 이면 Failed.
+func TestRestore_restoring_valkeyCrashLoop_marksFailed(t *testing.T) {
+	rest := freshRestoreCR("r1", "ns", "vk")
+	rest.Status.Phase = cachev1alpha1.RestorePhaseRestoring
+	sts := standaloneSTS("vk", "ns", 0)
+	resources.InjectRestoreIntoPodSpec(&sts.Spec.Template.Spec, "dump.rdb", "backup-pvc")
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vk-0",
+			Namespace: "ns",
+			Labels:    resources.SelectorLabels("vk"),
+		},
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:         "valkey",
+				RestartCount: 3,
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Reason:  "CrashLoopBackOff",
+						Message: "back-off restarting failed container valkey",
+					},
+				},
+			}},
+		},
+	}
+	r := fakeRestoreReconciler(rest, standaloneValkey("vk", "ns"), sourcePVC("backup-pvc", "ns"), sts, pod)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseFailed {
+		t.Fatalf("expected Failed, got %s", got.Status.Phase)
+	}
+	if !strings.Contains(got.Status.Message, "CrashLoopBackOff") {
+		t.Fatalf("expected CrashLoopBackOff message, got %q", got.Status.Message)
 	}
 }
 

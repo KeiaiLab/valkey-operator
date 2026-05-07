@@ -543,6 +543,62 @@ func (r *ValkeyRestoreReconciler) verifyDataPlane(
 	logger.Info("Restore data plane verified", "keys", keys, "name", rest.Name)
 }
 
+func (r *ValkeyRestoreReconciler) detectRestorePodFailure(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) (string, bool, error) {
+	pods := &corev1.PodList{}
+	if err := r.List(ctx, pods,
+		client.InNamespace(rest.Namespace),
+		client.MatchingLabels(resources.SelectorLabels(rest.Spec.ClusterRef.Name)),
+	); err != nil {
+		return "", false, err
+	}
+	for _, pod := range pods.Items {
+		if !pod.DeletionTimestamp.IsZero() {
+			continue
+		}
+		if pod.Status.Phase == corev1.PodFailed {
+			return fmt.Sprintf("Pod %s failed during restore", pod.Name), true, nil
+		}
+		if msg, ok := failedContainerStatus(pod.Name, pod.Status.InitContainerStatuses); ok {
+			return msg, true, nil
+		}
+		if msg, ok := failedContainerStatus(pod.Name, pod.Status.ContainerStatuses); ok {
+			return msg, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+func failedContainerStatus(podName string, statuses []corev1.ContainerStatus) (string, bool) {
+	for _, status := range statuses {
+		if status.State.Waiting != nil && restoreFailureWaitingReason(status.State.Waiting.Reason) {
+			return fmt.Sprintf("Pod %s container %s waiting %s during restore: %s",
+				podName, status.Name, status.State.Waiting.Reason, status.State.Waiting.Message), true
+		}
+		if status.State.Terminated != nil && status.State.Terminated.ExitCode != 0 {
+			return fmt.Sprintf("Pod %s container %s terminated with exitCode=%d during restore: %s",
+				podName, status.Name, status.State.Terminated.ExitCode, status.State.Terminated.Message), true
+		}
+	}
+	return "", false
+}
+
+func restoreFailureWaitingReason(reason string) bool {
+	switch reason {
+	case "CrashLoopBackOff",
+		"CreateContainerConfigError",
+		"CreateContainerError",
+		"ErrImagePull",
+		"ImagePullBackOff",
+		"InvalidImageName",
+		"RunContainerError":
+		return true
+	default:
+		return false
+	}
+}
+
 // handleRestoring — STS 에 init container inject + 모든 pod Ready 대기 → Verifying.
 func (r *ValkeyRestoreReconciler) handleRestoring(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
@@ -600,6 +656,13 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 
 	// 모든 pod Ready 인가? — Restoring 중 rolling 진행 중일 수 있음.
 	if sts.Status.ReadyReplicas < sts.Status.Replicas || sts.Status.Replicas == 0 {
+		msg, failed, err := r.detectRestorePodFailure(ctx, rest)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		if failed {
+			return r.markFailed(ctx, rest, "RestorePodFailed", msg)
+		}
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 

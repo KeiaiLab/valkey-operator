@@ -23,10 +23,17 @@
 | I08 | Chart.yaml `artifacthub.io/changes` ↔ CHANGELOG 자동 sync       | 설계   | 10%    | T02  | 모든 release  | release-time hook 도입       |
 | I09 | values.schema.json 정밀 schema (features.cluster/backup/...)    | 설계   | 10%    | F01  | helm install  | 현재 `additionalProperties: true` minimal |
 | T06 | GitOps deploy 오버레이 도입 (3-repo 정합)                       | 완료   | 100%   | -    | 운영 배포     | 2026-05-06. ADR-0029. `deploy/overlays/prod/{kustomization,delete-namespace}.yaml` + `deploy/valkey-cluster.yaml` (db ns, sharded 3×1) + `deploy/README.md`. `kustomize build` PASS, Namespace 0. patch target raw `system`. |
+| B01 | `spec.version.version` 8.1.6→9.0.4 rolling upgrade 회귀 가드     | 완료   | 100%   | -    | Phase B        | 2026-05-07. Valkey/ValkeyCluster envtest 로 STS image 갱신 검증 + Kind E2E 로 pod UID 변경/Ready 복귀/status.version=9.0.4 확인. |
+| I10 | Kind E2E 기본 배포 전제 보강 — Prometheus Operator CRD bootstrap | 완료   | 100%   | B01  | test-e2e       | `config/default` 가 ServiceMonitor/PrometheusRule 을 기본 렌더하므로 E2E BeforeSuite 에 monitoring.coreos.com CRD 설치/정리 추가. focused spec 반복 실행 위해 manager namespace 생성 idempotent 처리. |
+| B02 | Redis 8.2.1 RDB → Valkey 9.0.4 restore 무한대기 fail-fast        | 완료   | 100%   | B01  | Phase B        | 2026-05-07. Redis 8.2.1 RDB 는 Valkey 9.0.4 에서 `Can't handle RDB format version 12` 로 직접 restore 불가. Restoring 중 pod CrashLoopBackOff 를 `ValkeyRestore.status.phase=Failed` 로 표시하는 단위/E2E 회귀 가드 추가. |
+| T11 | ValkeyCluster 9.0.4 sharded 3×1 Kind smoke                     | 완료   | 100%   | B01  | Phase B        | 2026-05-07. 3 shards × 1 replica, 6 pod Ready, `cluster_state=ok`, `assignedSlots=16384`, `status.version=9.0.4`, `valkey-cli -c SET/GET` 검증. |
+| T12 | latest 기본값 정렬 — Valkey 9.0.4 + 8.0/8.1 milestone whitelist | 완료   | 100%   | T11  | chart/API/deploy | 2026-05-07. API default, CRD default, Helm values, ArtifactHub examples/images, samples, GitOps CR 기본값을 9.0.4 로 정렬. `SupportedValkeyVersions` 는 8.0.9/8.1.6/8.1.7/9.0.4 허용. `make test`, `make lint`, `make helm-template`, deploy overlay render PASS. |
 
 ## 차단됨
 
-- [!] T01: valkey ArtifactHub UI 신규 등록 — name 충돌 회피 위해 `keiailab-valkey-operator` 권장. `scripts/artifacthub-register.sh <uuid>` 로 placeholder 교체 + commit + push + `make helm-publish` 재실행.
+| ID  | 차단 내용 | 증거 | 다음 결정 |
+|-----|-----------|------|-----------|
+| C01 | 현재 Bitnami redis-cluster appVersion 계열 Redis 8.2.x RDB 를 Valkey 9.0.4 로 직접 restore 하는 경로는 호환되지 않음 | `redis:8.2.1` 로 생성한 RDB 를 `valkey:9.0.4` 가 `Can't handle RDB format version 12` 로 거부. Kind E2E 도 동일 원인 log 확인. | Bitnami 대체 마이그레이션은 RDB 직접 restore 가 아니라 온라인 key copy/dual-write/cutover 또는 Valkey 호환 source dump 경로로 별도 설계 필요. |
 
 ## 완료된 publish 산출물 (3-repo, 2026-05-06)
 

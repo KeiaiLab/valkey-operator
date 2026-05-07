@@ -43,6 +43,9 @@ var (
 	}()
 	// shouldCleanupCertManager tracks whether CertManager was installed by this suite.
 	shouldCleanupCertManager = false
+	// shouldCleanupPrometheusCRDs tracks whether monitoring.coreos.com CRDs
+	// were installed by this suite.
+	shouldCleanupPrometheusCRDs = false
 )
 
 // TestE2E runs the e2e test suite to validate the solution in an isolated environment.
@@ -71,9 +74,11 @@ var _ = BeforeSuite(func() {
 
 	configureKubectlKubeRC()
 	setupCertManager()
+	setupPrometheusOperatorCRDs()
 })
 
 var _ = AfterSuite(func() {
+	teardownPrometheusOperatorCRDs()
 	teardownCertManager()
 })
 
@@ -113,6 +118,19 @@ func setupCertManager() {
 	Expect(utils.InstallCertManager()).To(Succeed(), "Failed to install CertManager")
 }
 
+func setupPrometheusOperatorCRDs() {
+	By("checking if Prometheus Operator CRDs are already installed")
+	if utils.IsPrometheusOperatorCRDsInstalled() {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Prometheus Operator CRDs are already installed. Skipping installation.\n")
+		return
+	}
+
+	shouldCleanupPrometheusCRDs = true
+
+	By("installing Prometheus Operator CRDs")
+	Expect(utils.InstallPrometheusOperatorCRDs()).To(Succeed(), "Failed to install Prometheus Operator CRDs")
+}
+
 // teardownCertManager uninstalls CertManager if it was installed by setupCertManager.
 // This ensures we only remove what we installed.
 func teardownCertManager() {
@@ -123,4 +141,14 @@ func teardownCertManager() {
 
 	By("uninstalling CertManager")
 	utils.UninstallCertManager()
+}
+
+func teardownPrometheusOperatorCRDs() {
+	if !shouldCleanupPrometheusCRDs {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Skipping Prometheus Operator CRD cleanup (not installed by this suite)\n")
+		return
+	}
+
+	By("uninstalling Prometheus Operator CRDs")
+	utils.UninstallPrometheusOperatorCRDs()
 }

@@ -4,6 +4,91 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
+## 현재 상태 (2026-05-07, Valkey latest default 정렬 완료)
+
+- **이번 세션 추가 구현**:
+  - API default / CRD default / Helm `values.yaml` / ArtifactHub examples+images / samples / GitOps workload CR 기본값을 Valkey `9.0.4` 로 정렬했다.
+  - `SupportedValkeyVersions` 는 `8.0.9`, `8.1.6`, `8.1.7`, `9.0.4` 를 허용한다. 최신은 9.0.4, 8.0/8.1 milestone patch 는 호환 whitelist 로 보존한다.
+- **검증 인용**:
+  ```
+  $ go test ./internal/observability ./internal/webhook/v1alpha1 ./internal/controller \
+      -run 'TestChartValuesValkeyVersionMatchesAPIDefault|TestChartImagesAnnotationMatchesAppVersion|TestChartCRDExamplesStrictUnmarshal|TestValidate|TestValkey|TestBuild|Test.*Version' -count=1
+  ok ./internal/observability ./internal/webhook/v1alpha1 ./internal/controller
+
+  $ make test
+  PASS (non-e2e all packages)
+
+  $ make lint
+  0 issues
+
+  $ make helm-template
+  default/all-features/OTEL/debug/webhook+NetworkPolicy/full-production stack PASS
+
+  $ kustomize build deploy/overlays/prod
+  namespace_count=0, line_count=5407
+  ```
+- **남은 리스크**:
+  - Redis 8.2.x RDB 직접 restore 는 여전히 호환 불가다. 현재 구현은 fail-fast 로 멈추며, Bitnami redis-cluster 대체 마이그레이션은 온라인 key copy/dual-write/cutover 또는 Valkey 호환 source dump 경로가 필요하다.
+
+## 이전 현재 상태 (2026-05-07, Phase B RDB 호환성 blocker + fail-fast 완료)
+
+- **이번 세션 추가 발견**:
+  - Bitnami redis-cluster chart 13.0.4 의 appVersion/image 값은 Redis 8.2.1 계열이었다.
+  - chart 가 가리키는 `docker.io/bitnami/redis-cluster:8.2.1-debian-12-r0` 는 현재 manifest 확인 실패. 그래서 동일 appVersion RDB format 검증은 pull 가능한 `docker.io/redis:8.2.1` 로 실측했다.
+  - Redis 8.2.1 이 생성한 RDB 는 Valkey 9.0.4 가 직접 읽지 못한다. 로컬 컨테이너 검증과 Kind E2E 모두 pod log 에 `Can't handle RDB format version 12` 를 남겼다.
+- **구현**:
+  - `ValkeyRestore` Restoring 단계에서 대상 pod/init container 상태를 읽고 `CrashLoopBackOff`, `RunContainerError`, image pull/config error, non-zero terminated 상태를 감지하면 `status.phase=Failed`, Condition reason=`RestorePodFailed` 로 fail-fast 처리.
+  - Kind E2E 추가: `test-redis-rdb-restore-20260507` namespace 에 Redis 8.2.1 Job 으로 `dump.rdb` 생성 → Valkey 9.0.4 대상에 `ValkeyRestore` 적용 → `status.phase=Failed` 확인 → pod log 의 RDB format version 12 확인 → 테스트 데이터 삭제.
+  - Kind E2E 추가: `test-valkey-cluster-20260507` namespace 에 `ValkeyCluster` 9.0.4, 3 shards × 1 replica 생성 → 6개 pod Ready → `cluster_state=ok` + `assignedSlots=16384` + `status.version=9.0.4` → `valkey-cli -c SET/GET` 확인 → 테스트 데이터 삭제.
+- **검증 인용**:
+  ```
+  $ go test ./internal/controller -run TestRestore_restoring_valkeyCrashLoop_marksFailed -count=1
+  ok github.com/keiailab/valkey-operator/internal/controller 0.909s
+
+  $ KIND_CLUSTER=valkey-redis-rdb-e2e-20260507 IMG=ghcr.io/keiailab/valkey-operator:e2e-redis-rdb-20260507 \
+    go test -tags=e2e ./test/e2e/ -v -ginkgo.v -ginkgo.focus 'Redis 8.2.1 RDB'
+  SUCCESS! 1 Passed / 0 Failed / 19 Skipped
+
+  $ KIND_CLUSTER=valkey-cluster904-e2e-20260507 IMG=ghcr.io/keiailab/valkey-operator:e2e-cluster904-20260507 \
+    go test -tags=e2e ./test/e2e/ -v -ginkgo.v -ginkgo.focus 'sharded ValkeyCluster 9.0.4'
+  SUCCESS! 1 Passed / 0 Failed / 20 Skipped
+  ```
+- **해석**:
+  - Phase B 의 "Bitnami redis-cluster RDB 직접 restore" 성공 조건은 현재 만족 불가다. 이것은 operator reconcile 버그가 아니라 Redis 8.2.x RDB format 과 Valkey 9.0.4 reader 호환성 차단이다.
+  - 이번 변경은 성공 마이그레이션 구현이 아니라 운영자가 호환 불가 restore 를 무한 대기하지 않게 만드는 안전장치다.
+  - Valkey 자체의 sharded 3×1 bootstrap 은 9.0.4 에서 Kind 기준 정상 동작한다. 즉 Bitnami 대체 운영 형태 자체는 가능하지만, Redis 8.2.x RDB 직접 이관 경로는 별도 설계가 필요하다.
+- **다음 단계**:
+  1. Bitnami 대체 마이그레이션 경로 재설계: RDB 직접 restore 대신 온라인 key copy/dual-write/cutover 또는 Valkey 호환 source dump 경로 중 하나를 선택.
+  2. `ValkeyRestore` 실패 후 사용자 복구 절차 문서화: 원본 PVC 보존, 대상 PVC 교체/재생성, 재시도 기준.
+
+## 이전 현재 상태 (2026-05-07, Phase B version-upgrade gate 재검증 완료)
+
+- **이번 세션**:
+  - `spec.version.version` 8.1.6 → 9.0.4 변경이 StatefulSet pod template image 로 반영되는지 `Valkey` / `ValkeyCluster` 양쪽 envtest 회귀 가드 추가.
+  - Kind E2E 추가: 전용 namespace `test-valkey-upgrade-20260507` 에 Standalone `Valkey` 8.1.6 생성 → `kubectl patch ... version=9.0.4` → STS template image `docker.io/valkey/valkey:9.0.4` → pod UID 변경 → Ready=True → `status.version=9.0.4` 확인.
+  - E2E harness 보강: `config/default` 가 ServiceMonitor/PrometheusRule 을 기본 렌더하므로 BeforeSuite 에 Prometheus Operator CRD 2개 bootstrap/cleanup 추가. focused spec 반복 실행을 위해 manager namespace 생성 idempotent 처리.
+- **검증 인용**:
+  ```
+  $ go test ./internal/controller -run TestControllers -count=1
+  ok github.com/keiailab/valkey-operator/internal/controller 16.606s
+
+  $ KIND_CLUSTER=valkey-upgrade-e2e-20260507 IMG=ghcr.io/keiailab/valkey-operator:e2e-upgrade-20260507 \
+    go test -tags=e2e ./test/e2e/ -v -ginkgo.v -ginkgo.focus 'spec.version.version changes'
+  SUCCESS! 1 Passed / 0 Failed / 18 Skipped
+
+  $ make test
+  PASS (non-e2e all packages)
+
+  $ make lint
+  0 issues
+  ```
+- **해석**:
+  - 이전 handoff 의 "version upgrade reconcile 결함"은 재현되지 않았고, operator reconcile + 실제 Kind StatefulSet rolling 은 현재 코드에서 정상 동작함이 확인됐다.
+  - 남은 Phase B 위험은 RDB 호환/마이그레이션 흐름 자체와 실제 bitnami → 자체 operator restore/cutover 검증이다.
+- **다음 단계**:
+  1. Phase B RDB 마이그레이션 재시도: bitnami/valkey 9.x dump → 자체 Valkey 9.0.4 restore init container → SET/GET 데이터 검증.
+  2. ValkeyCluster sharded mode 에도 9.0.4 cluster bootstrap/slot 16384 smoke 추가.
+
 ## 현재 상태 (2026-05-07, governance 표준 정합 — P0+P1 baseline 도달)
 
 - **이번 세션 (상용 제품 수준 trajectory)**:

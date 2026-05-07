@@ -11,7 +11,7 @@ spec:
   replicas: 1
   version:
     image: docker.io/valkey/valkey
-    version: "8.1.6"
+    version: "9.0.4"
   storage:
     size: 8Gi
     # storageClassName: standard           # 클러스터의 기본 SC 사용 시 생략 가능

@@ -1960,7 +1960,7 @@ spec:
                       a container image
                     type: string
                   version:
-                    default: 8.1.6
+                    default: 9.0.4
                     pattern: ^\d+\.\d+(\.\d+)?$
                     type: string
                 required:

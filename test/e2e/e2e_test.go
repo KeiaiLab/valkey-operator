@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -53,9 +54,13 @@ var _ = Describe("Manager", Ordered, func() {
 	// and deploying the controller.
 	BeforeAll(func() {
 		By("creating manager namespace")
-		cmd := exec.Command("kubectl", "create", "ns", namespace)
+		cmd := exec.Command("kubectl", "get", "ns", namespace)
 		_, err := utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to create namespace")
+		if err != nil {
+			cmd = exec.Command("kubectl", "create", "ns", namespace)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create namespace")
+		}
 
 		By("labeling the namespace to enforce the restricted security policy")
 		cmd = exec.Command("kubectl", "label", "--overwrite", "ns", namespace,
@@ -340,6 +345,488 @@ var _ = Describe("Manager", Ordered, func() {
 				g.Expect(len(vwhOutput)).To(BeNumerically(">", 10))
 			}
 			Eventually(verifyCAInjection).Should(Succeed())
+		})
+
+		It("should roll a Valkey pod when spec.version.version changes from 8.1.6 to 9.0.4", func() {
+			const (
+				upgradeNamespace = "test-valkey-upgrade-20260507"
+				upgradeName      = "vk-upgrade-test"
+				oldImage         = "docker.io/valkey/valkey:8.1.6"
+				newImage         = "docker.io/valkey/valkey:9.0.4"
+			)
+
+			By("creating a dedicated namespace for upgrade test data")
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", upgradeNamespace, "--ignore-not-found"))
+			cmd := exec.Command("kubectl", "create", "ns", upgradeNamespace)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", upgradeNamespace, "--ignore-not-found"))
+			})
+
+			By("waiting for the controller and webhooks to be ready")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get",
+					"pods", "-l", "control-plane=controller-manager",
+					"-o", "jsonpath={.items[0].status.conditions[?(@.type==\"Ready\")].status}",
+					"-n", namespace)
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("True"))
+
+				cmd = exec.Command("kubectl", "get", "endpointslices.discovery.k8s.io", "-n", namespace,
+					"-l", "kubernetes.io/service-name=valkey-operator-webhook-service",
+					"-o", "jsonpath={range .items[*]}{range .endpoints[*]}{.addresses[*]}{end}{end}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).ShouldNot(BeEmpty())
+
+				cmd = exec.Command("kubectl", "get", "mutatingwebhookconfigurations.admissionregistration.k8s.io",
+					"valkey-operator-mutating-webhook-configuration",
+					"-o", "jsonpath={.webhooks[0].clientConfig.caBundle}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).ShouldNot(BeEmpty())
+			}, 3*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("creating a Valkey 8.1.6 instance")
+			manifest := fmt.Sprintf(`
+apiVersion: cache.keiailab.io/v1alpha1
+kind: Valkey
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  mode: Standalone
+  replicas: 1
+  version:
+    image: docker.io/valkey/valkey
+    version: "8.1.6"
+  storage:
+    size: 1Gi
+`, upgradeName, upgradeNamespace)
+			cmd = exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(manifest)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the initial 8.1.6 pod to become Running")
+			Eventually(func() string {
+				out, _ := utils.Run(exec.Command("kubectl", "get", "valkey",
+					upgradeName, "-n", upgradeNamespace,
+					"-o", "jsonpath={.status.phase}"))
+				return out
+			}, 5*time.Minute, 5*time.Second).Should(Equal("Running"))
+			cmd = exec.Command("kubectl", "get", "pod", upgradeName+"-0", "-n", upgradeNamespace,
+				"-o", "jsonpath={.spec.containers[?(@.name==\"valkey\")].image}")
+			podImage, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(podImage).To(Equal(oldImage))
+			cmd = exec.Command("kubectl", "get", "pod", upgradeName+"-0", "-n", upgradeNamespace,
+				"-o", "jsonpath={.metadata.uid}")
+			initialUID, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(initialUID).NotTo(BeEmpty())
+
+			By("patching spec.version.version to 9.0.4")
+			cmd = exec.Command("kubectl", "patch", "valkey", upgradeName,
+				"-n", upgradeNamespace,
+				"--type=merge",
+				"-p", `{"spec":{"version":{"version":"9.0.4"}}}`)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking the StatefulSet pod template image changed")
+			Eventually(func() string {
+				out, _ := utils.Run(exec.Command("kubectl", "get", "sts",
+					upgradeName, "-n", upgradeNamespace,
+					"-o", "jsonpath={.spec.template.spec.containers[?(@.name==\"valkey\")].image}"))
+				return out
+			}, 2*time.Minute, 5*time.Second).Should(Equal(newImage))
+
+			By("checking the pod was recreated with the new image and became Ready")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "pod", upgradeName+"-0", "-n", upgradeNamespace,
+					"-o", "jsonpath={.metadata.uid}")
+				uid, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(uid).NotTo(Equal(initialUID))
+
+				cmd = exec.Command("kubectl", "get", "pod", upgradeName+"-0", "-n", upgradeNamespace,
+					"-o", "jsonpath={.spec.containers[?(@.name==\"valkey\")].image}")
+				image, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(image).To(Equal(newImage))
+
+				cmd = exec.Command("kubectl", "get", "pod", upgradeName+"-0", "-n", upgradeNamespace,
+					"-o", "jsonpath={.status.conditions[?(@.type==\"Ready\")].status}")
+				ready, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(ready).To(Equal("True"))
+			}, 7*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("checking the Valkey status reports the requested version")
+			Eventually(func() string {
+				out, _ := utils.Run(exec.Command("kubectl", "get", "valkey",
+					upgradeName, "-n", upgradeNamespace,
+					"-o", "jsonpath={.status.version}"))
+				return out
+			}, 2*time.Minute, 5*time.Second).Should(Equal("9.0.4"))
+
+			By("cleaning up upgrade test data before the operator is undeployed")
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "valkey",
+				upgradeName, "-n", upgradeNamespace, "--ignore-not-found"))
+			Eventually(func() error {
+				_, err := utils.Run(exec.Command("kubectl", "get", "valkey",
+					upgradeName, "-n", upgradeNamespace))
+				return err
+			}, 2*time.Minute, 5*time.Second).Should(HaveOccurred())
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", upgradeNamespace, "--ignore-not-found"))
+		})
+
+		It("should fail fast when a Redis 8.2.1 RDB cannot be restored into Valkey 9.0.4", func() {
+			const (
+				restoreNamespace = "test-redis-rdb-restore-20260507"
+				sourcePVC        = "test-redis-821-rdb-source"
+				sourceJob        = "test-redis-821-rdb-source"
+				restoreName      = "test-redis-821-rdb-restore"
+				targetName       = "test-redis-821-rdb-target"
+			)
+
+			By("creating a dedicated namespace for Redis 8.2.1 RDB restore test data")
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", restoreNamespace, "--ignore-not-found"))
+			cmd := exec.Command("kubectl", "create", "ns", restoreNamespace)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", restoreNamespace, "--ignore-not-found"))
+			})
+
+			By("waiting for the controller and webhooks to be ready")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get",
+					"pods", "-l", "control-plane=controller-manager",
+					"-o", "jsonpath={.items[0].status.conditions[?(@.type==\"Ready\")].status}",
+					"-n", namespace)
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("True"))
+
+				cmd = exec.Command("kubectl", "get", "endpointslices.discovery.k8s.io", "-n", namespace,
+					"-l", "kubernetes.io/service-name=valkey-operator-webhook-service",
+					"-o", "jsonpath={range .items[*]}{range .endpoints[*]}{.addresses[*]}{end}{end}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).ShouldNot(BeEmpty())
+
+				cmd = exec.Command("kubectl", "get", "mutatingwebhookconfigurations.admissionregistration.k8s.io",
+					"valkey-operator-mutating-webhook-configuration",
+					"-o", "jsonpath={.webhooks[0].clientConfig.caBundle}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).ShouldNot(BeEmpty())
+			}, 3*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("creating a Redis 8.2.1 RDB source PVC and writer Job")
+			sourceManifest := fmt.Sprintf(`
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: redis
+        image: docker.io/redis:8.2.1
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          set -eu
+          rm -f /source/dump.rdb
+          redis-server --dir /source --dbfilename dump.rdb --daemonize yes --save "" --appendonly no --protected-mode no
+          for i in $(seq 1 30); do redis-cli ping >/dev/null 2>&1 && break || sleep 1; done
+          redis-cli set test_migration_20260507 bitnami_appversion_redis_821
+          redis-cli bgsave
+          for i in $(seq 1 60); do test -s /source/dump.rdb && break; sleep 1; done
+          test -s /source/dump.rdb
+          redis-cli shutdown nosave || true
+        volumeMounts:
+        - name: source
+          mountPath: /source
+      volumes:
+      - name: source
+        persistentVolumeClaim:
+          claimName: %s
+`, sourcePVC, restoreNamespace, sourceJob, restoreNamespace, sourcePVC)
+			cmd = exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(sourceManifest)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() string {
+				out, _ := utils.Run(exec.Command("kubectl", "get", "job",
+					sourceJob, "-n", restoreNamespace,
+					"-o", "jsonpath={.status.conditions[?(@.type==\"Complete\")].status}"))
+				return out
+			}, 5*time.Minute, 5*time.Second).Should(Equal("True"))
+
+			By("creating a Valkey 9.0.4 target")
+			targetManifest := fmt.Sprintf(`
+apiVersion: cache.keiailab.io/v1alpha1
+kind: Valkey
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  mode: Standalone
+  replicas: 1
+  version:
+    image: docker.io/valkey/valkey
+    version: "9.0.4"
+  storage:
+    size: 1Gi
+`, targetName, restoreNamespace)
+			cmd = exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(targetManifest)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() string {
+				out, _ := utils.Run(exec.Command("kubectl", "get", "valkey",
+					targetName, "-n", restoreNamespace,
+					"-o", "jsonpath={.status.phase}"))
+				return out
+			}, 5*time.Minute, 5*time.Second).Should(Equal("Running"))
+
+			By("creating a ValkeyRestore from the Redis 8.2.1 RDB")
+			restoreManifest := fmt.Sprintf(`
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyRestore
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  clusterRef:
+    kind: Valkey
+    name: %s
+  source:
+    pvc:
+      name: %s
+      path: dump.rdb
+  restoreType: RDB
+`, restoreName, restoreNamespace, targetName, sourcePVC)
+			cmd = exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(restoreManifest)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking the restore reaches Failed instead of waiting forever")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "valkeyrestore",
+					restoreName, "-n", restoreNamespace,
+					"-o", "jsonpath={.status.phase}")
+				phase, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(phase).To(Equal("Failed"))
+
+				cmd = exec.Command("kubectl", "get", "valkeyrestore",
+					restoreName, "-n", restoreNamespace,
+					"-o", "jsonpath={.status.message}")
+				message, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(message).To(ContainSubstring("during restore"))
+			}, 7*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("checking the Valkey pod log exposes the Redis RDB format incompatibility")
+			Eventually(func() string {
+				current, _ := utils.Run(exec.Command("kubectl", "logs",
+					targetName+"-0", "-n", restoreNamespace, "-c", "valkey", "--tail=100"))
+				previous, _ := utils.Run(exec.Command("kubectl", "logs",
+					targetName+"-0", "-n", restoreNamespace, "-c", "valkey", "--previous", "--tail=100"))
+				return current + "\n" + previous
+			}, 2*time.Minute, 5*time.Second).Should(ContainSubstring("Can't handle RDB format version 12"))
+
+			By("cleaning up Redis RDB restore test data before the operator is undeployed")
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "valkeyrestore",
+				restoreName, "-n", restoreNamespace, "--ignore-not-found"))
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "valkey",
+				targetName, "-n", restoreNamespace, "--ignore-not-found"))
+			Eventually(func() error {
+				_, err := utils.Run(exec.Command("kubectl", "get", "valkey",
+					targetName, "-n", restoreNamespace))
+				return err
+			}, 2*time.Minute, 5*time.Second).Should(HaveOccurred())
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", restoreNamespace, "--ignore-not-found"))
+		})
+
+		It("should bootstrap a sharded ValkeyCluster 9.0.4 with 16384 assigned slots", func() {
+			const (
+				clusterNamespace = "test-valkey-cluster-20260507"
+				clusterName      = "test-vkc-904"
+				totalPods        = "6"
+			)
+
+			By("creating a dedicated namespace for ValkeyCluster test data")
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", clusterNamespace, "--ignore-not-found"))
+			cmd := exec.Command("kubectl", "create", "ns", clusterNamespace)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", clusterNamespace, "--ignore-not-found"))
+			})
+
+			By("waiting for the controller and webhooks to be ready")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get",
+					"pods", "-l", "control-plane=controller-manager",
+					"-o", "jsonpath={.items[0].status.conditions[?(@.type==\"Ready\")].status}",
+					"-n", namespace)
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("True"))
+
+				cmd = exec.Command("kubectl", "get", "endpointslices.discovery.k8s.io", "-n", namespace,
+					"-l", "kubernetes.io/service-name=valkey-operator-webhook-service",
+					"-o", "jsonpath={range .items[*]}{range .endpoints[*]}{.addresses[*]}{end}{end}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).ShouldNot(BeEmpty())
+
+				cmd = exec.Command("kubectl", "get", "mutatingwebhookconfigurations.admissionregistration.k8s.io",
+					"valkey-operator-mutating-webhook-configuration",
+					"-o", "jsonpath={.webhooks[0].clientConfig.caBundle}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).ShouldNot(BeEmpty())
+			}, 3*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("creating a 3 shard x 1 replica ValkeyCluster 9.0.4")
+			clusterManifest := fmt.Sprintf(`
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyCluster
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  shards: 3
+  replicasPerShard: 1
+  version:
+    image: docker.io/valkey/valkey
+    version: "9.0.4"
+  storage:
+    size: 1Gi
+`, clusterName, clusterNamespace)
+			cmd = exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(clusterManifest)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking all ValkeyCluster pods become Ready")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "valkeycluster",
+					clusterName, "-n", clusterNamespace,
+					"-o", "jsonpath={.status.readyReplicas}")
+				ready, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(ready).To(Equal(totalPods))
+
+				cmd = exec.Command("kubectl", "get", "sts",
+					clusterName, "-n", clusterNamespace,
+					"-o", "jsonpath={.status.readyReplicas}")
+				stsReady, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(stsReady).To(Equal(totalPods))
+			}, 8*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("checking cluster_state=ok and all 16384 slots are assigned")
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "valkeycluster",
+					clusterName, "-n", clusterNamespace,
+					"-o", "jsonpath={.status.phase}")
+				phase, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(phase).To(Equal("Running"))
+
+				cmd = exec.Command("kubectl", "get", "valkeycluster",
+					clusterName, "-n", clusterNamespace,
+					"-o", "jsonpath={.status.clusterState}")
+				state, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(state).To(Equal("ok"))
+
+				cmd = exec.Command("kubectl", "get", "valkeycluster",
+					clusterName, "-n", clusterNamespace,
+					"-o", "jsonpath={.status.assignedSlots}")
+				slots, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(slots).To(Equal("16384"))
+
+				cmd = exec.Command("kubectl", "get", "valkeycluster",
+					clusterName, "-n", clusterNamespace,
+					"-o", "jsonpath={.status.version}")
+				version, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(version).To(Equal("9.0.4"))
+			}, 8*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("checking valkey-cli cluster info and routed SET/GET work")
+			pwdCmd := fmt.Sprintf(`kubectl get secret %s-auth -n %s -o jsonpath='{.data.password}' | base64 -d`,
+				clusterName, clusterNamespace)
+			pwd, err := utils.Run(exec.Command("sh", "-c", pwdCmd))
+			Expect(err).NotTo(HaveOccurred())
+			pwd = strings.TrimSpace(pwd)
+
+			Eventually(func(g Gomega) {
+				cmd := exec.Command("kubectl", "exec", "-n", clusterNamespace,
+					clusterName+"-0", "--",
+					"valkey-cli", "--no-auth-warning", "-a", pwd, "cluster", "info")
+				info, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(info).To(ContainSubstring("cluster_state:ok"))
+				g.Expect(info).To(ContainSubstring("cluster_slots_assigned:16384"))
+
+				cmd = exec.Command("kubectl", "exec", "-n", clusterNamespace,
+					clusterName+"-0", "--",
+					"valkey-cli", "--no-auth-warning", "-c", "-a", pwd, "set", "test_cluster_20260507", "ok")
+				setOut, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(setOut)).To(Equal("OK"))
+
+				cmd = exec.Command("kubectl", "exec", "-n", clusterNamespace,
+					clusterName+"-0", "--",
+					"valkey-cli", "--no-auth-warning", "-c", "-a", pwd, "get", "test_cluster_20260507")
+				getOut, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(strings.TrimSpace(getOut)).To(Equal("ok"))
+			}, 2*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("cleaning up ValkeyCluster test data before the operator is undeployed")
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "valkeycluster",
+				clusterName, "-n", clusterNamespace, "--ignore-not-found"))
+			Eventually(func() error {
+				_, err := utils.Run(exec.Command("kubectl", "get", "valkeycluster",
+					clusterName, "-n", clusterNamespace))
+				return err
+			}, 2*time.Minute, 5*time.Second).Should(HaveOccurred())
+			_, _ = utils.Run(exec.Command("kubectl", "delete", "ns", clusterNamespace, "--ignore-not-found"))
 		})
 
 		// +kubebuilder:scaffold:e2e-webhooks-checks

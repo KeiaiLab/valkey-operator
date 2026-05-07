@@ -28,8 +28,10 @@ import (
 )
 
 const (
-	certmanagerVersion = "v1.20.2"
-	certmanagerURLTmpl = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
+	certmanagerVersion        = "v1.20.2"
+	certmanagerURLTmpl        = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
+	prometheusOperatorVersion = "v0.87.0"
+	prometheusCRDURLTmpl      = "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/%s/example/prometheus-operator-crd/%s"
 
 	defaultKindBinary  = "kind"
 	defaultKindCluster = "kind"
@@ -131,6 +133,67 @@ func IsCertManagerCRDsInstalled() bool {
 	}
 
 	return false
+}
+
+// InstallPrometheusOperatorCRDs installs the monitoring.coreos.com CRDs that
+// config/default renders by default.
+func InstallPrometheusOperatorCRDs() error {
+	for _, crd := range prometheusOperatorCRDFiles() {
+		url := fmt.Sprintf(prometheusCRDURLTmpl, prometheusOperatorVersion, crd)
+		cmd := exec.Command("kubectl", "apply", "-f", url)
+		if _, err := Run(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// UninstallPrometheusOperatorCRDs removes CRDs installed by
+// InstallPrometheusOperatorCRDs.
+func UninstallPrometheusOperatorCRDs() {
+	for _, crd := range prometheusOperatorCRDFiles() {
+		url := fmt.Sprintf(prometheusCRDURLTmpl, prometheusOperatorVersion, crd)
+		cmd := exec.Command("kubectl", "delete", "-f", url, "--ignore-not-found")
+		if _, err := Run(cmd); err != nil {
+			warnError(err)
+		}
+	}
+}
+
+// IsPrometheusOperatorCRDsInstalled checks the CRDs required by
+// config/prometheus.
+func IsPrometheusOperatorCRDsInstalled() bool {
+	required := map[string]bool{
+		"servicemonitors.monitoring.coreos.com": false,
+		"prometheusrules.monitoring.coreos.com": false,
+	}
+	cmd := exec.Command("kubectl", "get", "crds")
+	output, err := Run(cmd)
+	if err != nil {
+		return false
+	}
+	for _, line := range GetNonEmptyLines(output) {
+		name := strings.Fields(line)
+		if len(name) == 0 {
+			continue
+		}
+		if _, ok := required[name[0]]; ok {
+			required[name[0]] = true
+		}
+	}
+	for _, installed := range required {
+		if !installed {
+			return false
+		}
+	}
+	return true
+}
+
+func prometheusOperatorCRDFiles() []string {
+	return []string{
+		"monitoring.coreos.com_servicemonitors.yaml",
+		"monitoring.coreos.com_prometheusrules.yaml",
+	}
 }
 
 // LoadImageToKindClusterWithName loads a local docker image to the kind cluster

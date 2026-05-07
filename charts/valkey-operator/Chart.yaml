@@ -78,7 +78,7 @@ annotations:
         mode: Standalone
         replicas: 1
         version:
-          version: "8.1.6"
+          version: "9.0.4"
         storage:
           storageClassName: standard
           size: 5Gi
@@ -89,7 +89,7 @@ annotations:
         namespace: cache
       spec:
         version:
-          version: "8.1.6"
+          version: "9.0.4"
         shards: 3
         replicasPerShard: 1
         storage:
@@ -114,7 +114,7 @@ annotations:
     - name: valkey-operator
       image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.2
     - name: valkey
-      image: valkey/valkey:8.0
+      image: docker.io/valkey/valkey:9.0.4
   artifacthub.io/prerelease: "true"
   artifacthub.io/changes: |
     - kind: added

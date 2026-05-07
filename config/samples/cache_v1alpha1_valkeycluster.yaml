@@ -11,7 +11,7 @@ spec:
   replicasPerShard: 1                      # shard 당 1 primary + 1 replica = 6 노드
   version:
     image: docker.io/valkey/valkey
-    version: "8.1.6"
+    version: "9.0.4"
   storage:
     size: 8Gi
   resources:
