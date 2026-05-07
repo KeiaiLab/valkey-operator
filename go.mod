@@ -3,7 +3,7 @@ module github.com/keiailab/valkey-operator
 go 1.25.7
 
 require (
-	github.com/keiailab/operator-commons v0.1.2
+	github.com/keiailab/operator-commons v0.2.1
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2

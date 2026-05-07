@@ -8,6 +8,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	commonsmonitoring "github.com/keiailab/operator-commons/pkg/monitoring"
+
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
@@ -16,6 +18,10 @@ import (
 // 본 패키지는 prometheus-operator 의존성을 추가하지 않고 unstructured 로 다룬다 —
 // 의존성 폭발 회피 + ServiceMonitor CRD 가 클러스터에 미설치 시 생성 시도가 NotFound
 // 로 자연스럽게 fail-soft.
+//
+// iteration 23 (2026-05-07): operator-commons/pkg/monitoring 위임 — 3 operator
+// 가 동일 builder 사용. 본 함수는 valkey 특화 옵션 (label / interval / nsScope)
+// 만 결정 후 commons.NewServiceMonitor 호출.
 var ServiceMonitorGVK = schema.GroupVersionKind{
 	Group:   "monitoring.coreos.com",
 	Version: "v1",
@@ -44,38 +50,16 @@ func BuildServiceMonitorForCluster(vc *cachev1alpha1.ValkeyCluster) *unstructure
 		labels[k] = v
 	}
 
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(ServiceMonitorGVK)
-	u.SetName(ServiceMonitorName(vc.Name))
-	u.SetNamespace(vc.Namespace)
-	u.SetLabels(labels)
-
-	// Service selector — metrics Service 만 매칭 (`...-metrics`, component=valkey-metrics).
-	spec := map[string]any{
-		"selector": map[string]any{
-			"matchLabels": stringMap(MetricsServiceLabels(vc.Name)),
-		},
-		"namespaceSelector": map[string]any{
-			"matchNames": []any{vc.Namespace},
-		},
-		"endpoints": []any{
-			map[string]any{
-				"port":          "metrics",
-				"interval":      interval,
-				"scheme":        "http",
-				"path":          "/metrics",
-				"scrapeTimeout": "10s",
-			},
-		},
-	}
-	u.Object["spec"] = spec
-	return u
-}
-
-func stringMap(m map[string]string) map[string]any {
-	out := make(map[string]any, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
+	return commonsmonitoring.NewServiceMonitor(commonsmonitoring.ServiceMonitorParams{
+		Name:              ServiceMonitorName(vc.Name),
+		Namespace:         vc.Namespace,
+		Labels:            labels,
+		Selector:          MetricsServiceLabels(vc.Name),
+		NamespaceSelector: []string{vc.Namespace},
+		Port:              "metrics",
+		Path:              "/metrics",
+		Interval:          interval,
+		ScrapeTimeout:     "10s",
+		Scheme:            "http",
+	})
 }
