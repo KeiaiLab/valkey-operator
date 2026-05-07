@@ -120,6 +120,13 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	var errs field.ErrorList
 	specPath := field.NewPath("spec")
 
+	if vc.Spec.Version.Version != "" && !cachev1alpha1.IsSupportedValkeyVersion(vc.Spec.Version.Version) {
+		errs = append(errs, field.NotSupported(
+			specPath.Child("version", "version"), vc.Spec.Version.Version,
+			cachev1alpha1.SupportedValkeyVersions,
+		))
+	}
+
 	// AutoFailover=true + ReplicasPerShard=0 → failover 불가 (replica 부재).
 	if vc.Spec.AutoFailover && vc.Spec.ReplicasPerShard == 0 {
 		errs = append(errs, field.Forbidden(

@@ -484,10 +484,10 @@ func (r *ValkeyClusterReconciler) applyDefaults(vc *cachev1alpha1.ValkeyCluster)
 		vc.Spec.NodeTimeoutMillis = 15000
 	}
 	if vc.Spec.Version.Version == "" {
-		vc.Spec.Version.Version = "8.1.6"
+		vc.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
 	}
 	if vc.Spec.Version.Image == "" {
-		vc.Spec.Version.Image = "docker.io/valkey/valkey"
+		vc.Spec.Version.Image = cachev1alpha1.DefaultValkeyImage
 	}
 }
 

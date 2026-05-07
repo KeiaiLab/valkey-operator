@@ -23,6 +23,22 @@ const (
 	DefaultValkeyImage   = "docker.io/valkey/valkey"
 )
 
+// SupportedValkeyVersions — webhook validation 가 화이트리스트로 허용하는 valkey
+// 컨테이너 버전. 신규 추가 시 호환성 검증 (RDB format, replication wire protocol)
+// 후 추가. 8.1.6 = stable baseline. 9.0.4 = bitnami/valkey 9.x 호환 (RDB v80
+// 마이그레이션 prerequisite — ROADMAP Phase B).
+var SupportedValkeyVersions = []string{"8.1.6", "9.0.4"}
+
+// IsSupportedValkeyVersion — webhook validation 호출용 헬퍼.
+func IsSupportedValkeyVersion(v string) bool {
+	for _, sv := range SupportedValkeyVersions {
+		if sv == v {
+			return true
+		}
+	}
+	return false
+}
+
 // ValkeyVersion 은 Valkey 컨테이너 이미지 / 버전 지정.
 type ValkeyVersion struct {
 	// +kubebuilder:validation:Pattern=`^\d+\.\d+(\.\d+)?$`

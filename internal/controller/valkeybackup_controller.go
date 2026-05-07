@@ -635,7 +635,7 @@ func (r *ValkeyBackupReconciler) handleBackupDeletion(
 // buildBackupJob — 대상 CR 의 image / TLS 설정을 조회 한 후 Job spec 빌드.
 func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1alpha1.ValkeyBackup, pvcName string) (*batchv1.Job, error) {
 	var (
-		image         = "docker.io/valkey/valkey:8.1.6"
+		image         = cachev1alpha1.DefaultValkeyImage + ":" + cachev1alpha1.DefaultValkeyVersion
 		tlsEnabled    bool
 		tlsSecretName string
 		nsName        = types.NamespacedName{Name: b.Spec.ClusterRef.Name, Namespace: b.Namespace}

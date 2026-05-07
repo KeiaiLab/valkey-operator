@@ -96,6 +96,12 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 	var errs field.ErrorList
 	p := field.NewPath("spec")
 
+	if v.Spec.Version.Version != "" && !cachev1alpha1.IsSupportedValkeyVersion(v.Spec.Version.Version) {
+		errs = append(errs, field.NotSupported(
+			p.Child("version", "version"), v.Spec.Version.Version,
+			cachev1alpha1.SupportedValkeyVersions,
+		))
+	}
 	if v.Spec.Mode == cachev1alpha1.ModeStandalone && v.Spec.Replicas > 1 {
 		errs = append(errs, field.Invalid(
 			p.Child("replicas"), v.Spec.Replicas,

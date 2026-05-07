@@ -89,6 +89,67 @@ func TestValidateValkeySpec(t *testing.T) {
 			t.Error("auth.users with auth.enabled=false → expected error")
 		}
 	})
+	// 화이트리스트 검증 — ROADMAP Phase B prerequisite (Valkey 9.x 지원).
+	t.Run("supported version 8.1.6 → ok", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.Version.Version = "8.1.6"
+		errs := validateValkeySpec(v)
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "version") {
+				t.Errorf("8.1.6 should be supported, got %v", e)
+			}
+		}
+	})
+	t.Run("supported version 9.0.4 → ok", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.Version.Version = "9.0.4"
+		errs := validateValkeySpec(v)
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "version") {
+				t.Errorf("9.0.4 should be supported, got %v", e)
+			}
+		}
+	})
+	t.Run("unsupported version 8.0.0 → error", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.Version.Version = "8.0.0"
+		errs := validateValkeySpec(v)
+		var hasVersionErr bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "version") {
+				hasVersionErr = true
+			}
+		}
+		if !hasVersionErr {
+			t.Error("8.0.0 should be rejected by whitelist")
+		}
+	})
+	t.Run("unsupported version 9.99.0 → error", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.Version.Version = "9.99.0"
+		errs := validateValkeySpec(v)
+		var hasVersionErr bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "version") {
+				hasVersionErr = true
+			}
+		}
+		if !hasVersionErr {
+			t.Error("9.99.0 should be rejected by whitelist")
+		}
+	})
 }
 
 // validateClusterSpec 회귀 보호 (cycle 131).

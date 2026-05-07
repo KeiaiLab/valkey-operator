@@ -38,7 +38,9 @@ import (
 
 const (
 	finalizerValkey = "cache.keiailab.io/valkey-finalizer"
-	defaultImage    = "docker.io/valkey/valkey:8.1.6"
+	// defaultImage — image:version 결합 형식 (image pull 폴백). image / version 분리는
+	// cachev1alpha1.DefaultValkeyImage + DefaultValkeyVersion 참조.
+	defaultImage = cachev1alpha1.DefaultValkeyImage + ":" + cachev1alpha1.DefaultValkeyVersion
 )
 
 // ValkeyReconciler reconciles a Valkey object (Standalone + Replication).
@@ -259,10 +261,10 @@ func (r *ValkeyReconciler) applyDefaults(v *cachev1alpha1.Valkey) {
 		v.Spec.Replicas = 1
 	}
 	if v.Spec.Version.Version == "" {
-		v.Spec.Version.Version = "8.1.6"
+		v.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
 	}
 	if v.Spec.Version.Image == "" {
-		v.Spec.Version.Image = "docker.io/valkey/valkey"
+		v.Spec.Version.Image = cachev1alpha1.DefaultValkeyImage
 	}
 }
 
