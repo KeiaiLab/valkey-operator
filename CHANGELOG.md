@@ -8,6 +8,24 @@
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-05-07
+
+ADR-0057 Phase A1 (argos 클러스터 사전 배포) 진행 중 발견된 chart RBAC 결함 fix.
+
+### Fixed
+- **chart RBAC P0 — `features.{cluster,backup}.enabled=false` 시 informer startup 실패** (`charts/valkey-operator/templates/clusterrole.yaml`):
+  이전 chart 가 `features.cluster.enabled` / `features.backup.enabled` 조건부로 `valkeyclusters` / `valkeybackups` / `valkeybackuptargets` / `valkeyrestores` RBAC 부여 — 그러나 operator manager (`cmd/main.go`) 는 *항상* 모든 controller 등록 → flag=false 시 informer 가 `forbidden` 으로 startup 실패. RBAC 와 코드 mismatch 가 production-grade 차단 요인. RBAC 를 *항상 모든 CRD 권한 부여* 로 단순화, feature flag 는 controller 코드 측에서만 처리.
+
+### Verified (argos 클러스터 Phase A1 + A2)
+- valkey-operator pod 1/1 Running, Certificate/Issuer/ValidatingWebhookConfiguration Ready
+- Valkey CR `valkey-test` (Standalone, valkey 8.1.6, 1Gi ceph-rbd) 1/1 Running
+- SET/GET smoke: `SET phase-a2-smoke "OK-2026-05-07"` → `OK`, `GET` → 정상 round-trip
+- `INFO server`: valkey_version=8.1.6, tcp_port=6379
+
+### Refs
+- ADR-0057 (argos-infra-bootstrap 43fd542): self-hosted valkey-operator 채택 로드맵
+- 운영 사고 분석 + Phase A 진행: keiailab/mongodb-operator HANDOFF.md (2026-05-07)
+
 ### Added (GitOps deploy 정합)
 
 - `deploy/overlays/prod/` GitOps 진입점 — config/{crd,rbac,manager} 를 prod ns 로

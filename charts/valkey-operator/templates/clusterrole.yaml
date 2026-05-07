@@ -7,18 +7,21 @@ metadata:
     {{- include "valkey-operator.labels" . | nindent 4 }}
 rules:
   # Valkey CRDs (cache.keiailab.io/v1alpha1)
+  #
+  # ADR-0057 Phase A1 (2026-05-07): RBAC conditional 제거.
+  # 이전엔 features.cluster.enabled / features.backup.enabled 조건부였으나
+  # operator manager (cmd/main.go) 는 항상 모든 controller 등록 → flag=false
+  # 시 informer 가 forbidden 으로 startup 실패. RBAC 와 코드 mismatch 가
+  # production-grade 차단 요인이었음. RBAC 는 *항상 모든 CRD 권한 부여*,
+  # feature flag 는 controller 코드 측에서만 처리.
   - apiGroups:
       - cache.keiailab.io
     resources:
       - valkeys
-      {{- if .Values.features.cluster.enabled }}
       - valkeyclusters
-      {{- end }}
-      {{- if .Values.features.backup.enabled }}
       - valkeybackups
       - valkeybackuptargets
       - valkeyrestores
-      {{- end }}
     verbs:
       - create
       - delete
@@ -31,14 +34,10 @@ rules:
       - cache.keiailab.io
     resources:
       - valkeys/status
-      {{- if .Values.features.cluster.enabled }}
       - valkeyclusters/status
-      {{- end }}
-      {{- if .Values.features.backup.enabled }}
       - valkeybackups/status
       - valkeybackuptargets/status
       - valkeyrestores/status
-      {{- end }}
     verbs:
       - get
       - patch
@@ -47,14 +46,10 @@ rules:
       - cache.keiailab.io
     resources:
       - valkeys/finalizers
-      {{- if .Values.features.cluster.enabled }}
       - valkeyclusters/finalizers
-      {{- end }}
-      {{- if .Values.features.backup.enabled }}
       - valkeybackups/finalizers
       - valkeybackuptargets/finalizers
       - valkeyrestores/finalizers
-      {{- end }}
     verbs:
       - update
 

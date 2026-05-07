@@ -4,8 +4,8 @@ description: A Kubernetes Operator for managing Valkey instances and Clusters (R
 type: application
 # alpha 단계 — chart 자체는 0.1.0-alpha.N 부터 시작. semver 준수
 # (alpha.1, alpha.2 ... iterative pre-release 표기, mongodb-operator beta.N 패턴 정합).
-version: 0.1.0-alpha.1
-appVersion: "0.1.0-alpha.1"
+version: 0.1.0-alpha.2
+appVersion: "0.1.0-alpha.2"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -112,7 +112,7 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.1
+      image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.2
     - name: valkey
       image: valkey/valkey:8.0
   artifacthub.io/prerelease: "true"
