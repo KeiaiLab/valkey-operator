@@ -31,7 +31,13 @@ icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/category: database
-  artifacthub.io/operatorCapabilities: Basic Install
+  # operatorCapabilities — OperatorHub Phase IV "Deep Insights" (under-claim
+  # 정정, C-P0-8). 사용자 지원 기능: Standalone+Replication+Cluster install
+  # (Basic) + version upgrade (Seamless) + ValkeyBackup/Restore + ValkeyCluster
+  # automated bootstrap (Full Lifecycle) + ServiceMonitor+PrometheusRule+
+  # alert-rules.yaml (Deep Insights). Phase V "Auto Pilot" 는 HPA Replication
+  # GA + auto-resharding 후 격상 가능 (ADR-0027 deferred).
+  artifacthub.io/operatorCapabilities: Deep Insights
   artifacthub.io/maturity: stable
   artifacthub.io/links: |
     - name: Documentation
