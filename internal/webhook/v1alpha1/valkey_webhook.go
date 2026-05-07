@@ -141,6 +141,11 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 	// storage.size 하한 1Gi (cross-cut audit, ADR-0016).
 	errs = append(errs, validateStorageSizeMin(p.Child("storage", "size"), v.Spec.Storage.Size)...)
 
+	// auth.users[].passwordSecretRef omitempty trap — ValkeyUser 의 secret ref
+	// 가 struct value 라 빈 객체 통과. controller 자동 생성 path 없음 (Auth.
+	// PasswordSecretRef nil 만 random 자동 생성 — ADR-0014 intentional design).
+	errs = append(errs, validateUsersSecretRefs(p.Child("auth", "users"), v.Spec.Auth.Users)...)
+
 	if len(v.Spec.Auth.Users) > 0 && !v.Spec.Auth.Enabled {
 		errs = append(errs, field.Forbidden(
 			p.Child("auth"),

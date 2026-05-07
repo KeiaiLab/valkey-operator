@@ -185,6 +185,38 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	// commit 8b2414f 와 동일 invariant). RDB snapshot + AOF 합산 floor 보장.
 	errs = append(errs, validateStorageSizeMin(specPath.Child("storage", "size"), vc.Spec.Storage.Size)...)
 
+	// auth.users[].passwordSecretRef cross-cut (Valkey single-CR webhook 와 동일).
+	errs = append(errs, validateUsersSecretRefs(specPath.Child("auth", "users"), vc.Spec.Auth.Users)...)
+
+	return errs
+}
+
+// validateUsersSecretRefs — ValkeyUser 의 PasswordSecretRef name+key 둘 다 non-
+// empty 강제. SecretKeySelector 가 struct value 라 omitempty trap 잠재. ADR-0016
+// cross-cut audit pattern.
+func validateUsersSecretRefs(path *field.Path, users []cachev1alpha1.ValkeyUser) field.ErrorList {
+	var errs field.ErrorList
+	for i, u := range users {
+		userPath := path.Index(i)
+		if u.Name == "" {
+			errs = append(errs, field.Invalid(
+				userPath.Child("name"), "",
+				"users[].name must be non-empty",
+			))
+		}
+		if u.PasswordSecretRef.Name == "" {
+			errs = append(errs, field.Invalid(
+				userPath.Child("passwordSecretRef", "name"), "",
+				"users[].passwordSecretRef.name must be non-empty (no auto-generation for individual users — ADR-0014)",
+			))
+		}
+		if u.PasswordSecretRef.Key == "" {
+			errs = append(errs, field.Invalid(
+				userPath.Child("passwordSecretRef", "key"), "",
+				"users[].passwordSecretRef.key must be non-empty (Secret 의 어느 key 가 password 인지 명시 필요)",
+			))
+		}
+	}
 	return errs
 }
 

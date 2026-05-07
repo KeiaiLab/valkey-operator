@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -383,4 +384,65 @@ func TestValidateStorageSizeMin_ZeroSkip(t *testing.T) {
 	if len(errs) > 0 {
 		t.Errorf("zero (unset) should skip, got %v", errs)
 	}
+}
+
+func TestValidateUsersSecretRefs_OmitEmptyTrap(t *testing.T) {
+	t.Parallel()
+	t.Run("Users 빈 → ok", func(t *testing.T) {
+		t.Parallel()
+		errs := validateUsersSecretRefs(nil, nil)
+		if len(errs) > 0 {
+			t.Errorf("nil users should pass, got %v", errs)
+		}
+	})
+	t.Run("user.passwordSecretRef.name 비움 → reject", func(t *testing.T) {
+		t.Parallel()
+		users := []cachev1alpha1.ValkeyUser{{
+			Name:              "alice",
+			PasswordSecretRef: corev1.SecretKeySelector{Key: "password"},
+		}}
+		errs := validateUsersSecretRefs(nil, users)
+		var hasErr bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "passwordSecretRef.name") {
+				hasErr = true
+			}
+		}
+		if !hasErr {
+			t.Error("empty users[0].passwordSecretRef.name should be rejected")
+		}
+	})
+	t.Run("user.passwordSecretRef.key 비움 → reject", func(t *testing.T) {
+		t.Parallel()
+		users := []cachev1alpha1.ValkeyUser{{
+			Name: "alice",
+			PasswordSecretRef: corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "alice-secret"},
+			},
+		}}
+		errs := validateUsersSecretRefs(nil, users)
+		var hasErr bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "passwordSecretRef.key") {
+				hasErr = true
+			}
+		}
+		if !hasErr {
+			t.Error("empty users[0].passwordSecretRef.key should be rejected")
+		}
+	})
+	t.Run("happy path → ok", func(t *testing.T) {
+		t.Parallel()
+		users := []cachev1alpha1.ValkeyUser{{
+			Name: "alice",
+			PasswordSecretRef: corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "alice-secret"},
+				Key:                  "password",
+			},
+		}}
+		errs := validateUsersSecretRefs(nil, users)
+		if len(errs) > 0 {
+			t.Errorf("complete user spec should pass, got %v", errs)
+		}
+	})
 }
