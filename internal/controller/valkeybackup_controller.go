@@ -42,7 +42,7 @@ const (
 	defaultOperatorImage = "controller:latest"
 
 	// finalizerValkeyBackup — backup CR 삭제 시 PVC + Job cleanup.
-	finalizerValkeyBackup = "cache.keiailab.io/valkeybackup-finalizer"
+	finalizerValkeyBackup = cachev1alpha1.FinalizerValkeyBackup
 )
 
 // ValkeyBackupReconciler — RDB / AOF backup 트리거 + 상태 추적.

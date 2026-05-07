@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	finalizerValkey = "cache.keiailab.io/valkey-finalizer"
+	finalizerValkey = cachev1alpha1.FinalizerValkey
 	// defaultImage — image:version 결합 형식 (image pull 폴백). image / version 분리는
 	// cachev1alpha1.DefaultValkeyImage + DefaultValkeyVersion 참조.
 	defaultImage = cachev1alpha1.DefaultValkeyImage + ":" + cachev1alpha1.DefaultValkeyVersion

@@ -38,7 +38,7 @@ import (
 	vk "github.com/keiailab/valkey-operator/internal/valkey"
 )
 
-const finalizerValkeyCluster = "cache.keiailab.io/valkeycluster-finalizer"
+const finalizerValkeyCluster = cachev1alpha1.FinalizerValkeyCluster
 
 // ValkeyClusterReconciler reconciles a ValkeyCluster object (Cluster mode, 16384 slot).
 type ValkeyClusterReconciler struct {

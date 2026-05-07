@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	finalizerValkeyRestore = "cache.keiailab.io/valkeyrestore-finalizer"
+	finalizerValkeyRestore = cachev1alpha1.FinalizerValkeyRestore
 )
 
 // sourcePVCName — Source.PVC 시 그대로, Source.TargetRef 시 임시 PVC 이름.
