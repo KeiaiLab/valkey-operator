@@ -160,10 +160,15 @@ spec:
 Download Job spawn → S3 → 임시 PVC) → Restoring (init container 가 PVC 의
 RDB 를 /data/dump.rdb 로 cp) → Verifying → Completed.
 
-## ValkeyCluster Restore — 신규 (cycle 5)
+## ValkeyCluster Backup / Restore
 
 ADR-0015 의 *Standalone-only* 제약 완전 해소. ValkeyCluster mode 도 restore
 가능 — 단일 STS 의 ordinal 기반 shard mapping init container 활용.
+
+`ValkeyBackup` 은 `ValkeyCluster` 대상에서 샤드별 primary pod 를 읽어
+source PVC 에 `shard-0/dump.rdb`, `shard-1/dump.rdb`, ... 구조로 저장한다.
+사전 생성한 RWX/ROX PVC 를 `spec.targetPVC.name` 으로 지정하면 동일 PVC 를
+복구 source 로 재사용할 수 있다.
 
 ```yaml
 apiVersion: cache.keiailab.io/v1alpha1
@@ -177,7 +182,7 @@ spec:
     name: valkeycluster-sample
   source:
     pvc:
-      name: backup-cluster-pvc           # ROX accessMode 필수 (multi-pod 동시 mount)
+      name: backup-cluster-pvc           # ROX 또는 RWX accessMode 필요
       shardLayout:                       # shard 별 source path 매핑 (옵션)
         "0": shard-0/dump.rdb
         "1": shard-1/dump.rdb
@@ -190,9 +195,9 @@ spec:
 `${HOSTNAME##*-}` ordinal 추출 → shard index 계산 (0..shards-1 = primary,
 shards..total-1 = replica) → 적절한 source path 의 RDB cp.
 
-**ROX accessMode 필수** — RWO source 는 multi-pod 동시 mount 불가. EFS /
-NFS / GlusterFS / Ceph FS 등 file system 기반 storage class 사용. 외부
-저장 (Source.TargetRef) 사용 시 `Spec.SourcePVCAccessMode: ReadOnlyMany`
+**ROX/RWX accessMode 필수** — RWO source 는 multi-pod 동시 mount 불가. EFS /
+NFS / GlusterFS / Ceph FS 등 file system 기반 storage class 사용. 외부 저장
+(Source.TargetRef) 사용 시 현재는 `Spec.SourcePVCAccessMode: ReadOnlyMany`
 명시 필수.
 
 ## 관측성 (OTEL Tracing) — 신규 (cycle 10-14)
@@ -527,4 +532,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-

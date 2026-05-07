@@ -6,6 +6,7 @@ package resources
 
 import (
 	"fmt"
+	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -68,9 +69,10 @@ type BackupJobParams struct {
 	BackupName     string
 	Namespace      string
 	PVCName        string
-	Image          string // valkey 이미지 (valkey-cli 포함)
-	TargetHost     string // 대상 노드 FQDN
-	TargetPort     int32  // 6379 (plain) 또는 6380 (TLS)
+	Image          string   // valkey 이미지 (valkey-cli 포함)
+	TargetHost     string   // 대상 노드 FQDN
+	TargetHosts    []string // ValkeyCluster 샤드별 대상 FQDN. shard index 순서로 저장.
+	TargetPort     int32    // 6379 (plain) 또는 6380 (TLS)
 	PasswordSecret *corev1.SecretKeySelector
 	UseTLS         bool
 	TLSSecretName  string // TLS 활성 시 cert mount 용 (ca.crt, tls.crt, tls.key)
@@ -82,25 +84,8 @@ type BackupJobParams struct {
 // 측에 다운로드 — 서버의 /data/dump.rdb 와 무관하게 일관된 스냅샷 보장.
 // TLS 활성 시 --tls --cacert/cert/key 추가.
 func BuildBackupJob(p BackupJobParams) *batchv1.Job {
-	args := []string{
-		"-h", p.TargetHost, "-p", fmt.Sprintf("%d", p.TargetPort),
-		"-a", "$VALKEY_PASSWORD",
-		"--rdb", BackupVolumeMountPath + "/" + BackupRDBFileName,
-	}
-	if p.UseTLS {
-		args = append(args,
-			"--tls",
-			"--cacert", "/tls/ca.crt",
-			"--cert", "/tls/tls.crt",
-			"--key", "/tls/tls.key",
-			"--sni", p.TargetHost,
-		)
-	}
-	// shell 로 감싸서 -a $VALKEY_PASSWORD 의 env expansion 보장 + size record.
-	cmd := []string{"sh", "-c",
-		fmt.Sprintf("set -eu; valkey-cli %s && ls -la %s/%s",
-			joinArgs(args), BackupVolumeMountPath, BackupRDBFileName),
-	}
+	shellCmd := buildBackupShellCommand(p)
+	cmd := []string{"sh", "-c", shellCmd}
 
 	volumeMounts := []corev1.VolumeMount{
 		{Name: "backup", MountPath: BackupVolumeMountPath},
@@ -161,6 +146,48 @@ func BuildBackupJob(p BackupJobParams) *batchv1.Job {
 			},
 		},
 	}
+}
+
+func buildBackupShellCommand(p BackupJobParams) string {
+	if len(p.TargetHosts) > 0 {
+		dirs := make([]string, 0, len(p.TargetHosts))
+		paths := make([]string, 0, len(p.TargetHosts))
+		commands := []string{"set -eu"}
+		for i, host := range p.TargetHosts {
+			dir := fmt.Sprintf("%s/shard-%d", BackupVolumeMountPath, i)
+			path := dir + "/" + BackupRDBFileName
+			dirs = append(dirs, dir)
+			paths = append(paths, path)
+			args := buildBackupCLIArgs(p, host, path)
+			commands = append(commands, fmt.Sprintf("valkey-cli %s", joinArgs(args)))
+		}
+		commands = append([]string{commands[0], "mkdir -p " + joinArgs(dirs)}, commands[1:]...)
+		commands = append(commands, "ls -la "+joinArgs(paths))
+		return strings.Join(commands, "; ")
+	}
+
+	path := BackupVolumeMountPath + "/" + BackupRDBFileName
+	args := buildBackupCLIArgs(p, p.TargetHost, path)
+	return fmt.Sprintf("set -eu; valkey-cli %s && ls -la %s",
+		joinArgs(args), path)
+}
+
+func buildBackupCLIArgs(p BackupJobParams, host, outputPath string) []string {
+	args := []string{
+		"-h", host, "-p", fmt.Sprintf("%d", p.TargetPort),
+		"-a", "$VALKEY_PASSWORD",
+		"--rdb", outputPath,
+	}
+	if p.UseTLS {
+		args = append(args,
+			"--tls",
+			"--cacert", "/tls/ca.crt",
+			"--cert", "/tls/tls.crt",
+			"--key", "/tls/tls.key",
+			"--sni", host,
+		)
+	}
+	return args
 }
 
 // joinArgs — `valkey-cli` 인자 를 shell-safe 하게 한 줄 로 결합. 본 함수는 매우 단순한

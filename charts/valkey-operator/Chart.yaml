@@ -2,8 +2,8 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.0.1
+appVersion: "1.0.1"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -110,13 +110,15 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:1.0.0
+      image: ghcr.io/keiailab/valkey-operator:1.0.1
     - name: valkey
       image: docker.io/valkey/valkey:9.0.4
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
-    - kind: added
-      description: First stable release for Valkey 9.0.4 cluster, HA failover, backup, restore, and multi-arch operator images.
+    - kind: fixed
+      description: ValkeyCluster backups now write per-shard RDB files and ValkeyCluster restores pause and unpause the correct CR.
+    - kind: fixed
+      description: Multi-pod restore accepts ReadWriteMany source PVCs in addition to ReadOnlyMany.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager

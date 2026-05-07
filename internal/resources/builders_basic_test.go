@@ -438,6 +438,29 @@ func TestBuildBackupJob(t *testing.T) {
 			t.Errorf("plain mode VolumeMounts 1 (backup only) 기대, got %d", len(c.VolumeMounts))
 		}
 	})
+	t.Run("ValkeyCluster shards use per-shard RDB paths", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.TargetHosts = []string{
+			"vc-0.vc-headless.ns.svc",
+			"vc-3.vc-headless.ns.svc",
+			"vc-2.vc-headless.ns.svc",
+		}
+		job := BuildBackupJob(p)
+		shCmd := job.Spec.Template.Spec.Containers[0].Command[2]
+		for i, host := range p.TargetHosts {
+			if !strings.Contains(shCmd, host) {
+				t.Fatalf("shard %d host 누락: %s", i, shCmd)
+			}
+			path := fmt.Sprintf("/backup/shard-%d/dump.rdb", i)
+			if !strings.Contains(shCmd, path) {
+				t.Fatalf("shard %d RDB path 누락: %s", i, shCmd)
+			}
+		}
+		if !strings.Contains(shCmd, "mkdir -p /backup/shard-0 /backup/shard-1 /backup/shard-2") {
+			t.Fatalf("shard directory 생성 명령 누락: %s", shCmd)
+		}
+	})
 	t.Run("TLS adds cert mount", func(t *testing.T) {
 		t.Parallel()
 		p := makeParams()

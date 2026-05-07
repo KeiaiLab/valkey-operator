@@ -638,6 +638,7 @@ func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1a
 		image         = cachev1alpha1.DefaultValkeyImage + ":" + cachev1alpha1.DefaultValkeyVersion
 		tlsEnabled    bool
 		tlsSecretName string
+		targetHosts   []string
 		nsName        = types.NamespacedName{Name: b.Spec.ClusterRef.Name, Namespace: b.Namespace}
 	)
 	switch b.Spec.ClusterRef.Kind {
@@ -665,18 +666,20 @@ func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1a
 			tlsEnabled = true
 			tlsSecretName = backupTargetTLSSecret(obj.Spec.TLS, obj.Name)
 		}
+		targetHosts = valkeyClusterBackupHosts(obj, b.Namespace)
 	}
 	port := int32(resources.PortClient)
 	if tlsEnabled {
 		port = resources.PortTLS
 	}
 	return resources.BuildBackupJob(resources.BackupJobParams{
-		BackupName: b.Name,
-		Namespace:  b.Namespace,
-		PVCName:    pvcName,
-		Image:      image,
-		TargetHost: resources.PodFQDN(b.Spec.ClusterRef.Name, 0, b.Namespace),
-		TargetPort: port,
+		BackupName:  b.Name,
+		Namespace:   b.Namespace,
+		PVCName:     pvcName,
+		Image:       image,
+		TargetHost:  resources.PodFQDN(b.Spec.ClusterRef.Name, 0, b.Namespace),
+		TargetHosts: targetHosts,
+		TargetPort:  port,
 		PasswordSecret: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: resources.DefaultSecretName(b.Spec.ClusterRef.Name),
@@ -686,6 +689,24 @@ func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1a
 		UseTLS:        tlsEnabled,
 		TLSSecretName: tlsSecretName,
 	}), nil
+}
+
+func valkeyClusterBackupHosts(vc *cachev1alpha1.ValkeyCluster, namespace string) []string {
+	if vc.Spec.Shards <= 0 {
+		return nil
+	}
+	hosts := make([]string, int(vc.Spec.Shards))
+	for i := int32(0); i < vc.Spec.Shards; i++ {
+		hosts[i] = resources.PodFQDN(vc.Name, int(i), namespace)
+	}
+	for _, shard := range vc.Status.Shards {
+		if shard.Index < 0 || shard.Index >= vc.Spec.Shards || shard.PrimaryPod == "" {
+			continue
+		}
+		hosts[shard.Index] = fmt.Sprintf("%s.%s.%s.svc",
+			shard.PrimaryPod, resources.HeadlessServiceName(vc.Name), namespace)
+	}
+	return hosts
 }
 
 // backupTargetTLSSecret — TLS Spec 으로 부터 secret 이름 결정 (CustomCert 우선).

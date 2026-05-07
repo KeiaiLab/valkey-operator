@@ -8,6 +8,19 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-07
+
+### Fixed
+
+- `ValkeyBackup` 이 `ValkeyCluster` 대상에서 첫 번째 pod 의 `dump.rdb` 만
+  저장하던 문제를 수정했다. 이제 샤드별 primary pod 를 기준으로
+  `shard-N/dump.rdb` 구조를 생성해 cluster restore 기본 shard layout 과
+  직접 호환된다.
+- `ValkeyRestore` 가 `ValkeyCluster` 대상 복구 중 pause/unpause annotation 을
+  `Valkey` CR 에만 적용하던 문제를 수정했다.
+- multi-pod restore 의 기존 source PVC 검증에서 `ReadOnlyMany` 뿐 아니라
+  read-only mount 가능한 `ReadWriteMany` PVC 도 허용한다.
+
 ## [1.0.0] - 2026-05-07
 
 ### Added

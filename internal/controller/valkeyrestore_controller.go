@@ -215,16 +215,16 @@ func (r *ValkeyRestoreReconciler) handlePending(
 			if err := r.Get(ctx, types.NamespacedName{
 				Name: rest.Spec.Source.PVC.Name, Namespace: rest.Namespace,
 			}, sourcePVC); err == nil {
-				rox := false
+				shared := false
 				for _, mode := range sourcePVC.Spec.AccessModes {
-					if mode == corev1.ReadOnlyMany {
-						rox = true
+					if sourcePVCSupportsMultiPod(mode) {
+						shared = true
 						break
 					}
 				}
-				if !rox {
-					return r.markFailed(ctx, rest, "SourcePVCNotROX",
-						fmt.Sprintf("multi-pod target 에서 Source.PVC %s 가 ReadOnlyMany 필요 (RWO 는 multi-pod mount 불가)",
+				if !shared {
+					return r.markFailed(ctx, rest, "SourcePVCNotShared",
+						fmt.Sprintf("multi-pod target 에서 Source.PVC %s 가 ReadOnlyMany 또는 ReadWriteMany 필요 (RWO 는 multi-pod mount 불가)",
 							rest.Spec.Source.PVC.Name))
 				}
 			}
@@ -278,22 +278,8 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 		}
 	}
 
-	// 대상 Valkey 에 paused annotation set.
-	v := &cachev1alpha1.Valkey{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      rest.Spec.ClusterRef.Name,
-		Namespace: rest.Namespace,
-	}, v); err != nil {
+	if err := r.pauseRestoreTarget(ctx, rest); err != nil {
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-	}
-	if v.Annotations == nil {
-		v.Annotations = map[string]string{}
-	}
-	if v.Annotations[PausedAnnotation] != "true" {
-		v.Annotations[PausedAnnotation] = "true"
-		if err := r.Update(ctx, v); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
 	}
 
 	// → Restoring.
@@ -442,6 +428,67 @@ func (r *ValkeyRestoreReconciler) operatorImage() string {
 		return v
 	}
 	return "controller:latest"
+}
+
+func sourcePVCSupportsMultiPod(mode corev1.PersistentVolumeAccessMode) bool {
+	return mode == corev1.ReadOnlyMany || mode == corev1.ReadWriteMany
+}
+
+func (r *ValkeyRestoreReconciler) restoreTarget(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) (client.Object, error) {
+	key := types.NamespacedName{Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace}
+	switch rest.Spec.ClusterRef.Kind {
+	case "Valkey":
+		v := &cachev1alpha1.Valkey{}
+		if err := r.Get(ctx, key, v); err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "ValkeyCluster":
+		vc := &cachev1alpha1.ValkeyCluster{}
+		if err := r.Get(ctx, key, vc); err != nil {
+			return nil, err
+		}
+		return vc, nil
+	default:
+		return nil, fmt.Errorf("unsupported kind %q", rest.Spec.ClusterRef.Kind)
+	}
+}
+
+func (r *ValkeyRestoreReconciler) pauseRestoreTarget(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) error {
+	target, err := r.restoreTarget(ctx, rest)
+	if err != nil {
+		return err
+	}
+	annotations := target.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	if annotations[PausedAnnotation] == "true" {
+		return nil
+	}
+	annotations[PausedAnnotation] = "true"
+	target.SetAnnotations(annotations)
+	return r.Update(ctx, target)
+}
+
+func (r *ValkeyRestoreReconciler) unpauseRestoreTarget(
+	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
+) error {
+	target, err := r.restoreTarget(ctx, rest)
+	if err != nil {
+		return err
+	}
+	annotations := target.GetAnnotations()
+	if annotations[PausedAnnotation] != "true" {
+		return nil
+	}
+	delete(annotations, PausedAnnotation)
+	target.SetAnnotations(annotations)
+	return r.Update(ctx, target)
 }
 
 // isMultiPodTarget — 대상 CR 의 pod 수가 1 초과인지.
@@ -725,18 +772,8 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	// paused annotation 제거.
-	v := &cachev1alpha1.Valkey{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      rest.Spec.ClusterRef.Name,
-		Namespace: rest.Namespace,
-	}, v); err == nil {
-		if v.Annotations[PausedAnnotation] == "true" {
-			delete(v.Annotations, PausedAnnotation)
-			if err := r.Update(ctx, v); err != nil {
-				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-			}
-		}
+	if err := r.unpauseRestoreTarget(ctx, rest); err != nil {
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	// 데이터 plane 검증 — INFO keyspace 호출 (non-blocking).
@@ -793,16 +830,7 @@ func (r *ValkeyRestoreReconciler) handleDeletion(
 	}
 
 	// paused annotation 제거 (best-effort).
-	v := &cachev1alpha1.Valkey{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      rest.Spec.ClusterRef.Name,
-		Namespace: rest.Namespace,
-	}, v); err == nil {
-		if v.Annotations[PausedAnnotation] == "true" {
-			delete(v.Annotations, PausedAnnotation)
-			_ = r.Update(ctx, v)
-		}
-	}
+	_ = r.unpauseRestoreTarget(ctx, rest)
 
 	controllerutil.RemoveFinalizer(rest, finalizerValkeyRestore)
 	if err := r.Update(ctx, rest); err != nil {

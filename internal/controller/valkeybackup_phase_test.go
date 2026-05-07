@@ -8,6 +8,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -137,6 +139,41 @@ func TestBackup_unsupportedKind(t *testing.T) {
 	_ = r.Get(ctx, req.NamespacedName, got)
 	if got.Status.Phase != cachev1alpha1.BackupPhaseFailed {
 		t.Errorf("phase: %s want Failed", got.Status.Phase)
+	}
+}
+
+func TestBackup_buildJob_ValkeyClusterUsesPerShardPrimaryHosts(t *testing.T) {
+	cluster := &cachev1alpha1.ValkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "vk", Namespace: "ns"},
+		Spec: cachev1alpha1.ValkeyClusterSpec{
+			Shards:           3,
+			ReplicasPerShard: 1,
+		},
+		Status: cachev1alpha1.ValkeyClusterStatus{
+			Shards: []cachev1alpha1.ShardStatus{
+				{Index: 0, PrimaryPod: "vk-0"},
+				{Index: 1, PrimaryPod: "vk-4"},
+				{Index: 2, PrimaryPod: "vk-2"},
+			},
+		},
+	}
+	b := freshBackup("b4", "ns", "ValkeyCluster", "vk")
+	r := fakeBackupReconciler(b, cluster)
+
+	job, err := r.buildBackupJob(context.Background(), b, "backup-pvc")
+	if err != nil {
+		t.Fatalf("buildBackupJob: %v", err)
+	}
+	shCmd := job.Spec.Template.Spec.Containers[0].Command[2]
+	for i, pod := range []string{"vk-0", "vk-4", "vk-2"} {
+		host := fmt.Sprintf("%s.vk-headless.ns.svc", pod)
+		if !strings.Contains(shCmd, host) {
+			t.Fatalf("shard %d primary host 누락: %s", i, shCmd)
+		}
+		path := fmt.Sprintf("/backup/shard-%d/dump.rdb", i)
+		if !strings.Contains(shCmd, path) {
+			t.Fatalf("shard %d RDB path 누락: %s", i, shCmd)
+		}
 	}
 }
 

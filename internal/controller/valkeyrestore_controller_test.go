@@ -289,6 +289,28 @@ func TestRestore_mountingToRestoring_setsPaused(t *testing.T) {
 	}
 }
 
+func TestRestore_mountingValkeyCluster_setsPaused(t *testing.T) {
+	rest := freshClusterRestoreCR("r1", "ns", "vc")
+	rest.Status.Phase = cachev1alpha1.RestorePhaseMounting
+	vc := standaloneCluster("vc", "ns", 3, 1)
+	r := fakeRestoreReconciler(rest, vc, sourcePVC("backup-pvc", "ns"))
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseRestoring {
+		t.Fatalf("expected Restoring, got %s", got.Status.Phase)
+	}
+	gotVC := &cachev1alpha1.ValkeyCluster{}
+	if err := r.Get(context.Background(), types.NamespacedName{Name: "vc", Namespace: "ns"}, gotVC); err != nil {
+		t.Fatalf("get valkeycluster: %v", err)
+	}
+	if gotVC.Annotations[PausedAnnotation] != "true" {
+		t.Fatalf("expected paused annotation set, got %v", gotVC.Annotations)
+	}
+}
+
 // 7. Mounting: source PVC 부재 → Failed.
 func TestRestore_mountingPVCNotFound(t *testing.T) {
 	rest := freshRestoreCR("r1", "ns", "vk")
@@ -427,6 +449,34 @@ func TestRestore_verifying_revertsAndCompletes(t *testing.T) {
 		t.Fatalf("get valkey: %v", err)
 	}
 	if gotV.Annotations[PausedAnnotation] == "true" {
+		t.Fatalf("expected paused annotation removed")
+	}
+}
+
+func TestRestore_verifyingValkeyCluster_revertsAndCompletes(t *testing.T) {
+	rest := freshClusterRestoreCR("r1", "ns", "vc")
+	rest.Status.Phase = cachev1alpha1.RestorePhaseVerifying
+	sts := standaloneSTS("vc", "ns", 1)
+	resources.InjectRestoreIntoPodSpecForCluster(&sts.Spec.Template.Spec, 3, nil, "backup-pvc")
+	vc := standaloneCluster("vc", "ns", 3, 1)
+	vc.Annotations = map[string]string{PausedAnnotation: "true"}
+	r := fakeRestoreReconciler(rest, vc, sts)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile 1: %v", err)
+	}
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile 2: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseCompleted {
+		t.Fatalf("expected Completed, got %s", got.Status.Phase)
+	}
+	gotVC := &cachev1alpha1.ValkeyCluster{}
+	if err := r.Get(context.Background(), types.NamespacedName{Name: "vc", Namespace: "ns"}, gotVC); err != nil {
+		t.Fatalf("get valkeycluster: %v", err)
+	}
+	if gotVC.Annotations[PausedAnnotation] == "true" {
 		t.Fatalf("expected paused annotation removed")
 	}
 }
@@ -605,6 +655,27 @@ func TestRestore_pendingValkeyClusterROXSource_OK(t *testing.T) {
 	}
 }
 
+func TestRestore_pendingValkeyClusterRWXSource_OK(t *testing.T) {
+	rest := freshClusterRestoreCR("r1", "ns", "vc")
+	rest.Status.Phase = cachev1alpha1.RestorePhasePending
+	vc := standaloneCluster("vc", "ns", 3, 1)
+	rwxPVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "backup-pvc", Namespace: "ns"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+		},
+	}
+	r := fakeRestoreReconciler(rest, vc, rwxPVC)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := reloadRestore(t, r, "r1", "ns")
+	if got.Status.Phase != cachev1alpha1.RestorePhaseMounting {
+		t.Fatalf("expected Mounting, got %s", got.Status.Phase)
+	}
+}
+
 // 19. Pending: Kind=ValkeyCluster + Source.PVC RWO → Failed (ROX 강제).
 func TestRestore_pendingValkeyClusterRWO_Fails(t *testing.T) {
 	rest := freshClusterRestoreCR("r1", "ns", "vc")
@@ -690,6 +761,30 @@ func TestRestore_deletion_cleansUp(t *testing.T) {
 		t.Fatalf("get valkey: %v", err)
 	}
 	if gotV.Annotations[PausedAnnotation] == "true" {
+		t.Fatalf("paused 해제 안 됨")
+	}
+}
+
+func TestRestore_deletionValkeyCluster_cleansUp(t *testing.T) {
+	rest := freshClusterRestoreCR("r1", "ns", "vc")
+	now := metav1.Now()
+	rest.DeletionTimestamp = &now
+	rest.Finalizers = []string{finalizerValkeyRestore}
+	rest.Status.Phase = cachev1alpha1.RestorePhaseRestoring
+	sts := standaloneSTS("vc", "ns", 1)
+	resources.InjectRestoreIntoPodSpecForCluster(&sts.Spec.Template.Spec, 3, nil, "backup-pvc")
+	vc := standaloneCluster("vc", "ns", 3, 1)
+	vc.Annotations = map[string]string{PausedAnnotation: "true"}
+	r := fakeRestoreReconciler(rest, vc, sts)
+
+	if _, err := r.Reconcile(context.Background(), reqFor("r1", "ns")); err != nil {
+		t.Fatalf("reconcile deletion: %v", err)
+	}
+	gotVC := &cachev1alpha1.ValkeyCluster{}
+	if err := r.Get(context.Background(), types.NamespacedName{Name: "vc", Namespace: "ns"}, gotVC); err != nil {
+		t.Fatalf("get valkeycluster: %v", err)
+	}
+	if gotVC.Annotations[PausedAnnotation] == "true" {
 		t.Fatalf("paused 해제 안 됨")
 	}
 }
