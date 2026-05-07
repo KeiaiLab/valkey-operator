@@ -83,6 +83,40 @@ var _ = Describe("Valkey webhook admission round-trip", func() {
 		Expect(err.Error()).To(ContainSubstring("passwordSecretRef"))
 	})
 
+	// 발견: 'autoFailover + ReplicasPerShard=0' webhook invariant 는 *real
+	// apiserver 통해 도달 불가능* — CRD 의 'kubebuilder:default=1' 가 admission
+	// 전에 0→1 변환. webhook 의 본 검증 path 는 *dead code* (CRD default 가 항상
+	// 1+ 로 보장). 추후 cleanup ADR candidate (Surgical §3 — 발견사항만 보고).
+
+	It("rejects ValkeyCluster with totalNodes > 100", func() {
+		vc := &cachev1alpha1.ValkeyCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "rt-toomany", Namespace: "default"},
+			Spec: cachev1alpha1.ValkeyClusterSpec{
+				Shards:           50,
+				ReplicasPerShard: 2, // total = 50 * 3 = 150
+				Storage:          cachev1alpha1.StorageSpec{Size: resource.MustParse("8Gi")},
+			},
+		}
+		err := k8sClient.Create(ctx, vc)
+		Expect(err).To(HaveOccurred())
+		Expect(apierrors.IsInvalid(err)).To(BeTrue())
+		Expect(err.Error()).To(ContainSubstring("must not exceed 100"))
+	})
+
+	It("accepts valid ValkeyCluster — admission round-trip 통과", func() {
+		vc := &cachev1alpha1.ValkeyCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "rt-clusterhappy", Namespace: "default"},
+			Spec: cachev1alpha1.ValkeyClusterSpec{
+				Shards:           3,
+				ReplicasPerShard: 1,
+				Storage:          cachev1alpha1.StorageSpec{Size: resource.MustParse("8Gi")},
+			},
+		}
+		err := k8sClient.Create(ctx, vc)
+		Expect(err).NotTo(HaveOccurred(), "valid cluster spec 은 admission 통과")
+		Expect(k8sClient.Delete(ctx, vc)).To(Succeed())
+	})
+
 	It("accepts valid Valkey CR — admission round-trip 통과", func() {
 		v := &cachev1alpha1.Valkey{
 			ObjectMeta: metav1.ObjectMeta{Name: "rt-happy", Namespace: "default"},
