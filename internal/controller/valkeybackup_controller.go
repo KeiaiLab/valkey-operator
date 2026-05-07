@@ -356,29 +356,29 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 		}
 	}
 
-	// 2. Job 보장.
+	// 2. Job 보장 (controllerutil.CreateOrUpdate — postgres / mongodb it42 패턴 차용).
+	//
+	// iteration 43 (mongodb it42 aa56f48 차용): 이전 *수동 Get + Create + IsAlreadyExists
+	// guard* (it40 ac1421f) → controllerutil.CreateOrUpdate. controller-runtime 이
+	// AlreadyExists 자동 retry + mutate fn 호출. mutate fn 이 *owner ref 만* 설정 →
+	// 첫 reconcile 시 Create, 후속 reconcile 시 owner ref diff 없음 → no-op (Job spec
+	// immutable field 안전).
 	job, err := r.buildBackupJob(ctx, b, pvcName)
 	if err != nil {
 		return r.markFailed(ctx, b, "JobBuildFailed", err.Error())
 	}
-	if err := controllerutil.SetControllerReference(b, job, r.Scheme); err != nil {
-		return r.markFailed(ctx, b, "JobOwnerRef", err.Error())
+	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, job, func() error {
+		return controllerutil.SetControllerReference(b, job, r.Scheme)
+	})
+	if err != nil {
+		return r.markFailed(ctx, b, "JobCreateFailed", err.Error())
 	}
-	existingJob := &batchv1.Job{}
-	if err := r.Get(ctx, types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, existingJob); err != nil {
-		if errors.IsNotFound(err) {
-			// iteration 40: race-tolerant create. Cache stale 또는 parallel reconcile
-			// 로 *Get NotFound + Create AlreadyExists* 가능 (it40 incident: Job
-			// Complete 후 Phase=Failed cosmetic bug). IsAlreadyExists 시 *기존
-			// job reuse* — 다음 reconcile cycle 의 Get success 분기로 fall-through.
-			if err := r.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
-				return r.markFailed(ctx, b, "JobCreateFailed", err.Error())
-			}
-			logger.Info("Backup copy Job created (or already exists — race-tolerant)", "name", job.Name)
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
+	if op == controllerutil.OperationResultCreated {
+		logger.Info("Backup copy Job created", "name", job.Name)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
+	existingJob := job // CreateOrUpdate 가 obj 를 in-place modify — 후속 polling 에 사용.
+	_ = existingJob
 
 	// 3. Job 상태 폴링.
 	if existingJob.Status.Succeeded > 0 {
@@ -505,21 +505,19 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 		AccessKeyIDSecretKey:     keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.AccessKeyIDKey, "AWS_ACCESS_KEY_ID"),
 		SecretAccessKeySecretKey: keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.SecretAccessKeyKey, "AWS_SECRET_ACCESS_KEY"),
 	})
-	if err := controllerutil.SetControllerReference(b, uploadJob, r.Scheme); err != nil {
-		return r.markFailed(ctx, b, "JobOwnerRef", err.Error())
+	// iteration 43: controllerutil.CreateOrUpdate 마이그레이션 (mongodb it42 aa56f48
+	// + postgres 패턴 차용). owner ref 만 mutate — Job spec immutable 안전.
+	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, uploadJob, func() error {
+		return controllerutil.SetControllerReference(b, uploadJob, r.Scheme)
+	})
+	if err != nil {
+		return r.markFailed(ctx, b, "UploadJobCreateFailed", err.Error())
 	}
-	existing := &batchv1.Job{}
-	if err := r.Get(ctx, types.NamespacedName{Name: uploadJob.Name, Namespace: uploadJob.Namespace}, existing); err != nil {
-		if errors.IsNotFound(err) {
-			// iteration 40: race-tolerant — backup copy Job 과 동일 패턴.
-			if err := r.Create(ctx, uploadJob); err != nil && !errors.IsAlreadyExists(err) {
-				return r.markFailed(ctx, b, "UploadJobCreateFailed", err.Error())
-			}
-			logger.Info("Upload Job created", "name", uploadJob.Name, "object", objectKey)
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
+	if op == controllerutil.OperationResultCreated {
+		logger.Info("Upload Job created", "name", uploadJob.Name, "object", objectKey)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
+	existing := uploadJob // CreateOrUpdate 가 obj 를 in-place modify (Get 결과로 채움).
 
 	// 4. Job 상태 폴링.
 	if existing.Status.Succeeded > 0 {
