@@ -47,6 +47,10 @@ pre-push:
           --set features.cluster.enabled=true \
           --set features.backup.enabled=true \
           --set features.autoscaling.enabled=true >/dev/null
+    govulncheck:
+      # Go module CVE — call graph 기반 (실제 호출하는 취약 함수만 차단).
+      # 설치: go install golang.org/x/vuln/cmd/govulncheck@latest
+      run: command -v govulncheck >/dev/null 2>&1 && govulncheck ./... || echo "[warn] govulncheck 미설치 — go install golang.org/x/vuln/cmd/govulncheck@latest 권장"
     gitleaks:
       # 시크릿 누출 차단 — RFC 0002 L2 + standards/enforcement.md §1.5.
       run: command -v gitleaks >/dev/null 2>&1 && gitleaks protect --staged --no-banner || echo "gitleaks not installed (brew install gitleaks)"
