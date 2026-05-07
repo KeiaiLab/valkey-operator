@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/keiailab/valkey-operator
-  newTag: 0.1.0-alpha.1
+  newTag: 0.1.0-alpha.3
