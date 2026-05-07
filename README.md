@@ -8,6 +8,7 @@
 [![Helm Chart](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/keiailab/valkey-operator/main/charts/valkey-operator/Chart.yaml&label=helm%20v)](https://keiailab.github.io/valkey-operator)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/keiailab-valkey-operator)](https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/keiailab/valkey-operator/badge)](https://scorecard.dev/viewer/?uri=github.com/keiailab/valkey-operator)
+[![GitHub Discussions](https://img.shields.io/github/discussions/keiailab/valkey-operator?label=discussions&logo=github)](https://github.com/keiailab/valkey-operator/discussions)
 
 Kubebuilder 기반 Kubernetes operator. Valkey (Redis fork, BSD-3) 의 세 가지
 운용 토폴로지를 단일 controller 로 관리한다:
