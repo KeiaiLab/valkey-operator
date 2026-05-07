@@ -54,6 +54,13 @@ pre-push:
     gitleaks:
       # 시크릿 누출 차단 — RFC 0002 L2 + standards/enforcement.md §1.5.
       run: command -v gitleaks >/dev/null 2>&1 && gitleaks protect --staged --no-banner || echo "gitleaks not installed (brew install gitleaks)"
+    platforms-amd64-guard:
+      # C-P0-12 (RFC 0002 §2): PLATFORMS 의 multi-arch 재발 방지. C-P0-1 강등 후속.
+      run: |
+        if grep -qE "^PLATFORMS.*linux/(arm64|s390x|ppc64le)" Makefile; then
+          echo "❌ Multi-arch PLATFORMS 잔존 — RFC 0002 §2 위반 (amd64-only 강제)"
+          exit 1
+        fi
     go-mod-tidy:
       # go.mod direct/indirect drift 차단 (cycle 46 발견). go mod tidy 후 변경
       # 발생하면 push 차단 — 의존성 그래프 정확성 보장 (security audit false
