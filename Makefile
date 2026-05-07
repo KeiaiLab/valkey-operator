@@ -138,11 +138,15 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: ## Build docker image with the manager. VERSION 환경변수로 ldflags 주입.
+docker-build: ## Build docker image with the manager (linux/amd64, default builder). VERSION 환경변수로 ldflags 주입.
+	# 글로벌 §2: docker buildx 의 기본 빌더 (default) 만 사용. 커스텀 빌더 인스턴스 금지.
+	# --platform linux/amd64 명시 — macOS host 에서 native build 시 darwin/arm64 가
+	# 되어 cluster (linux) 노드 에 push 시 ImagePullError "no match for platform"
+	# (postgres-operator iteration 35 incident 발견). mongodb-operator 패턴 정합.
 	@VERSION_VAL="$${VERSION:-dev}"; \
 	COMMIT_VAL="$$(git rev-parse --short HEAD 2>/dev/null || echo none)"; \
 	DATE_VAL="$$(date -u +%Y-%m-%d)"; \
-	$(CONTAINER_TOOL) build \
+	docker buildx build --platform linux/amd64 --load \
 		--build-arg VERSION=$$VERSION_VAL \
 		--build-arg COMMIT=$$COMMIT_VAL \
 		--build-arg BUILD_DATE=$$DATE_VAL \
