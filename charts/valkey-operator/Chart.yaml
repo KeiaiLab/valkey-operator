@@ -4,8 +4,8 @@ description: A Kubernetes Operator for managing Valkey instances and Clusters (R
 type: application
 # alpha 단계 — chart 자체는 0.1.0-alpha.N 부터 시작. semver 준수
 # (alpha.1, alpha.2 ... iterative pre-release 표기, mongodb-operator beta.N 패턴 정합).
-version: 0.1.0-alpha.4
-appVersion: "0.1.0-alpha.4"
+version: 0.1.0-alpha.5
+appVersion: "0.1.0-alpha.5"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -109,26 +109,16 @@ annotations:
           type: TargetRef
           targetRef:
             name: s3-target
-  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.4
+      image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.5
     - name: valkey
       image: docker.io/valkey/valkey:9.0.4
   artifacthub.io/prerelease: "true"
   artifacthub.io/changes: |
-    - kind: added
-      description: Initial alpha release. Valkey + ValkeyCluster + ValkeyBackup + ValkeyBackupTarget + ValkeyRestore CRDs (cache.keiailab.io/v1alpha1).
-    - kind: added
-      description: Standalone / replica mode for Valkey instances with persistent storage and TLS support.
-    - kind: added
-      description: Cluster mode (Redis Cluster compatible) — opt-in via features.cluster.enabled.
-    - kind: added
-      description: Backup/restore controllers (S3, PVC targets) — opt-in via features.backup.enabled.
-    - kind: added
-      description: Optional HPA via features.autoscaling.enabled, PodDisruptionBudget, and NetworkPolicy automation.
-    - kind: added
-      description: ServiceMonitor + Prometheus rules templates for cluster-native metrics.
+    - kind: fixed
+      description: Valkey StatefulSet containers now set restricted PodSecurity fields by default.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager

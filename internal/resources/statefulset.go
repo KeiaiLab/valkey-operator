@@ -78,8 +78,9 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			Ports: []corev1.ContainerPort{
 				{Name: "client", ContainerPort: PortClient, Protocol: corev1.ProtocolTCP},
 			},
-			Env:       envFromPassword,
-			Resources: p.Resources,
+			Env:             envFromPassword,
+			Resources:       p.Resources,
+			SecurityContext: buildRestrictedContainerSecurityContext(),
 			VolumeMounts: append([]corev1.VolumeMount{
 				{Name: "data", MountPath: DataDir},
 				{Name: "config", MountPath: ConfigMapMountPath},
@@ -108,8 +109,9 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 
 	if p.ExporterImg != "" {
 		containers = append(containers, corev1.Container{
-			Name:  "metrics",
-			Image: p.ExporterImg,
+			Name:            "metrics",
+			Image:           p.ExporterImg,
+			SecurityContext: buildRestrictedContainerSecurityContext(),
 			Env: []corev1.EnvVar{
 				{Name: "REDIS_ADDR", Value: "redis://127.0.0.1:6379"},
 				{Name: "REDIS_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: p.PasswordRef}},

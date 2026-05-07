@@ -342,6 +342,26 @@ func TestBuildStatefulSet(t *testing.T) {
 			t.Error("VALKEY_PASSWORD env 미설정")
 		}
 	})
+	t.Run("default containers satisfy PodSecurity restricted", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.ExporterImg = "oliver006/redis_exporter:latest"
+		sts := BuildStatefulSet(p)
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.SecurityContext == nil {
+				t.Fatalf("%s SecurityContext nil", c.Name)
+			}
+			if c.SecurityContext.AllowPrivilegeEscalation == nil || *c.SecurityContext.AllowPrivilegeEscalation {
+				t.Errorf("%s AllowPrivilegeEscalation=false 기대", c.Name)
+			}
+			if c.SecurityContext.Capabilities == nil || len(c.SecurityContext.Capabilities.Drop) == 0 {
+				t.Errorf("%s capabilities.drop=[ALL] 기대", c.Name)
+			}
+			if c.SecurityContext.SeccompProfile == nil || c.SecurityContext.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+				t.Errorf("%s seccompProfile RuntimeDefault 기대", c.Name)
+			}
+		}
+	})
 	t.Run("VolumeClaimTemplate persistent storage", func(t *testing.T) {
 		t.Parallel()
 		sts := BuildStatefulSet(makeParams())

@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+## [0.1.0-alpha.5] - 2026-05-07
+
+### Fixed
+
+- **Runtime P0 — restricted PodSecurity 네임스페이스에서 Valkey Pod 생성 실패** (`internal/resources/statefulset.go`):
+  Valkey StatefulSet 컨테이너가 `allowPrivilegeEscalation=false`,
+  `capabilities.drop=[ALL]`, `seccompProfile.type=RuntimeDefault` 기본값을 갖지 않아
+  argos `data-staging` 네임스페이스에서 Pod 생성이 금지됐다. 기본 Valkey 컨테이너와
+  metrics sidecar에 restricted SecurityContext를 주입했다.
+
 ## [0.1.0-alpha.4] - 2026-05-07
 
 ### Fixed
