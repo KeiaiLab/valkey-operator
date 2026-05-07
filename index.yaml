@@ -50,6 +50,137 @@ entries:
             name: my-valkey
             namespace: cache
           spec:
+            mode: Standalone
+            replicas: 1
+            version:
+              version: "8.1.6"
+            storage:
+              storageClassName: standard
+              size: 5Gi
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: ValkeyCluster
+          metadata:
+            name: my-valkey-cluster
+            namespace: cache
+          spec:
+            version:
+              version: "8.1.6"
+            shards: 3
+            replicasPerShard: 1
+            storage:
+              storageClassName: standard
+              size: 10Gi
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: ValkeyBackup
+          metadata:
+            name: my-valkey-backup
+            namespace: cache
+          spec:
+            clusterRef:
+              name: my-valkey
+              kind: Valkey
+            type: RDB
+            destination:
+              type: TargetRef
+              targetRef:
+                name: s3-target
+      artifacthub.io/images: |
+        - name: valkey-operator
+          image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.2
+        - name: valkey
+          image: valkey/valkey:8.0
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/keiailab/valkey-operator/blob/main/README.md
+        - name: Source Code
+          url: https://github.com/keiailab/valkey-operator
+        - name: Valkey Project
+          url: https://valkey.io/
+      artifacthub.io/maturity: alpha
+      artifacthub.io/operatorCapabilities: Basic Install
+      artifacthub.io/prerelease: "true"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+    apiVersion: v2
+    appVersion: 0.1.0-alpha.2
+    created: "2026-05-07T09:40:32.035884+09:00"
+    description: A Kubernetes Operator for managing Valkey instances and Clusters
+      (Redis OSS fork, BSD-licensed)
+    digest: b5cc702dac3ac948b9c8d8e7587c588b5dda6138bfd354f1aa24d87a16e8ec39
+    home: https://github.com/keiailab/valkey-operator
+    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    keywords:
+    - valkey
+    - redis
+    - cache
+    - key-value
+    - in-memory
+    - operator
+    - cluster
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: support@keiailab.com
+      name: Keiailab
+      url: https://keiailab.com
+    name: valkey-operator
+    sources:
+    - https://github.com/keiailab/valkey-operator
+    type: application
+    urls:
+    - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.2.tgz
+    version: 0.1.0-alpha.2
+  - annotations:
+      artifacthub.io/category: database
+      artifacthub.io/changes: |
+        - kind: added
+          description: Initial alpha release. Valkey + ValkeyCluster + ValkeyBackup + ValkeyBackupTarget + ValkeyRestore CRDs (cache.keiailab.io/v1alpha1).
+        - kind: added
+          description: Standalone / replica mode for Valkey instances with persistent storage and TLS support.
+        - kind: added
+          description: Cluster mode (Redis Cluster compatible) — opt-in via features.cluster.enabled.
+        - kind: added
+          description: Backup/restore controllers (S3, PVC targets) — opt-in via features.backup.enabled.
+        - kind: added
+          description: Optional HPA via features.autoscaling.enabled, PodDisruptionBudget, and NetworkPolicy automation.
+        - kind: added
+          description: ServiceMonitor + Prometheus rules templates for cluster-native metrics.
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/crds: |
+        - kind: Valkey
+          version: v1alpha1
+          name: valkeys.cache.keiailab.io
+          displayName: Valkey Instance
+          description: Deploys and manages a Valkey standalone or replica instance
+        - kind: ValkeyCluster
+          version: v1alpha1
+          name: valkeyclusters.cache.keiailab.io
+          displayName: Valkey Cluster
+          description: Deploys and manages a Valkey Cluster (Redis Cluster compatible)
+        - kind: ValkeyBackup
+          version: v1alpha1
+          name: valkeybackups.cache.keiailab.io
+          displayName: Valkey Backup
+          description: Creates point-in-time backups of Valkey instances/clusters
+        - kind: ValkeyBackupTarget
+          version: v1alpha1
+          name: valkeybackuptargets.cache.keiailab.io
+          displayName: Valkey Backup Target
+          description: Defines S3 / PVC backup destinations
+        - kind: ValkeyRestore
+          version: v1alpha1
+          name: valkeyrestores.cache.keiailab.io
+          displayName: Valkey Restore
+          description: Restores a Valkey instance/cluster from a backup
+      artifacthub.io/crdsExamples: |
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: Valkey
+          metadata:
+            name: my-valkey
+            namespace: cache
+          spec:
             mode: standalone
             replicas: 1
             version:
@@ -103,7 +234,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-05-06T13:20:21.479088+09:00"
+    created: "2026-05-07T09:40:32.034053+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: f9c3d86e7c59f5848104405796fb21c521eeff03ebf91d7adf6d02dae7b2e320
@@ -130,4 +261,4 @@ entries:
     urls:
     - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-05-06T13:20:21.477449+09:00"
+generated: "2026-05-07T09:40:32.032722+09:00"
