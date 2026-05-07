@@ -1,0 +1,97 @@
+Valkey Operator
+Copyright 2026 keiailab
+
+This product includes software developed at keiailab (https://github.com/keiailab).
+
+Licensed under the Apache License, Version 2.0.
+
+================================================================================
+THIRD-PARTY SOFTWARE NOTICES
+================================================================================
+
+This project uses the following third-party software:
+
+--------------------------------------------------------------------------------
+Kubernetes (Apache 2.0)
+https://github.com/kubernetes/kubernetes
+Copyright The Kubernetes Authors
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+controller-runtime (Apache 2.0)
+https://github.com/kubernetes-sigs/controller-runtime
+Copyright 2018 The Kubernetes Authors
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Operator SDK (Apache 2.0)
+https://github.com/operator-framework/operator-sdk
+Copyright 2018-2020 The Operator SDK Authors
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+client-go (Apache 2.0)
+https://github.com/kubernetes/client-go
+Copyright The Kubernetes Authors
+--------------------------------------------------------------------------------
+
+================================================================================
+VALKEY NOTICE
+================================================================================
+
+This operator manages Valkey databases but does NOT include, modify, or
+redistribute Valkey software.
+
+Valkey is a high-performance data structure server that primarily serves
+key/value workloads. Valkey is licensed under the BSD 3-Clause License.
+
+Source: https://github.com/valkey-io/valkey
+License: BSD 3-Clause License
+Copyright (c) 2024-present, Valkey contributors
+
+Valkey is a project of the Linux Foundation. The Valkey trademark is owned
+by the Linux Foundation.
+
+Users deploying Valkey using this operator are responsible for:
+1. Reviewing Valkey's BSD 3-Clause License terms at:
+   https://github.com/valkey-io/valkey/blob/unstable/COPYING
+2. Complying with Linux Foundation trademark usage guidelines
+
+This operator:
+- Does NOT distribute Valkey binaries
+- Does NOT modify Valkey source code
+- Only orchestrates deployment of official Valkey container images
+- Is licensed independently under Apache 2.0
+
+================================================================================
+REDIS NOTICE
+================================================================================
+
+This operator does NOT distribute, modify, or fork Redis software. Although
+Valkey is a community fork of Redis OSS 7.2.4, this operator manages
+Valkey-only deployments.
+
+Redis and the Redis logo are trademarks of Redis Ltd. Redis (since version
+7.4) is licensed under the Redis Source Available License v2 (RSALv2) or
+the Server Side Public License (SSPL).
+
+This operator does NOT support Redis 7.4+ as a primary operand. Migration
+from Redis to Valkey requires user-side data ingestion (see ValkeyRestore
+RDB-format compatibility constraints in docs/).
+
+================================================================================
+CONTAINER IMAGES
+================================================================================
+
+This operator references the following container images:
+
+1. valkey/valkey (Official Valkey image)
+   - Source: https://hub.docker.com/r/valkey/valkey
+   - License: BSD 3-Clause (Valkey)
+
+2. oliver006/redis_exporter (Prometheus Exporter for Valkey/Redis protocol)
+   - Source: https://github.com/oliver006/redis_exporter
+   - License: MIT
+
+Users are responsible for reviewing and complying with the licensing terms
+of any container images they deploy.
