@@ -2,10 +2,8 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-# alpha 단계 — chart 자체는 0.1.0-alpha.N 부터 시작. semver 준수
-# (alpha.1, alpha.2 ... iterative pre-release 표기, mongodb-operator beta.N 패턴 정합).
-version: 0.1.0-alpha.5
-appVersion: "0.1.0-alpha.5"
+version: 1.0.0
+appVersion: "1.0.0"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -34,7 +32,7 @@ annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/category: database
   artifacthub.io/operatorCapabilities: Basic Install
-  artifacthub.io/maturity: alpha
+  artifacthub.io/maturity: stable
   artifacthub.io/links: |
     - name: Documentation
       url: https://github.com/keiailab/valkey-operator/blob/main/README.md
@@ -112,13 +110,13 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:0.1.0-alpha.5
+      image: ghcr.io/keiailab/valkey-operator:1.0.0
     - name: valkey
       image: docker.io/valkey/valkey:9.0.4
-  artifacthub.io/prerelease: "true"
+  artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
-    - kind: fixed
-      description: Valkey StatefulSet containers now set restricted PodSecurity fields by default.
+    - kind: added
+      description: First stable release for Valkey 9.0.4 cluster, HA failover, backup, restore, and multi-arch operator images.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager

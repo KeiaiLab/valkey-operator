@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-07
+
+### Added
+
+- 첫 stable 릴리스. Valkey `9.0.4` 기본값, `8.0.9`/`8.1.7` milestone
+  호환성, `ValkeyCluster` sharded HA, 자동 failover, `ValkeyBackup`,
+  `ValkeyRestore`, `ValkeyBackupTarget`, restricted PodSecurity 기본값,
+  `linux/amd64`/`linux/arm64` multi-arch operator image를 포함한다.
+
 ## [0.1.0-alpha.5] - 2026-05-07
 
 ### Fixed
