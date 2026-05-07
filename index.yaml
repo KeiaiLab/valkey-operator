@@ -78,6 +78,129 @@ entries:
                 name: s3-target
       artifacthub.io/images: |
         - name: valkey-operator
+          image: ghcr.io/keiailab/valkey-operator:1.0.3
+        - name: valkey
+          image: docker.io/valkey/valkey:9.0.4
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/keiailab/valkey-operator/blob/main/README.md
+        - name: Source Code
+          url: https://github.com/keiailab/valkey-operator
+        - name: Valkey Project
+          url: https://valkey.io/
+      artifacthub.io/maturity: stable
+      artifacthub.io/operatorCapabilities: Basic Install
+      artifacthub.io/prerelease: "false"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+    apiVersion: v2
+    appVersion: 1.0.3
+    created: "2026-05-07T20:28:30.910843+09:00"
+    description: A Kubernetes Operator for managing Valkey instances and Clusters
+      (Redis OSS fork, BSD-licensed)
+    digest: 268924b95489787b135ea52b6075bc26f591ba52f3ed9b6bee735f2b19c89b18
+    home: https://github.com/keiailab/valkey-operator
+    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    keywords:
+    - valkey
+    - redis
+    - cache
+    - key-value
+    - in-memory
+    - operator
+    - cluster
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: support@keiailab.com
+      name: Keiailab
+      url: https://keiailab.com
+    name: valkey-operator
+    sources:
+    - https://github.com/keiailab/valkey-operator
+    type: application
+    urls:
+    - https://keiailab.github.io/valkey-operator/valkey-operator-1.0.3.tgz
+    version: 1.0.3
+  - annotations:
+      artifacthub.io/category: database
+      artifacthub.io/changes: |
+        - kind: fixed
+          description: ValkeyCluster backups now write per-shard RDB files and ValkeyCluster restores pause and unpause the correct CR.
+        - kind: fixed
+          description: Multi-pod restore accepts ReadWriteMany source PVCs in addition to ReadOnlyMany.
+      artifacthub.io/containsSecurityUpdates: "true"
+      artifacthub.io/crds: |
+        - kind: Valkey
+          version: v1alpha1
+          name: valkeys.cache.keiailab.io
+          displayName: Valkey Instance
+          description: Deploys and manages a Valkey standalone or replica instance
+        - kind: ValkeyCluster
+          version: v1alpha1
+          name: valkeyclusters.cache.keiailab.io
+          displayName: Valkey Cluster
+          description: Deploys and manages a Valkey Cluster (Redis Cluster compatible)
+        - kind: ValkeyBackup
+          version: v1alpha1
+          name: valkeybackups.cache.keiailab.io
+          displayName: Valkey Backup
+          description: Creates point-in-time backups of Valkey instances/clusters
+        - kind: ValkeyBackupTarget
+          version: v1alpha1
+          name: valkeybackuptargets.cache.keiailab.io
+          displayName: Valkey Backup Target
+          description: Defines S3 / PVC backup destinations
+        - kind: ValkeyRestore
+          version: v1alpha1
+          name: valkeyrestores.cache.keiailab.io
+          displayName: Valkey Restore
+          description: Restores a Valkey instance/cluster from a backup
+      artifacthub.io/crdsExamples: |
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: Valkey
+          metadata:
+            name: my-valkey
+            namespace: cache
+          spec:
+            mode: Standalone
+            replicas: 1
+            version:
+              version: "9.0.4"
+            storage:
+              storageClassName: standard
+              size: 5Gi
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: ValkeyCluster
+          metadata:
+            name: my-valkey-cluster
+            namespace: cache
+          spec:
+            version:
+              version: "9.0.4"
+            shards: 3
+            replicasPerShard: 1
+            storage:
+              storageClassName: standard
+              size: 10Gi
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: ValkeyBackup
+          metadata:
+            name: my-valkey-backup
+            namespace: cache
+          spec:
+            clusterRef:
+              name: my-valkey
+              kind: Valkey
+            type: RDB
+            destination:
+              type: TargetRef
+              targetRef:
+                name: s3-target
+      artifacthub.io/images: |
+        - name: valkey-operator
           image: ghcr.io/keiailab/valkey-operator:1.0.2
         - name: valkey
           image: docker.io/valkey/valkey:9.0.4
@@ -97,7 +220,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.2
-    created: "2026-05-07T20:11:22.36736+09:00"
+    created: "2026-05-07T20:28:30.909171+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 1e5d260224f99ddddf7a050a9447ca9ec9b24d04c6f098fa763846fa773e7512
@@ -220,7 +343,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.1
-    created: "2026-05-07T20:11:22.365846+09:00"
+    created: "2026-05-07T20:28:30.906975+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: f7a37bfb61b246ee925e3169fb9686a71a11592825383a746de13c0a664bda76
@@ -341,7 +464,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-05-07T20:11:22.36377+09:00"
+    created: "2026-05-07T20:28:30.905625+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: e63c3092dc6e0b25f3f536bbfaed6ba44149f46ff73ec58db846b2888881aad8
@@ -462,7 +585,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.5
-    created: "2026-05-07T20:11:22.36226+09:00"
+    created: "2026-05-07T20:28:30.904242+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 0e3db229f445f0852b1d8ef0e64807b9f6d5b3fd4db72bdb39334fa2d3fe4c6a
@@ -593,7 +716,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.4
-    created: "2026-05-07T20:11:22.360586+09:00"
+    created: "2026-05-07T20:28:30.902193+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 6a54e94085e39282309031f8ec39c672f0108197c0ef5e9ee07d4df0b9c5c265
@@ -724,7 +847,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.3
-    created: "2026-05-07T20:11:22.358618+09:00"
+    created: "2026-05-07T20:28:30.900844+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: a149c249e1e98ad4291522005b1b8875a62db192d0474873760076ca44d03ccd
@@ -855,7 +978,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-05-07T20:11:22.356977+09:00"
+    created: "2026-05-07T20:28:30.898435+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: b5cc702dac3ac948b9c8d8e7587c588b5dda6138bfd354f1aa24d87a16e8ec39
@@ -984,7 +1107,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-05-07T20:11:22.355548+09:00"
+    created: "2026-05-07T20:28:30.896486+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: f9c3d86e7c59f5848104405796fb21c521eeff03ebf91d7adf6d02dae7b2e320
@@ -1011,4 +1134,4 @@ entries:
     urls:
     - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-05-07T20:11:22.352741+09:00"
+generated: "2026-05-07T20:28:30.894412+09:00"
