@@ -15,7 +15,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 	appsv1 "k8s.io/api/apps/v1"
@@ -89,7 +88,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if isPaused(v) {
 		logger.V(1).Info("paused — skipping reconcile (cache.keiailab.io/paused=true)",
 			"name", v.Name)
-		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueSteady}, nil
 	}
 
 	// 2. Defaulting
@@ -189,7 +188,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	stsKey := types.NamespacedName{Name: resources.StatefulSetName(v.Name), Namespace: v.Namespace}
 	stsObj, err := r.fetchStatefulSetStatus(ctx, stsKey)
 	if err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// 9a. Replication 자동 failover 검토 (ADR-0017) — primary NotReady 30s+ 시
@@ -207,11 +206,11 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		tlsCfg, tlsErr := r.tlsConfigForValkey(ctx, v)
 		if tlsErr != nil {
 			logger.Info("Replication TLS config pending", "error", tlsErr.Error())
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		if err := r.ensureReplication(ctx, v, password, tlsCfg); err != nil {
 			logger.Info("Replication setup pending", "error", err.Error())
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 	}
 
@@ -240,13 +239,13 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Reason:             string(v.Status.Phase),
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, v); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	if v.Status.Phase != cachev1alpha1.PhaseRunning {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
-	return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	return ctrl.Result{RequeueAfter: requeueSteady}, nil
 }
 
 // applyDefaults — operator 측 defaulting (CRD default 미커버 영역).

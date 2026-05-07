@@ -121,7 +121,7 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			ObservedGeneration: b.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		return ctrl.Result{RequeueAfter: time.Second}, nil
 
@@ -145,12 +145,12 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			ObservedGeneration: b.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Backup BGSAVE/BGREWRITEAOF issued",
 			"name", b.Name, "type", b.Spec.Type, "target", b.Spec.ClusterRef.Name,
 			"preLastSave", preLastSave)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 
 	case cachev1alpha1.BackupPhaseInProgress:
 		// LASTSAVE 가 preLastSave 보다 커지면 RDB 스냅샷 완료.
@@ -159,7 +159,7 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		curLastSave, err := r.queryLastSave(ctx, b)
 		if err != nil {
 			logger.Info("LASTSAVE poll failed — will retry", "error", err.Error())
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		// 30 분 timeout — RDB 가 매우 큰 dataset 가 아닌 한 충분.
 		if b.Status.StartedAt != nil && time.Since(b.Status.StartedAt.Time) > 30*time.Minute {
@@ -169,7 +169,7 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 		if curLastSave.Unix() <= preLastSaveUnix {
 			// 아직 진행 중.
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		// LASTSAVE advanced — RDB 가 노드 에 생성됨. 다음 단계: PVC 복사 Job spawn.
 		b.Status.Phase = cachev1alpha1.BackupPhaseCopying
@@ -183,7 +183,7 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			ObservedGeneration: b.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Backup LASTSAVE advanced — transitioning to Copying",
 			"name", b.Name, "lastSave", curLastSave)
@@ -251,7 +251,7 @@ func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha
 		ObservedGeneration: b.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{}, nil
 }
@@ -351,7 +351,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 					return r.markFailed(ctx, b, "PVCCreateFailed", err.Error())
 				}
 			} else {
-				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+				return ctrl.Result{RequeueAfter: requeueProgress}, nil
 			}
 		}
 	}
@@ -375,7 +375,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 	}
 	if op == controllerutil.OperationResultCreated {
 		logger.Info("Backup copy Job created", "name", job.Name)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	existingJob := job // CreateOrUpdate 가 obj 를 in-place modify — 후속 polling 에 사용.
 	_ = existingJob
@@ -395,7 +395,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 				ObservedGeneration: b.Generation,
 			})
 			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+				return ctrl.Result{RequeueAfter: requeueProgress}, nil
 			}
 			logger.Info("Backup copy Job succeeded — transitioning to Uploading", "pvc", pvcName)
 			return ctrl.Result{Requeue: true}, nil
@@ -418,7 +418,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 			ObservedGeneration: b.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Backup copy Job succeeded — Completed", "pvc", pvcName)
 		return ctrl.Result{}, nil
@@ -428,7 +428,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 			fmt.Sprintf("Job %s failed (failed=%d)", job.Name, existingJob.Status.Failed))
 	}
 	// 진행 중.
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	return ctrl.Result{RequeueAfter: requeueProgress}, nil
 }
 
 // reconcileUploadingPhase — backup PVC 의 RDB 를 외부 저장 (S3) 으로 업로드.
@@ -463,11 +463,11 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 				fmt.Sprintf("ValkeyBackupTarget %s/%s 미존재",
 					b.Namespace, b.Spec.Destination.TargetRef.Name))
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	if tgt.Status.Phase != cachev1alpha1.BackupTargetPhaseReachable {
 		// Reachable 이 아니면 — 잠시 대기 후 재확인. 영구 차단 방지.
-		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueDependencyUnavailable}, nil
 	}
 	if tgt.Spec.S3 == nil {
 		return r.markFailed(ctx, b, "TargetMissingS3",
@@ -515,7 +515,7 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 	}
 	if op == controllerutil.OperationResultCreated {
 		logger.Info("Upload Job created", "name", uploadJob.Name, "object", objectKey)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	existing := uploadJob // CreateOrUpdate 가 obj 를 in-place modify (Get 결과로 채움).
 
@@ -537,7 +537,7 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 			ObservedGeneration: b.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Upload Job succeeded — Backup Completed",
 			"object", objectKey, "bucket", tgt.Spec.S3.Bucket)
@@ -548,7 +548,7 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 			fmt.Sprintf("Upload Job %s failed (failed=%d)", uploadJob.Name, existing.Status.Failed))
 	}
 	// 진행 중.
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	return ctrl.Result{RequeueAfter: requeueProgress}, nil
 }
 
 // keyOrDefault — empty 시 default 반환.

@@ -96,7 +96,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if isPaused(vc) {
 		logger.V(1).Info("paused — skipping reconcile (cache.keiailab.io/paused=true)",
 			"name", vc.Name)
-		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueSteady}, nil
 	}
 
 	// 2. Defaulting (CRD default 미커버 영역).
@@ -210,7 +210,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	stsKey := types.NamespacedName{Name: resources.StatefulSetName(vc.Name), Namespace: vc.Namespace}
 	stsObj, err := r.fetchSTS(ctx, stsKey)
 	if err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// 9. CLUSTER MEET + ADDSLOTS + REPLICATE — 모든 pod 가 Ready 되었을 때 1회 호출.
@@ -219,7 +219,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if allReady && !vc.Status.ClusterInitialized {
 		if err := r.ensureClusterMeet(ctx, vc, password); err != nil {
 			logger.Error(err, "Cluster bootstrap pending — will retry")
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		vc.Status.ClusterInitialized = true
 	}
@@ -274,16 +274,16 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// 14. Status update + requeue.
 	if err := updateStatusWithRetry(ctx, r.Client, vc); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	switch vc.Status.Phase {
 	case cachev1alpha1.ClusterPhaseRunning:
-		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueSteady}, nil
 	case cachev1alpha1.ClusterPhaseResharding:
 		return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
 	default:
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 }
 

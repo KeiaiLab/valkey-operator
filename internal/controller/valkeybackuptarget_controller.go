@@ -94,7 +94,7 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 			ObservedGeneration: t.Generation,
 		})
 		if err := updateStatusWithRetry(ctx, r.Client, t); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 	}
 
@@ -147,7 +147,7 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 	t.Status.ObservedGeneration = t.Generation
 	if err := updateStatusWithRetry(ctx, r.Client, t); err != nil {
 		logger.V(1).Info("status update conflict — requeue", "name", t.Name)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// Phase 전환 시 운영자 시점 Event 발행 (kubectl describe 가시).

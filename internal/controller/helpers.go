@@ -15,7 +15,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -113,7 +112,7 @@ func applyErrorCondition(
 	if statusErr := updateStatusWithRetry(ctx, c, obj); statusErr != nil {
 		logger.Error(statusErr, "Failed to update status")
 	}
-	return ctrl.Result{RequeueAfter: 30 * time.Second}, reconcileErr
+	return ctrl.Result{RequeueAfter: requeueSteady}, reconcileErr
 }
 
 func filterConditionsByType(conds []metav1.Condition, t string) []metav1.Condition {

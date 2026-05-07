@@ -152,7 +152,7 @@ func (r *ValkeyRestoreReconciler) transitionToPending(
 		ObservedGeneration: rest.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
 }
@@ -202,7 +202,7 @@ func (r *ValkeyRestoreReconciler) handlePending(
 				fmt.Sprintf("%s/%s/%s not found",
 					rest.Spec.ClusterRef.Kind, rest.Namespace, rest.Spec.ClusterRef.Name))
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	// multi-pod (Replication replicas>1 또는 ValkeyCluster) 시 source PVC 가
 	// ROX 인지 검증. RWO source 는 multi-pod 동시 mount 불가 — init container
@@ -250,7 +250,7 @@ func (r *ValkeyRestoreReconciler) handlePending(
 		ObservedGeneration: rest.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
 }
@@ -279,7 +279,7 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 	}
 
 	if err := r.pauseRestoreTarget(ctx, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// → Restoring.
@@ -294,7 +294,7 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 		ObservedGeneration: rest.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
 }
@@ -314,7 +314,7 @@ func (r *ValkeyRestoreReconciler) ensurePVCSource(
 				fmt.Sprintf("PVC/%s/%s not found", rest.Namespace, rest.Spec.Source.PVC.Name))
 			return res, false, err
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 	}
 	return ctrl.Result{}, true, nil
 }
@@ -343,10 +343,10 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 					rest.Namespace, rest.Spec.Source.TargetRef.Name))
 			return res, false, err
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 	}
 	if tgt.Status.Phase != cachev1alpha1.BackupTargetPhaseReachable {
-		return ctrl.Result{RequeueAfter: 15 * time.Second}, false, nil
+		return ctrl.Result{RequeueAfter: requeueDependencyUnavailable}, false, nil
 	}
 	if tgt.Spec.S3 == nil {
 		res, err := r.markFailed(ctx, rest, "TargetMissingS3",
@@ -371,9 +371,9 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 				res, err := r.markFailed(ctx, rest, "PVCCreateFailed", err.Error())
 				return res, false, err
 			}
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 	}
 
 	// 3. Download Job 보장.
@@ -404,9 +404,9 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 				return res, false, err
 			}
 			logger.Info("Download Job created", "name", downloadJob.Name)
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 	}
 
 	// 4. Job 상태 폴링.
@@ -419,7 +419,7 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 		return res, false, err
 	}
 	// 진행 중.
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, false, nil
+	return ctrl.Result{RequeueAfter: requeueProgress}, false, nil
 }
 
 // operatorImage — Download/Upload Job image. valkeybackup_controller 와 동일.
@@ -665,7 +665,7 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 			return r.markFailed(ctx, rest, "STSNotFound",
 				fmt.Sprintf("StatefulSet/%s/%s not found", rest.Namespace, rest.Spec.ClusterRef.Name))
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	srcPath := sourceRDBPath(rest)
@@ -682,7 +682,7 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 	if rest.Spec.ClusterRef.Kind == "ValkeyCluster" {
 		shards, err := r.shardCountForTarget(ctx, rest)
 		if err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		var layout map[int]string
 		if rest.Spec.Source.PVC != nil {
@@ -695,22 +695,22 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 	}
 	if !hadRestoreContainer {
 		if err := r.Update(ctx, sts); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("STS patched with restore init container", "sts", sts.Name)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// 모든 pod Ready 인가? — Restoring 중 rolling 진행 중일 수 있음.
 	if sts.Status.ReadyReplicas < sts.Status.Replicas || sts.Status.Replicas == 0 {
 		msg, failed, err := r.detectRestorePodFailure(ctx, rest)
 		if err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		if failed {
 			return r.markFailed(ctx, rest, "RestorePodFailed", msg)
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// → Verifying.
@@ -725,7 +725,7 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 		ObservedGeneration: rest.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
 }
@@ -748,7 +748,7 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 		Name:      rest.Spec.ClusterRef.Name,
 		Namespace: rest.Namespace,
 	}, sts); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	hadRestore := false
@@ -761,19 +761,19 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 	if hadRestore {
 		resources.RemoveRestoreFromPodSpec(&sts.Spec.Template.Spec)
 		if err := r.Update(ctx, sts); err != nil {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("STS init container removed — second rolling triggered", "sts", sts.Name)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// 두 번째 rolling 도 완료 대기.
 	if sts.Status.ReadyReplicas < sts.Status.Replicas || sts.Status.Replicas == 0 {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	if err := r.unpauseRestoreTarget(ctx, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
 	// 데이터 plane 검증 — INFO keyspace 호출 (non-blocking).
@@ -797,7 +797,7 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 		ObservedGeneration: rest.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	logger.Info("Restore Completed", "name", rest.Name)
 	return ctrl.Result{}, nil
@@ -862,7 +862,7 @@ func (r *ValkeyRestoreReconciler) markFailed(
 		ObservedGeneration: rest.Generation,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{}, nil
 }
