@@ -5,60 +5,44 @@ Copyright 2026 Keiailab.
 package resources
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+
+	commonsnp "github.com/keiailab/operator-commons/pkg/networkpolicy"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
 // BuildNetworkPolicy — deny-by-default + 같은 인스턴스 pod 간 6379(/16379) 허용 +
 // AdditionalIngressFrom peers 허용.
+//
+// iteration 25 (2026-05-07): operator-commons/pkg/networkpolicy v0.3.0 위임.
+// 이전 인라인 패턴 (한 rule 에 self+extra peers 합침) → commons 의 별-rule 패턴
+// (WithSelfIngress + WithIngressFromPeers). K8s NetworkPolicy OR 규약상 동작 동등.
 func BuildNetworkPolicy(crName, namespace string, clusterMode bool, spec *cachev1alpha1.NetworkPolicySpec) *networkingv1.NetworkPolicy {
-	tcp := corev1.ProtocolTCP
-	ports := []networkingv1.NetworkPolicyPort{
-		{Protocol: &tcp, Port: portRef(PortClient)},
-	}
+	tcpPorts := []int32{PortClient}
 	if clusterMode {
-		ports = append(ports, networkingv1.NetworkPolicyPort{Protocol: &tcp, Port: portRef(PortClusterBus)})
+		tcpPorts = append(tcpPorts, PortClusterBus)
 	}
 
-	selfPeer := networkingv1.NetworkPolicyPeer{
-		PodSelector: &metav1.LabelSelector{MatchLabels: SelectorLabels(crName)},
+	opts := []commonsnp.Option{
+		commonsnp.WithLabels(CommonLabels(crName, "valkey")),
+		commonsnp.WithSelfIngress(tcpPorts),
 	}
 
-	from := []networkingv1.NetworkPolicyPeer{selfPeer}
-	if spec != nil {
+	if spec != nil && len(spec.AdditionalIngressFrom) > 0 {
+		extraPeers := make([]commonsnp.Peer, 0, len(spec.AdditionalIngressFrom))
 		for _, p := range spec.AdditionalIngressFrom {
-			peer := networkingv1.NetworkPolicyPeer{}
+			peer := commonsnp.Peer{}
 			if p.PodSelector != nil {
-				peer.PodSelector = &metav1.LabelSelector{MatchLabels: *p.PodSelector}
+				peer.PodSelector = *p.PodSelector
 			}
 			if p.NamespaceSelector != nil {
-				peer.NamespaceSelector = &metav1.LabelSelector{MatchLabels: *p.NamespaceSelector}
+				peer.NamespaceSelector = *p.NamespaceSelector
 			}
-			from = append(from, peer)
+			extraPeers = append(extraPeers, peer)
 		}
+		opts = append(opts, commonsnp.WithIngressFromPeers(extraPeers, tcpPorts))
 	}
 
-	return &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NetworkPolicyName(crName),
-			Namespace: namespace,
-			Labels:    CommonLabels(crName, "valkey"),
-		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{MatchLabels: SelectorLabels(crName)},
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{From: from, Ports: ports},
-			},
-		},
-	}
-}
-
-func portRef(p int32) *intstr.IntOrString {
-	v := intstr.FromInt(int(p))
-	return &v
+	return commonsnp.New(NetworkPolicyName(crName), namespace, SelectorLabels(crName), opts...)
 }

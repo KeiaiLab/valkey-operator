@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -709,46 +710,81 @@ func TestJoinArgs(t *testing.T) {
 // (operator 자체 vs Valkey CR 의 instance pod).
 func TestBuildNetworkPolicy(t *testing.T) {
 	t.Parallel()
+	// iteration 25 (2026-05-07): commons.New 위임 후 *별-rule per source* 패턴.
+	// K8s NetworkPolicy 의 ingress rules 는 OR 결합 — 한 rule 에 [self, extra] 합치든
+	// 별 rules 로 나누든 *동작 동등*. 본 test 는 rule 개수 비교 대신 *합산 from peers*
+	// + *port set* 으로 semantic equivalence 검증.
+	allFromPeers := func(np *networkingv1.NetworkPolicy) []networkingv1.NetworkPolicyPeer {
+		var all []networkingv1.NetworkPolicyPeer
+		for _, rule := range np.Spec.Ingress {
+			all = append(all, rule.From...)
+		}
+		return all
+	}
+	allPorts := func(np *networkingv1.NetworkPolicy) map[int]struct{} {
+		set := map[int]struct{}{}
+		for _, rule := range np.Spec.Ingress {
+			for _, p := range rule.Ports {
+				set[p.Port.IntValue()] = struct{}{}
+			}
+		}
+		return set
+	}
+
 	t.Run("standalone client port only", func(t *testing.T) {
 		t.Parallel()
 		np := BuildNetworkPolicy("rs", "ns", false, nil)
 		if np.Name != "rs" || np.Namespace != "ns" {
 			t.Errorf("name/ns: %q/%q", np.Name, np.Namespace)
 		}
-		if len(np.Spec.Ingress) != 1 {
-			t.Fatalf("ingress 1 rule 기대, got %d", len(np.Spec.Ingress))
+		if len(np.Spec.Ingress) < 1 {
+			t.Fatalf("ingress 최소 1 rule 기대, got 0")
 		}
-		ports := np.Spec.Ingress[0].Ports
-		if len(ports) != 1 || ports[0].Port.IntValue() != PortClient {
-			t.Errorf("client port (%d) 기대", PortClient)
+		ports := allPorts(np)
+		if _, ok := ports[PortClient]; !ok {
+			t.Errorf("client port (%d) 누락, ports=%v", PortClient, ports)
+		}
+		if _, hasBus := ports[PortClusterBus]; hasBus {
+			t.Errorf("standalone 에 cluster-bus 포함 안 됨, got bus")
 		}
 	})
 	t.Run("cluster mode adds bus port", func(t *testing.T) {
 		t.Parallel()
 		np := BuildNetworkPolicy("rs", "ns", true, nil)
-		ports := np.Spec.Ingress[0].Ports
+		ports := allPorts(np)
 		if len(ports) != 2 {
-			t.Fatalf("client + cluster-bus 2 ports 기대, got %d", len(ports))
+			t.Fatalf("client + cluster-bus 2 ports 기대, got %d (set: %v)", len(ports), ports)
 		}
-		hasBus := false
-		for _, p := range ports {
-			if p.Port.IntValue() == PortClusterBus {
-				hasBus = true
-			}
-		}
-		if !hasBus {
+		if _, ok := ports[PortClusterBus]; !ok {
 			t.Error("cluster mode 에 cluster-bus port 누락")
 		}
 	})
 	t.Run("self-peer always present", func(t *testing.T) {
 		t.Parallel()
 		np := BuildNetworkPolicy("rs", "ns", false, nil)
-		from := np.Spec.Ingress[0].From
-		if len(from) < 1 || from[0].PodSelector == nil {
+		// self-peer = SelectorLabels(crName) 매칭 PodSelector.
+		expected := SelectorLabels("rs")
+		var hasSelf bool
+		for _, peer := range allFromPeers(np) {
+			if peer.PodSelector == nil {
+				continue
+			}
+			match := true
+			for k, v := range expected {
+				if peer.PodSelector.MatchLabels[k] != v {
+					match = false
+					break
+				}
+			}
+			if match {
+				hasSelf = true
+			}
+		}
+		if !hasSelf {
 			t.Error("self-peer (PodSelector with selectorLabels) 누락")
 		}
 	})
-	t.Run("additional ingress merged", func(t *testing.T) {
+	t.Run("additional ingress merged (semantic — rule split tolerated)", func(t *testing.T) {
 		t.Parallel()
 		extraPodSel := map[string]string{"app": "client"}
 		spec := &cachev1alpha1.NetworkPolicySpec{
@@ -757,9 +793,20 @@ func TestBuildNetworkPolicy(t *testing.T) {
 			},
 		}
 		np := BuildNetworkPolicy("rs", "ns", false, spec)
-		from := np.Spec.Ingress[0].From
+		from := allFromPeers(np)
+		// self + additional = 2 peers (한 rule 또는 별 rules — semantic 동등).
 		if len(from) != 2 {
-			t.Errorf("self + additional 2 peers 기대, got %d", len(from))
+			t.Errorf("self + additional 합산 2 peers 기대, got %d", len(from))
+		}
+		// extra peer 의 podSelector 가 추가됐는지 검증.
+		var hasExtra bool
+		for _, peer := range from {
+			if peer.PodSelector != nil && peer.PodSelector.MatchLabels["app"] == "client" {
+				hasExtra = true
+			}
+		}
+		if !hasExtra {
+			t.Error("additional ingress peer 누락")
 		}
 	})
 }
