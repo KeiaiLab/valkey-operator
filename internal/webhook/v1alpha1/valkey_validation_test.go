@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
@@ -344,4 +346,41 @@ func TestValidateClusterImmutable(t *testing.T) {
 			t.Error("tls.enabled toggle → expected error")
 		}
 	})
+}
+
+func TestValidateStorageSizeMin_LowerBound(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		size    string
+		wantErr bool
+		desc    string
+	}{
+		{"512Mi", true, "below 1Gi — reject"},
+		{"1Gi", false, "exactly 1Gi — boundary OK"},
+		{"8Gi", false, "8Gi default — OK"},
+		{"50Gi", false, "50Gi production — OK"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+			errs := validateStorageSizeMin(nil, resource.MustParse(tc.size))
+			hasErr := len(errs) > 0
+			if tc.wantErr && !hasErr {
+				t.Errorf("size=%s should be rejected", tc.size)
+			}
+			if !tc.wantErr && hasErr {
+				t.Errorf("size=%s should be accepted, got %v", tc.size, errs)
+			}
+		})
+	}
+}
+
+func TestValidateStorageSizeMin_ZeroSkip(t *testing.T) {
+	t.Parallel()
+	// CRD default ('8Gi' for valkey) 가 채워지지 않은 dry-run path —
+	// 별도 invariant 위반 아님 (zero 통과).
+	errs := validateStorageSizeMin(nil, resource.Quantity{})
+	if len(errs) > 0 {
+		t.Errorf("zero (unset) should skip, got %v", errs)
+	}
 }

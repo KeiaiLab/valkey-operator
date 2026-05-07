@@ -24,6 +24,7 @@ import (
 	"context"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -180,7 +181,28 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 		))
 	}
 
+	// storage.size 하한 1Gi (cross-cut audit, mongodb-operator it46 step 7
+	// commit 8b2414f 와 동일 invariant). RDB snapshot + AOF 합산 floor 보장.
+	errs = append(errs, validateStorageSizeMin(specPath.Child("storage", "size"), vc.Spec.Storage.Size)...)
+
 	return errs
+}
+
+// validateStorageSizeMin — storage.size 하한 1Gi 검증. mongodb-operator it46
+// step 7 와 동일 패턴 (cross-cut audit per ADR-0016). zero (unset) 은 CRD
+// default 가 채우므로 본 함수 도달 시점엔 양수.
+func validateStorageSizeMin(path *field.Path, size resource.Quantity) field.ErrorList {
+	if size.IsZero() {
+		return nil
+	}
+	min := resource.MustParse("1Gi")
+	if size.Cmp(min) < 0 {
+		return field.ErrorList{field.Invalid(
+			path, size.String(),
+			"storage.size must be >= 1Gi — RDB snapshot + AOF data dir floor",
+		)}
+	}
+	return nil
 }
 
 // validateClusterImmutable — 변경 금지 필드 가드.

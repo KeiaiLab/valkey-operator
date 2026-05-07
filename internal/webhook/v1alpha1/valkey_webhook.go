@@ -138,6 +138,9 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 			))
 		}
 	}
+	// storage.size 하한 1Gi (cross-cut audit, ADR-0016).
+	errs = append(errs, validateStorageSizeMin(p.Child("storage", "size"), v.Spec.Storage.Size)...)
+
 	if len(v.Spec.Auth.Users) > 0 && !v.Spec.Auth.Enabled {
 		errs = append(errs, field.Forbidden(
 			p.Child("auth"),
