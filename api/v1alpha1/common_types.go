@@ -14,6 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	commonsversion "github.com/keiailab/operator-commons/pkg/version"
 )
 
 // DefaultValkeyVersion / DefaultValkeyImage — defaulting webhook 이 spec.version
@@ -23,20 +25,18 @@ const (
 	DefaultValkeyImage   = "docker.io/valkey/valkey"
 )
 
-// SupportedValkeyVersions — webhook validation 가 화이트리스트로 허용하는 valkey
-// 컨테이너 버전. 신규 추가 시 호환성 검증 (RDB format, replication wire protocol)
-// 후 추가. 9.0.4 = current stable, 8.1.7/8.0.9 = milestone patch baseline.
-// 8.1.6 은 기존 설치 호환을 위해 유지한다.
-var SupportedValkeyVersions = []string{"8.0.9", "8.1.6", "8.1.7", "9.0.4"}
+// supportedValkeyList — webhook validation 화이트리스트 (commons 위임).
+// 신규 추가 시 호환성 검증 (RDB format, replication wire protocol) 후 추가.
+// 9.0.4 = current stable, 8.1.7/8.0.9 = milestone patch baseline. 8.1.6 은
+// 기존 설치 호환 위해 유지.
+var supportedValkeyList = commonsversion.MustList("8.0.9", "8.1.6", "8.1.7", "9.0.4")
 
-// IsSupportedValkeyVersion — webhook validation 호출용 헬퍼.
+// SupportedValkeyVersions — 외부 노출 슬라이스 (chart values / docs / 기존 호환).
+var SupportedValkeyVersions = supportedValkeyList.Strings()
+
+// IsSupportedValkeyVersion — webhook validation 호출용 헬퍼. commons 위임.
 func IsSupportedValkeyVersion(v string) bool {
-	for _, sv := range SupportedValkeyVersions {
-		if sv == v {
-			return true
-		}
-	}
-	return false
+	return supportedValkeyList.IsSupported(v)
 }
 
 // ValkeyVersion 은 Valkey 컨테이너 이미지 / 버전 지정.

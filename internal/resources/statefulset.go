@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/keiailab/operator-commons/pkg/security"
+
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
@@ -192,24 +194,13 @@ func ptrInt64(i int64) *int64 { return &i }
 
 // PodSecurity "restricted" 정책을 만족하는 컨테이너 SecurityContext.
 // restore init container, upload/download job container 등 4 곳에서 동일 정의가
-// 인라인 중복되던 것을 단일 진실원으로 통일. capabilities.drop=[ALL] +
-// seccompProfile.type=RuntimeDefault + AllowPrivilegeEscalation=false +
-// RunAsNonRoot 모두 만족.
+// 인라인 중복되던 것을 commons 단일 진실원으로 위임. iteration 8: operator-
+// commons/pkg/security 채택 — 3 operator (mongodb / valkey / postgres) 동일 패턴.
 //
-// 회귀 가드: PodSecurity Admission "restricted" 네임스페이스에서
-// pod 가 거부되면 Sharded P0 와 동일한 데이터 가용성 사고 발생 가능.
+// 회귀 가드: PodSecurity Admission "restricted" 네임스페이스에서 pod 거부 시
+// 데이터 가용성 사고 가능 — commons 패키지 100% line coverage 단위 test 보장.
 func buildRestrictedContainerSecurityContext() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		RunAsNonRoot:             ptrBool(true),
-		RunAsUser:                ptrInt64(999),
-		AllowPrivilegeEscalation: ptrBool(false),
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{"ALL"},
-		},
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
+	return security.RestrictedContainer(security.WithRunAsUser(999))
 }
 
 // PortIntOrString — helper for Probe/Service ports.
