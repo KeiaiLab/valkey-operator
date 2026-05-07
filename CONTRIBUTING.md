@@ -39,7 +39,8 @@ make test-e2e
 ## PR 절차
 
 1. **Issue 우선** — 큰 변경 (architectural / API) 은 issue 로 사전 논의.
-2. **Conventional Commits** — `<type>(<scope>): <subject>` 형식. 예:
+2. **DCO sign-off 의무** — 모든 commit 에 `Signed-off-by: Your Name <you@example.com>` trailer 필수 (`git commit -s`). commit-msg lefthook hook 이 자동 검증. 미서명 PR 머지 차단. [Developer Certificate of Origin](https://developercertificate.org/) 정합.
+3. **Conventional Commits** — `<type>(<scope>): <subject>` 형식. 예:
    `feat(backup): TTL 자동 삭제`. 본문은 한국어 / 영어 모두 허용.
 3. **테스트 동반** — 기능 추가/변경 시 단위 테스트 필수. `make test` 통과
    확인.

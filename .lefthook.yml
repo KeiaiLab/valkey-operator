@@ -88,3 +88,14 @@ commit-msg:
           echo "Got: $msg"
           exit 1
         fi
+    dco-signoff:
+      # A-P0-5: DCO Signed-off-by warn (DCO_STRICT=1 시 enforce).
+      run: |
+        if ! grep -qE '^Signed-off-by: .+ <.+@.+>' "{1}"; then
+          if [ "${DCO_STRICT:-0}" = "1" ]; then
+            echo "❌ DCO Signed-off-by trailer missing — use git commit -s"
+            exit 1
+          else
+            echo "[warn] DCO Signed-off-by trailer missing (set DCO_STRICT=1 to enforce)"
+          fi
+        fi
