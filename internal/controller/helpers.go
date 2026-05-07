@@ -19,6 +19,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -136,22 +137,13 @@ const (
 
 // setCondition — 동일 Type 의 기존 condition 을 *교체*. status 가 변경된 경우에만
 // LastTransitionTime 갱신, 그 외에는 보존.
+//
+// iteration 32 (2026-05-07): k8s.io/apimachinery/pkg/api/meta.SetStatusCondition
+// 위임 — upstream 이 *동일 logic* 제공 (LastTransitionTime 보존/갱신, append).
+// 자체 reimplementation 제거. upstream 이 *(changed bool)* 반환하지만 호출자
+// 가 무시하므로 시그너처 호환.
 func setCondition(conds *[]metav1.Condition, c metav1.Condition) {
-	for i := range *conds {
-		if (*conds)[i].Type == c.Type {
-			if (*conds)[i].Status != c.Status {
-				c.LastTransitionTime = metav1.Now()
-			} else {
-				c.LastTransitionTime = (*conds)[i].LastTransitionTime
-			}
-			(*conds)[i] = c
-			return
-		}
-	}
-	if c.LastTransitionTime.IsZero() {
-		c.LastTransitionTime = metav1.Now()
-	}
-	*conds = append(*conds, c)
+	meta.SetStatusCondition(conds, c)
 }
 
 // boolToConditionStatus — true → ConditionTrue, false → ConditionFalse.
