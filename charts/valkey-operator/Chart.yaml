@@ -116,15 +116,13 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:1.0.3
+      image: ghcr.io/keiailab/valkey-operator:1.0.4
     - name: valkey
       image: docker.io/valkey/valkey:9.0.4
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
-    - kind: fixed
-      description: ValkeyCluster backups now write per-shard RDB files and ValkeyCluster restores pause and unpause the correct CR.
-    - kind: fixed
-      description: Multi-pod restore accepts ReadWriteMany source PVCs in addition to ReadOnlyMany.
+    - kind: added
+      description: BuildClientService + BuildHeadlessService 의 tlsEnabled 인자 — TLS 활성 시 client-tls (6380) port 추가 expose. 외부 client 가 rediss:// scheme connect 가능.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
