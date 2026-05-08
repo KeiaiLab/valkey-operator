@@ -5,7 +5,8 @@ linters:
   default: none
   enable:
     - copyloopvar
-    - depguard
+    # depguard 는 valkey internal boundary 도입 후 ADR 와 함께 활성화 (RFC-0017 §3.2).
+    # 현재 빈 deny list 는 golangci-lint v2.8 이 거부하므로 비활성.
     - dupl
     - errcheck
     - ginkgolinter
@@ -36,17 +37,8 @@ linters:
     modernize:
       disable:
         - omitzero
-    # depguard 규칙 — valkey 고유 import 차단 정책 (없으면 default rule 빈 상태 유지).
-    # 4-repo 표준은 RFC-0017 §3.2. postgres-operator 의 SDK boundary 규칙 (ADR-0005)
-    # 은 본 repo 에 적용되지 않으므로 제거. 향후 valkey 측 internal boundary 가
-    # 생기면 ADR 후 추가.
-    depguard:
-      rules:
-        main:
-          list-mode: lax
-          files:
-            - "$all"
-          deny: []
+    # depguard 는 비활성 — valkey internal boundary 도입 시 (ADR 후) 활성화 +
+    # deny list 정의. 빈 deny list 는 golangci-lint v2.8 schema 거부.
   exclusions:
     generated: lax
     rules:
