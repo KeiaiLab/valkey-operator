@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-05-08
+
+### Fixed
+
+- Artifact Hub 가 `1.0.4` chart icon `https://valkey.io/img/Valkey-Logo-RGB-Color.svg` 를 가져오다 404 로 tracking warning 을 내던 문제를 수정했다. 현재 Valkey 사이트에서 200 응답하는 `https://valkey.io/img/valkey-horizontal.svg` 로 교체했다.
+
 ## [1.0.4] - 2026-05-08
 
 ### Added

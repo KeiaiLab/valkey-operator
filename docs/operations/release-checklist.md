@@ -42,32 +42,33 @@ push 도 동일 통과 필수.
 | 15 | `TestLicenseFileExistsAndIsApache2` | LICENSE 파일 존재 + Apache-2.0 식별자 |
 | 16 | `TestChartLicenseAnnotationMatchesLicenseFile` | Chart annotation ↔ LICENSE 파일 |
 | 17 | `TestChartImagesAnnotationMatchesAppVersion` | artifacthub.io/images tag ↔ Chart.AppVersion |
-| 18 | `TestChartCRDExamplesStrictUnmarshal` | crdsExamples ↔ api 타입 strict |
-| 19 | `TestCRDBaseChartSync` | config/crd/bases/ ↔ charts/.../crds/ byte-level (sha256) |
-| 20 | `TestChartValuesValkeyVersionMatchesAPIDefault` | values.yaml 의 valkey.version ↔ api default |
-| 21 | `TestChartNotesTxtModeValueValidEnum` | NOTES.txt 의 mode: ↔ ValkeyMode enum |
-| 22 | `TestChartReadmeYAMLCodeblocksValid` | 전 markdown 의 YAML 블록 mode/apiVersion/kind 검증 (multi-doc) |
-| 23 | `TestMarkdownRelativeLinksResolve` | 모든 .md 의 상대 .md link 가 실재 |
-| 24 | `TestIssueTemplateReadmeAnchorsExist` | issue template 의 README anchor 실존 |
-| 25 | `TestWebhookSetupFunctionsRegisteredInMain` | webhook setup 함수 ↔ main.go 등록 |
-| 26 | `TestReconcilerTypesRegisteredInMain` | Reconciler 타입 ↔ main.go 인스턴스화 |
-| 27 | `TestRBACRoleResourcesInMarker` | role.yaml 의 resource → kubebuilder:rbac 마커 (orphan rule 차단) |
-| 28 | `TestInstallYAMLStructure` | dist/install.yaml 구조 검증 (5 CRD + Deployment + RBAC + Webhook + Service) |
-| 29 | `TestKustomizeManifestLabelChainSync` | pod labels ⊇ Deployment selector ⊇ Service selector + ServiceMonitor selector ⊆ Service metadata.labels |
-| 30 | `TestKustomizeChartResourcesSync` | config/manager/manager.yaml ↔ charts/.../values.yaml 의 resources (limits + requests × cpu + memory) |
-| 31 | `TestKustomizeChartProbesSync` | manager Deployment ↔ chart values.yaml 의 liveness/readiness probe initialDelay/period |
-| 32 | `TestKustomizeChartSecurityContextInvariants` | Pod Security Standards "restricted" invariant — runAsNonRoot/seccompProfile/allowPrivilegeEscalation=false/readOnlyRootFilesystem/capabilities.drop=ALL 양쪽 모두 적용 |
-| 33 | `TestInstallYAMLOperatorImageEnvMatchesContainerImage` | dist/install.yaml 의 OPERATOR_IMAGE env value ↔ manager 컨테이너 image 일치 (Upload/Download Job ImagePullBackOff 차단) |
-| 34 | `TestChartArgsMatchOperatorFlags` | chart deployment + config/manager 의 args ↔ cmd/main.go flag 정의 (옛 flag 잔재 → CrashLoopBackOff 차단) |
-| 35 | `TestValuesTemplateBindingCoverage` | values.yaml top-level key 가 templates/ 어디에서든 참조됨 (silent ignore value 차단, 미구현 항목은 exempted + values.yaml 에 명시) |
-| 36 | `TestChartFeaturesReconcilerEnvSync` | chart features.{cluster,backup}.enabled ↔ ENABLE_{CLUSTER,BACKUP}_RECONCILER env (operator code 인식) — RBAC + reconciler 정합 (cycle 80 의 helm install default CrashLoopBackOff 차단) |
-| 37 | `TestNetworkPolicyWebhookPortPresent` | NetworkPolicy ingress 에 webhook.enabled 조건부 9443 rule (cycles 72/73 cross-feature interaction — webhook silent reject 차단) |
-| 38 | `TestNetworkPolicyTracingEgressPresent` | NetworkPolicy egress 에 tracing.endpoint 조건부 OTLP 4317/4318 rule (cycles 65/72 cross-feature — OTEL spans silent loss 차단) |
-| 39 | `TestNetworkPolicyBackupEgressPresent` | NetworkPolicy egress 에 features.backup.enabled 조건부 외부 S3 (443/9000) rule (cycles 16/72 cross-feature — BackupTarget Reachable 영구 Pending 차단) |
-| 40 | `TestMetricPhaseLabelsSync` | metrics.go::allPhases ↔ api ValkeyPhase + ClusterPhase enum union (Grafana dashboard 의 phase 시계열 incomplete 차단) |
-| 41 | `TestGoVersionDockerfileVsGoMod` | Dockerfile 의 FROM golang:X.Y ↔ go.mod 의 `go X.Y` minimum directive 동기 (+ CONTRIBUTING.md Go table — cycle 96) |
-| 42 | `TestKubernetesVersionSync` | Chart.yaml kubeVersion ↔ README badge ↔ chart README Kubernetes prerequisite 3-surface 동기 |
-| 43 | `TestReleaseTargetInjectsBuildMetadataAndMultiArch` | release image 의 build metadata 주입 + linux/amd64,linux/arm64 manifest 동기 |
+| 18 | `TestChartIconURLUsesCurrentValkeyAsset` | Chart icon URL 이 현재 Artifact Hub 에서 fetch 가능한 Valkey logo asset |
+| 19 | `TestChartCRDExamplesStrictUnmarshal` | crdsExamples ↔ api 타입 strict |
+| 20 | `TestCRDBaseChartSync` | config/crd/bases/ ↔ charts/.../crds/ byte-level (sha256) |
+| 21 | `TestChartValuesValkeyVersionMatchesAPIDefault` | values.yaml 의 valkey.version ↔ api default |
+| 22 | `TestChartNotesTxtModeValueValidEnum` | NOTES.txt 의 mode: ↔ ValkeyMode enum |
+| 23 | `TestChartReadmeYAMLCodeblocksValid` | 전 markdown 의 YAML 블록 mode/apiVersion/kind 검증 (multi-doc) |
+| 24 | `TestMarkdownRelativeLinksResolve` | 모든 .md 의 상대 .md link 가 실재 |
+| 25 | `TestIssueTemplateReadmeAnchorsExist` | issue template 의 README anchor 실존 |
+| 26 | `TestWebhookSetupFunctionsRegisteredInMain` | webhook setup 함수 ↔ main.go 등록 |
+| 27 | `TestReconcilerTypesRegisteredInMain` | Reconciler 타입 ↔ main.go 인스턴스화 |
+| 28 | `TestRBACRoleResourcesInMarker` | role.yaml 의 resource → kubebuilder:rbac 마커 (orphan rule 차단) |
+| 29 | `TestInstallYAMLStructure` | dist/install.yaml 구조 검증 (5 CRD + Deployment + RBAC + Webhook + Service) |
+| 30 | `TestKustomizeManifestLabelChainSync` | pod labels ⊇ Deployment selector ⊇ Service selector + ServiceMonitor selector ⊆ Service metadata.labels |
+| 31 | `TestKustomizeChartResourcesSync` | config/manager/manager.yaml ↔ charts/.../values.yaml 의 resources (limits + requests × cpu + memory) |
+| 32 | `TestKustomizeChartProbesSync` | manager Deployment ↔ chart values.yaml 의 liveness/readiness probe initialDelay/period |
+| 33 | `TestKustomizeChartSecurityContextInvariants` | Pod Security Standards "restricted" invariant — runAsNonRoot/seccompProfile/allowPrivilegeEscalation=false/readOnlyRootFilesystem/capabilities.drop=ALL 양쪽 모두 적용 |
+| 34 | `TestInstallYAMLOperatorImageEnvMatchesContainerImage` | dist/install.yaml 의 OPERATOR_IMAGE env value ↔ manager 컨테이너 image 일치 (Upload/Download Job ImagePullBackOff 차단) |
+| 35 | `TestChartArgsMatchOperatorFlags` | chart deployment + config/manager 의 args ↔ cmd/main.go flag 정의 (옛 flag 잔재 → CrashLoopBackOff 차단) |
+| 36 | `TestValuesTemplateBindingCoverage` | values.yaml top-level key 가 templates/ 어디에서든 참조됨 (silent ignore value 차단, 미구현 항목은 exempted + values.yaml 에 명시) |
+| 37 | `TestChartFeaturesReconcilerEnvSync` | chart features.{cluster,backup}.enabled ↔ ENABLE_{CLUSTER,BACKUP}_RECONCILER env (operator code 인식) — RBAC + reconciler 정합 (cycle 80 의 helm install default CrashLoopBackOff 차단) |
+| 38 | `TestNetworkPolicyWebhookPortPresent` | NetworkPolicy ingress 에 webhook.enabled 조건부 9443 rule (cycles 72/73 cross-feature interaction — webhook silent reject 차단) |
+| 39 | `TestNetworkPolicyTracingEgressPresent` | NetworkPolicy egress 에 tracing.endpoint 조건부 OTLP 4317/4318 rule (cycles 65/72 cross-feature — OTEL spans silent loss 차단) |
+| 40 | `TestNetworkPolicyBackupEgressPresent` | NetworkPolicy egress 에 features.backup.enabled 조건부 외부 S3 (443/9000) rule (cycles 16/72 cross-feature — BackupTarget Reachable 영구 Pending 차단) |
+| 41 | `TestMetricPhaseLabelsSync` | metrics.go::allPhases ↔ api ValkeyPhase + ClusterPhase enum union (Grafana dashboard 의 phase 시계열 incomplete 차단) |
+| 42 | `TestGoVersionDockerfileVsGoMod` | Dockerfile 의 FROM golang:X.Y ↔ go.mod 의 `go X.Y` minimum directive 동기 (+ CONTRIBUTING.md Go table — cycle 96) |
+| 43 | `TestKubernetesVersionSync` | Chart.yaml kubeVersion ↔ README badge ↔ chart README Kubernetes prerequisite 3-surface 동기 |
+| 44 | `TestReleaseTargetInjectsBuildMetadataAndMultiArch` | release image 의 build metadata 주입 + linux/amd64,linux/arm64 manifest 동기 |
 
 검증 명령: `go test ./internal/observability/`
 

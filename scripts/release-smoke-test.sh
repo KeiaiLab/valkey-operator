@@ -161,6 +161,12 @@ if helm repo add "$TMP_REPO" "${HELM_REPO_URL}" >/dev/null 2>&1; then
       else
         fail "helm template (default values)"
       fi
+      ICON_URL="$(helm show chart "$PULLED_TGZ" 2>/dev/null | awk '/^icon:/ { print $2; exit }')"
+      if [ -n "$ICON_URL" ] && curl -fsSL -o /dev/null "$ICON_URL"; then
+        pass "chart icon URL fetch"
+      else
+        fail "chart icon URL fetch 실패 (${ICON_URL:-empty})"
+      fi
       # all features ON (valkey 한정 — 다른 repo 는 silent skip)
       if helm template smoke "$PULLED_TGZ" --namespace "${CHART_NAME}-system" \
           --set features.cluster.enabled=true \

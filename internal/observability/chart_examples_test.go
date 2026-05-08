@@ -7,6 +7,9 @@
 //
 // 사고 패턴 2: artifacthub.io/images 의 image tag 가 Chart.AppVersion 과 drift
 // → ArtifactHub UI 가 *틀린 version 의 image* 를 사용자에게 안내.
+//
+// 사고 패턴 3: Chart icon URL 이 외부 사이트 개편으로 404 → ArtifactHub
+// tracking warning 과 package logo 누락.
 
 package observability
 
@@ -23,6 +26,7 @@ import (
 type chartFile struct {
 	Version     string            `json:"version"`
 	AppVersion  string            `json:"appVersion"`
+	Icon        string            `json:"icon"`
 	Annotations map[string]string `json:"annotations"`
 }
 
@@ -61,6 +65,19 @@ func TestChartImagesAnnotationMatchesAppVersion(t *testing.T) {
 	if !strings.Contains(imagesYaml, expected) {
 		t.Errorf("artifacthub.io/images 가 %q 를 포함하지 않음 — Chart.AppVersion=%q 와 drift",
 			expected, ch.AppVersion)
+	}
+}
+
+func TestChartIconURLUsesCurrentValkeyAsset(t *testing.T) {
+	ch := loadChart(t)
+	if ch.Icon == "" {
+		t.Fatal("Chart icon URL 비어 있음")
+	}
+	if ch.Icon == "https://valkey.io/img/Valkey-Logo-RGB-Color.svg" {
+		t.Fatal("Chart icon 이 Artifact Hub 에서 404 를 반환한 과거 Valkey logo URL 을 사용함")
+	}
+	if ch.Icon != "https://valkey.io/img/valkey-horizontal.svg" {
+		t.Fatalf("Chart icon=%q, want current Valkey logo asset", ch.Icon)
 	}
 }
 
