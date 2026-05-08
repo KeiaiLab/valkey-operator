@@ -528,3 +528,25 @@ helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 
 		git push -u origin gh-pages
 	@rm -rf "$(RELEASE_TMP)" "$(GHPAGES_TMP)"
 	@echo "✓ Helm chart 게시 완료. ArtifactHub 은 ~30분 내 인덱싱."
+
+##@ Validation (RFC-0017 §3.3 표준)
+
+.PHONY: validate
+validate: manifests ## kustomize build + helm lint + helm template — manifest 회귀 검증
+	@echo "=== kustomize build config/default ==="
+	@command -v kustomize >/dev/null 2>&1 || { echo "[error] kustomize 미설치 (make kustomize)"; exit 1; }
+	@$(KUSTOMIZE) build config/default >/dev/null
+	@echo "✓ kustomize build PASS"
+	@echo "=== helm lint charts/valkey-operator ==="
+	@command -v helm >/dev/null 2>&1 || { echo "[warn] helm 미설치 — skip"; exit 0; }
+	@helm lint charts/valkey-operator
+	@echo "✓ helm lint PASS"
+	@echo "=== helm template (default values) ==="
+	@helm template valkey-operator charts/valkey-operator >/dev/null
+	@echo "=== helm template (모든 features on) ==="
+	@helm template valkey-operator charts/valkey-operator \
+		--set features.cluster.enabled=true \
+		--set features.backup.enabled=true \
+		--set features.autoscaling.enabled=true >/dev/null
+	@echo "✓ helm template PASS"
+	@echo "✓ make validate 통과 (RFC-0017 §3.3)"

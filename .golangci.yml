@@ -1,0 +1,73 @@
+version: "2"
+run:
+  allow-parallel-runners: true
+linters:
+  default: none
+  enable:
+    - copyloopvar
+    - depguard
+    - dupl
+    - errcheck
+    - ginkgolinter
+    - goconst
+    - gocyclo
+    - govet
+    - ineffassign
+    - lll
+    - modernize
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - logcheck
+  settings:
+    custom:
+      logcheck:
+        type: "module"
+        description: Checks Go logging calls for Kubernetes logging conventions.
+    revive:
+      rules:
+        - name: comment-spacings
+        - name: import-shadowing
+    modernize:
+      disable:
+        - omitzero
+    # depguard 규칙 — valkey 고유 import 차단 정책 (없으면 default rule 빈 상태 유지).
+    # 4-repo 표준은 RFC-0017 §3.2. postgres-operator 의 SDK boundary 규칙 (ADR-0005)
+    # 은 본 repo 에 적용되지 않으므로 제거. 향후 valkey 측 internal boundary 가
+    # 생기면 ADR 후 추가.
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          files:
+            - "$all"
+          deny: []
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - lll
+        path: api/*
+      - linters:
+          - dupl
+          - lll
+        path: internal/*
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

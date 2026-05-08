@@ -38,6 +38,7 @@
 | [0027](0027-hpa-replication-mode-only-deferred.md) | HPA — Replication Mode 만 + Operator-managed (deferred) | Accepted | 2026-05-06 |
 | [0028](0028-helm-kustomize-parity-invariant.md) | Helm vs Kustomize Parity Invariant — 5 sibling silent failure family 차단 | Accepted | 2026-05-06 |
 | [0029](0029-gitops-deploy-overlay.md) | GitOps deploy 오버레이 도입 (3-repo 정합) | Accepted | 2026-05-06 |
+| [0030](0030-rfc-0017-tooling-unification-adoption.md) | RFC-0017 operator tooling unification 채택 (.golangci.yml 신규 + Makefile validate + HEALTHCHECK) | Proposed | 2026-05-09 |
 
 ## 작성 가이드
 
