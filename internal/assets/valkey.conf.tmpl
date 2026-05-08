@@ -45,7 +45,7 @@ tls-port 6380
 tls-cert-file /tls/tls.crt
 tls-key-file /tls/tls.key
 tls-ca-cert-file /tls/ca.crt
-tls-auth-clients yes
+tls-auth-clients {{ .TLSAuthClients }}
 tls-cluster {{ if .ClusterEnabled }}yes{{ else }}no{{ end }}
 # tls-replication: replica → master REPLICAOF 채널 도 TLS. cluster mode 가 아닌
 # replication 토폴로지 에서 master_link_status 가 down 으로 멈추는 것 방지.

@@ -27,7 +27,24 @@ type ConfigData struct {
 	ClusterNodeTimeout       int32
 	ClusterReplicaNoFailover bool // Spec.AutoFailover=false 일 때 true → "cluster-replica-no-failover yes".
 	TLSEnabled               bool
-	Extra                    map[string]string
+	// TLSAuthClients 는 valkey 의 tls-auth-clients 옵션. yes (mTLS 강제) /
+	// optional (cert 검증 옵션) / no (server-only TLS, password-only auth).
+	// TLSEnabled=false 일 때는 사용 안 됨.
+	TLSAuthClients string
+	Extra          map[string]string
+}
+
+// resolveTLSAuthClients — TLSSpec.ClientAuth 의 enum 값을 valkey.conf 의
+// tls-auth-clients 옵션 값으로 변환. default (빈 문자열) = required.
+func resolveTLSAuthClients(clientAuth string) string {
+	switch clientAuth {
+	case "optional":
+		return "optional"
+	case "disabled":
+		return "no"
+	default: // required, "" (default)
+		return "yes"
+	}
 }
 
 // RenderValkeyConf — valkey.conf 문자열 렌더링.
@@ -99,6 +116,7 @@ func configDataFromValkey(vk *cachev1alpha1.Valkey, password string) ConfigData 
 	}
 	if vk.Spec.TLS != nil && vk.Spec.TLS.Enabled {
 		d.TLSEnabled = true
+		d.TLSAuthClients = resolveTLSAuthClients(vk.Spec.TLS.ClientAuth)
 	}
 	return d
 }
@@ -131,6 +149,7 @@ func configDataFromCluster(vc *cachev1alpha1.ValkeyCluster, password string) Con
 	}
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
 		d.TLSEnabled = true
+		d.TLSAuthClients = resolveTLSAuthClients(vc.Spec.TLS.ClientAuth)
 	}
 	return d
 }

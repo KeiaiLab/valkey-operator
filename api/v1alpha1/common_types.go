@@ -106,6 +106,20 @@ type TLSSpec struct {
 
 	// +optional
 	CustomCert *CustomCertSpec `json:"customCert,omitempty"`
+
+	// ClientAuth 는 client certificate 검증 정책. valkey 의 tls-auth-clients
+	// 옵션과 1:1 매핑.
+	//   - required (default): tls-auth-clients=yes — mTLS 강제. 모든 client 가
+	//     valid client cert 제시 의무. operator 자체도 cert load.
+	//   - optional: tls-auth-clients=optional — client cert 제시하면 검증, 없으면
+	//     password-only auth 허용.
+	//   - disabled: tls-auth-clients=no — server-only TLS (cert 검증 안 함).
+	//     plaintext password 보호 + transit encryption 만 활성. 외부 client
+	//     마이그레이션 path (mTLS infrastructure 부재 시).
+	// +kubebuilder:validation:Enum=required;optional;disabled
+	// +kubebuilder:default="required"
+	// +optional
+	ClientAuth string `json:"clientAuth,omitempty"`
 }
 
 type CertManagerSpec struct {
