@@ -15,7 +15,7 @@ import (
 // 100 노드 cluster 의 CLUSTER NODES 응답 시뮬레이션 — primary 50 + replica 50.
 func generateClusterNodesRaw(nodeCount int) string {
 	var b strings.Builder
-	for i := 0; i < nodeCount; i++ {
+	for i := range nodeCount {
 		role := "master"
 		if i >= nodeCount/2 {
 			role = "slave"
@@ -34,8 +34,8 @@ func generateClusterNodesRaw(nodeCount int) string {
 func BenchmarkParseClusterNodes_6(b *testing.B) {
 	raw := generateClusterNodesRaw(6)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = parseClusterNodes(raw)
 	}
 }
@@ -43,8 +43,8 @@ func BenchmarkParseClusterNodes_6(b *testing.B) {
 func BenchmarkParseClusterNodes_100(b *testing.B) {
 	raw := generateClusterNodesRaw(100)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = parseClusterNodes(raw)
 	}
 }
@@ -52,8 +52,8 @@ func BenchmarkParseClusterNodes_100(b *testing.B) {
 func BenchmarkParseClusterInfo(b *testing.B) {
 	raw := "cluster_state:ok\ncluster_slots_assigned:16384\ncluster_slots_ok:16384\ncluster_slots_pfail:0\ncluster_slots_fail:0\ncluster_known_nodes:6\ncluster_size:3\ncluster_current_epoch:6\ncluster_my_epoch:1\ncluster_stats_messages_sent:1000\ncluster_stats_messages_received:1000\n"
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = parseClusterInfo(raw)
 	}
 }
@@ -61,8 +61,8 @@ func BenchmarkParseClusterInfo(b *testing.B) {
 func BenchmarkParseReplicationOffset(b *testing.B) {
 	raw := "# Replication\nrole:master\nconnected_slaves:1\nslave0:ip=10.0.0.2,port=6379,state=online,offset=12345,lag=0\nmaster_replid:abc123\nmaster_repl_offset:12345\n"
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = ParseReplicationOffset(raw)
 	}
 }
@@ -70,8 +70,8 @@ func BenchmarkParseReplicationOffset(b *testing.B) {
 func BenchmarkParseSlotToken(b *testing.B) {
 	tokens := []string{"0-5460", "5461-10922", "10923-16383", "42", "abc", "0-100", "200"}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		for _, tok := range tokens {
 			_, _ = parseSlotToken(tok)
 		}

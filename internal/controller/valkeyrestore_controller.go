@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -215,13 +216,7 @@ func (r *ValkeyRestoreReconciler) handlePending(
 			if err := r.Get(ctx, types.NamespacedName{
 				Name: rest.Spec.Source.PVC.Name, Namespace: rest.Namespace,
 			}, sourcePVC); err == nil {
-				shared := false
-				for _, mode := range sourcePVC.Spec.AccessModes {
-					if sourcePVCSupportsMultiPod(mode) {
-						shared = true
-						break
-					}
-				}
+				shared := slices.ContainsFunc(sourcePVC.Spec.AccessModes, sourcePVCSupportsMultiPod)
 				if !shared {
 					return r.markFailed(ctx, rest, "SourcePVCNotShared",
 						fmt.Sprintf("multi-pod target 에서 Source.PVC %s 가 ReadOnlyMany 또는 ReadWriteMany 필요 (RWO 는 multi-pod mount 불가)",

@@ -202,12 +202,12 @@ func buildBackupCLIArgs(p BackupJobParams, host, outputPath string) []string {
 // joinArgs — `valkey-cli` 인자 를 shell-safe 하게 한 줄 로 결합. 본 함수는 매우 단순한
 // 케이스 만 처리 (인자 에 공백 / 따옴표 없음 가정).
 func joinArgs(args []string) string {
-	out := ""
+	var out strings.Builder
 	for i, a := range args {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += a
+		out.WriteString(a)
 	}
-	return out
+	return out.String()
 }

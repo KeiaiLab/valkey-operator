@@ -45,7 +45,6 @@ func samplesDir(t *testing.T) string {
 func TestSamplesStrictUnmarshal(t *testing.T) {
 	dir := samplesDir(t)
 	for fname, factory := range sampleTypeMapping {
-		fname, factory := fname, factory
 		t.Run(fname, func(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(dir, fname)
@@ -105,7 +104,6 @@ func TestSamplesMetadataValid(t *testing.T) {
 		"cache_v1alpha1_valkeyrestore.yaml":      {kind: "ValkeyRestore"},
 	}
 	for fname, want := range expected {
-		fname, want := fname, want
 		t.Run(fname, func(t *testing.T) {
 			t.Parallel()
 			raw, err := os.ReadFile(filepath.Join(dir, fname))

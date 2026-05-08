@@ -30,7 +30,6 @@ func TestPrimaryOrdinal(t *testing.T) {
 		{"large ordinal", "cluster-127", 127},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			v := &cachev1alpha1.Valkey{}
@@ -155,7 +154,6 @@ func TestSetBuildInfo(t *testing.T) {
 		{"empty values", "", "", ""},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			// t.Parallel 비활성 — Gauge 시계열이 process-global, parallel 시 race.
 			defer MetricBuildInfo.DeleteLabelValues(c.version, c.commit, c.date)

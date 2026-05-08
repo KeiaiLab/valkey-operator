@@ -27,7 +27,7 @@ func TestKustomizeChartResourcesSync(t *testing.T) {
 		t.Fatalf("read manager: %v", err)
 	}
 	var deployRes map[string]map[string]string
-	for _, doc := range strings.Split(string(mgrRaw), "\n---\n") {
+	for doc := range strings.SplitSeq(string(mgrRaw), "\n---\n") {
 		body := strings.TrimSpace(doc)
 		if body == "" {
 			continue
@@ -113,7 +113,7 @@ func TestKustomizeChartProbesSync(t *testing.T) {
 		t.Fatalf("read manager: %v", err)
 	}
 	deployProbes := map[string]map[string]int{}
-	for _, doc := range strings.Split(string(mgrRaw), "\n---\n") {
+	for doc := range strings.SplitSeq(string(mgrRaw), "\n---\n") {
 		body := strings.TrimSpace(doc)
 		if body == "" {
 			continue
@@ -197,7 +197,7 @@ func TestKustomizeChartSecurityContextInvariants(t *testing.T) {
 	// 1. kustomize manager.yaml 의 pod + container securityContext.
 	mgrRaw, _ := os.ReadFile(filepath.Join(repo, "config/manager/manager.yaml"))
 	var mgrPodSC, mgrContainerSC map[string]any
-	for _, doc := range strings.Split(string(mgrRaw), "\n---\n") {
+	for doc := range strings.SplitSeq(string(mgrRaw), "\n---\n") {
 		body := strings.TrimSpace(doc)
 		if body == "" {
 			continue

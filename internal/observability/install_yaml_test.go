@@ -104,8 +104,8 @@ func TestInstallYAMLOperatorImageEnvMatchesContainerImage(t *testing.T) {
 		t.Fatalf("read: %v", err)
 	}
 
-	docs := strings.Split(string(raw), "\n---\n")
-	for _, doc := range docs {
+	docs := strings.SplitSeq(string(raw), "\n---\n")
+	for doc := range docs {
 		body := strings.TrimSpace(doc)
 		if body == "" {
 			continue

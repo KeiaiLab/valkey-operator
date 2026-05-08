@@ -31,10 +31,7 @@ func BuildPDB(crName, namespace string, replicas int32, spec *cachev1alpha1.PodD
 	case spec != nil && spec.MinAvailable != nil:
 		pdb.Spec.MinAvailable = spec.MinAvailable
 	default:
-		min := int(replicas - 1)
-		if min < 1 {
-			min = 1
-		}
+		min := max(int(replicas-1), 1)
 		v := intstr.FromInt(min)
 		pdb.Spec.MinAvailable = &v
 	}

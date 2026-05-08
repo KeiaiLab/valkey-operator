@@ -93,7 +93,7 @@ func loadKubebuilderRBACResources(t *testing.T) map[string]bool {
 			continue
 		}
 		for _, m := range resRe.FindAllStringSubmatch(string(raw), -1) {
-			for _, res := range strings.Split(m[1], ";") {
+			for res := range strings.SplitSeq(m[1], ";") {
 				out[res] = true
 			}
 		}

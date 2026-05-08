@@ -6,6 +6,7 @@ package resources
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -82,15 +83,15 @@ func BuildRestoreInitContainer(srcRelPath string) corev1.Container {
 func BuildRestoreInitContainerForCluster(shards int32, shardLayout map[int]string) corev1.Container {
 	dstPath := "/data/dump.rdb"
 	// shell case 분기 빌드 — shard index 별 source path.
-	caseLines := ""
-	for i := int32(0); i < shards; i++ {
+	var caseLines strings.Builder
+	for i := range shards {
 		path, ok := shardLayout[int(i)]
 		if !ok || path == "" {
 			path = fmt.Sprintf("shard-%d/dump.rdb", i)
 		}
-		caseLines += fmt.Sprintf("    %d) SRC=%q ;;\n", i, path)
+		caseLines.WriteString(fmt.Sprintf("    %d) SRC=%q ;;\n", i, path))
 	}
-	caseLines += "    *) echo \"unknown shard index $SHARD_IDX\"; exit 1 ;;\n"
+	caseLines.WriteString("    *) echo \"unknown shard index $SHARD_IDX\"; exit 1 ;;\n")
 
 	cmd := fmt.Sprintf(`set -eu
 ORDINAL=${HOSTNAME##*-}
@@ -106,7 +107,7 @@ SRC_FULL=%s/$SRC
 cp -f "$SRC_FULL" %q
 ls -la %q
 echo "restore-init-ok ordinal=$ORDINAL shard=$SHARD_IDX src=$SRC"
-`, shards, caseLines, RestoreSourceMountPath, dstPath, dstPath)
+`, shards, caseLines.String(), RestoreSourceMountPath, dstPath, dstPath)
 
 	return corev1.Container{
 		Name:    RestoreInitContainerName,

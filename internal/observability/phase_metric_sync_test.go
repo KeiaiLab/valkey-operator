@@ -29,7 +29,7 @@ func TestMetricPhaseLabelsSync(t *testing.T) {
 		t.Fatal("metrics.go::allPhases 추출 실패")
 	}
 	metricPhases := map[string]bool{}
-	for _, p := range strings.Split(m[1], ",") {
+	for p := range strings.SplitSeq(m[1], ",") {
 		p = strings.Trim(strings.TrimSpace(p), `"`)
 		if p != "" {
 			metricPhases[p] = true

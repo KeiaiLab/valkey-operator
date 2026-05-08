@@ -6,6 +6,7 @@ package resources
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -37,7 +38,6 @@ func TestNamingFunctions(t *testing.T) {
 		{"BackupJobName", BackupJobName("nightly"), "nightly-rdb-copy"},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			if c.got != c.want {
@@ -265,7 +265,6 @@ func TestPortIntOrString(t *testing.T) {
 	t.Parallel()
 	cases := []int32{6379, 6380, 8080, 16379}
 	for _, p := range cases {
-		p := p
 		t.Run(fmt.Sprintf("port_%d", p), func(t *testing.T) {
 			t.Parallel()
 			got := PortIntOrString(p)
@@ -695,7 +694,6 @@ func TestJoinArgs(t *testing.T) {
 		{"with spaces in arg", []string{"foo", "bar baz"}, "foo bar baz"}, // 의도된 단순 join.
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			if got := joinArgs(c.in); got != c.want {
@@ -849,13 +847,7 @@ func TestPodSecurityRestrictedHelper(t *testing.T) {
 	if sc.Capabilities == nil {
 		t.Fatal("Capabilities nil")
 	}
-	hasDropAll := false
-	for _, c := range sc.Capabilities.Drop {
-		if c == "ALL" {
-			hasDropAll = true
-			break
-		}
-	}
+	hasDropAll := slices.Contains(sc.Capabilities.Drop, "ALL")
 	if !hasDropAll {
 		t.Errorf("Capabilities.Drop must include ALL, got %v", sc.Capabilities.Drop)
 	}

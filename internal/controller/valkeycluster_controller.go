@@ -729,7 +729,7 @@ func podAddresses(vc *cachev1alpha1.ValkeyCluster) []string {
 		port = resources.PortTLS
 	}
 	out := make([]string, 0, total)
-	for i := 0; i < total; i++ {
+	for i := range total {
 		out = append(out, fmt.Sprintf("%s:%d",
 			resources.PodFQDN(vc.Name, i, vc.Namespace), port))
 	}
@@ -951,7 +951,7 @@ func (r *ValkeyClusterReconciler) buildPodAddrMap(ctx context.Context, vc *cache
 // sortPrimariesBySlotStart — primary 의 첫 slot 범위 시작값 기준 오름차순 정렬.
 // slot 미보유 primary 는 끝으로 (아직 할당 안 된 상태).
 func sortPrimariesBySlotStart(p []vk.NodeView) {
-	for i := 0; i < len(p); i++ {
+	for i := range p {
 		for j := i + 1; j < len(p); j++ {
 			ai, aj := primaryFirstSlot(p[i]), primaryFirstSlot(p[j])
 			if ai > aj {
@@ -1001,7 +1001,7 @@ func buildShardStatus(vc *cachev1alpha1.ValkeyCluster) []cachev1alpha1.ShardStat
 
 	out := make([]cachev1alpha1.ShardStatus, shards)
 	idx := 0
-	for i := 0; i < shards; i++ {
+	for i := range shards {
 		end := idx + per - 1
 		if i == shards-1 {
 			end = totalSlots - 1
@@ -1015,7 +1015,7 @@ func buildShardStatus(vc *cachev1alpha1.ValkeyCluster) []cachev1alpha1.ShardStat
 		// replica j (j=0..rps-1) 가 primary (j*shards % shards == 0... primary i) 와 매핑되도록
 		// CreateCluster 는 replicas[i] 를 primaries[i % shards] 에 붙임.
 		// 즉 replica ordinal = shards + (k*shards + i) (k=0..rps-1).
-		for k := 0; k < rps; k++ {
+		for k := range rps {
 			repOrd := shards + k*shards + i
 			st.ReplicaPods = append(st.ReplicaPods,
 				fmt.Sprintf("%s-%d", vc.Name, repOrd))

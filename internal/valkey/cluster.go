@@ -61,7 +61,7 @@ func QueryClusterInfo(ctx context.Context, c *redis.Client) (*ClusterInfo, error
 
 func parseClusterInfo(s string) *ClusterInfo {
 	out := &ClusterInfo{}
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		line = strings.TrimSpace(line)
 		k, v, ok := strings.Cut(line, ":")
 		if !ok {
@@ -226,7 +226,7 @@ func replicateWithRetry(ctx context.Context, dial func(addr string) *redis.Clien
 	const maxAttempts = 10
 	delay := 200 * time.Millisecond
 	var lastErr error
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for range maxAttempts {
 		c := dial(addr)
 		nodes, err := QueryClusterNodes(ctx, c)
 		if err != nil {

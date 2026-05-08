@@ -5,6 +5,8 @@ Copyright 2026 Keiailab.
 package resources
 
 import (
+	"maps"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -40,15 +42,11 @@ func BuildServiceMonitorForCluster(vc *cachev1alpha1.ValkeyCluster) *unstructure
 		if sm.Interval != "" {
 			interval = sm.Interval
 		}
-		for k, v := range sm.Labels {
-			extraLabels[k] = v
-		}
+		maps.Copy(extraLabels, sm.Labels)
 	}
 
 	labels := CommonLabels(vc.Name, "valkey-cluster")
-	for k, v := range extraLabels {
-		labels[k] = v
-	}
+	maps.Copy(labels, extraLabels)
 
 	return commonsmonitoring.NewServiceMonitor(commonsmonitoring.ServiceMonitorParams{
 		Name:              ServiceMonitorName(vc.Name),

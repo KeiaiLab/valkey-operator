@@ -51,7 +51,7 @@ func PromoteToPrimary(ctx context.Context, c *redis.Client) error {
 // 첫 valid 매칭만 사용 — replica 노드는 보통 slave_repl_offset 만, primary
 // 는 master_repl_offset 만 가지므로 OR 의미.
 func ParseReplicationOffset(info string) int64 {
-	for _, line := range strings.Split(info, "\n") {
+	for line := range strings.SplitSeq(info, "\n") {
 		line = strings.TrimSpace(line)
 		var raw string
 		switch {
@@ -72,7 +72,7 @@ func ParseReplicationOffset(info string) int64 {
 // parseReplicationInfo — INFO replication 응답에서 role / master_host:port 추출.
 func parseReplicationInfo(info string) (role, master string) {
 	var host, port string
-	for _, line := range strings.Split(info, "\n") {
+	for line := range strings.SplitSeq(info, "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(line, "role:"):

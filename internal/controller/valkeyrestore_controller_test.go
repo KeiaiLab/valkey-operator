@@ -9,6 +9,7 @@ package controller
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -791,10 +792,5 @@ func TestRestore_deletionValkeyCluster_cleansUp(t *testing.T) {
 
 // containsStr — 슬라이스 안에 s 가 있는지.
 func containsStr(slice []string, s string) bool {
-	for _, x := range slice {
-		if x == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, s)
 }

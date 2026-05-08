@@ -19,7 +19,6 @@ func TestValkeySpecIsAutoFailoverEnabled(t *testing.T) {
 		{"explicit false", &fa, false},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			s := &ValkeySpec{AutoFailover: c.ptr}
@@ -52,7 +51,6 @@ func TestValkeyBackupIsTerminal(t *testing.T) {
 		{BackupPhase(""), false},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(string(c.phase), func(t *testing.T) {
 			t.Parallel()
 			b := &ValkeyBackup{}
@@ -77,7 +75,6 @@ func TestValkeyRestoreIsTerminal(t *testing.T) {
 		{RestorePhase(""), false},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(string(c.phase), func(t *testing.T) {
 			t.Parallel()
 			r := &ValkeyRestore{}
@@ -103,7 +100,6 @@ func TestValkeyClusterSpecTotalNodes(t *testing.T) {
 		{"0 shards → 0", 0, 1, 0},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			s := &ValkeyClusterSpec{Shards: c.shards, ReplicasPerShard: c.replicasPerShard}

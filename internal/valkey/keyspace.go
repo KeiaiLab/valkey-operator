@@ -41,17 +41,17 @@ func CountKeyspaceKeys(ctx context.Context, c *redis.Client) (int64, error) {
 // 정수 파싱 실패 시 해당 line 만 skip — 부분 결과 보존.
 func parseKeyspaceKeys(info string) int64 {
 	var total int64
-	for _, line := range strings.Split(info, "\n") {
+	for line := range strings.SplitSeq(info, "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "db") {
 			continue
 		}
-		colon := strings.IndexByte(line, ':')
-		if colon < 0 {
+		_, after, ok := strings.Cut(line, ":")
+		if !ok {
 			continue
 		}
-		fields := strings.Split(line[colon+1:], ",")
-		for _, kv := range fields {
+		fields := strings.SplitSeq(after, ",")
+		for kv := range fields {
 			kv = strings.TrimSpace(kv)
 			if !strings.HasPrefix(kv, "keys=") {
 				continue

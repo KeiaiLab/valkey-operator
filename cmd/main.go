@@ -210,7 +210,7 @@ func main() {
 	if ns := os.Getenv("WATCH_NAMESPACES"); ns != "" {
 		nsMap := map[string]cache.Config{}
 		var nsList []string
-		for _, n := range strings.Split(ns, ",") {
+		for n := range strings.SplitSeq(ns, ",") {
 			n = strings.TrimSpace(n)
 			if n != "" {
 				nsMap[n] = cache.Config{}

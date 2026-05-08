@@ -34,7 +34,7 @@ func TestKustomizeManifestLabelChainSync(t *testing.T) {
 		}
 		var out []map[string]any
 		// multi-doc YAML — `---` 분리.
-		for _, doc := range strings.Split(string(raw), "\n---\n") {
+		for doc := range strings.SplitSeq(string(raw), "\n---\n") {
 			body := strings.TrimSpace(doc)
 			if body == "" {
 				continue

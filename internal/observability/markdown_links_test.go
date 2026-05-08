@@ -65,8 +65,8 @@ func TestMarkdownRelativeLinksResolve(t *testing.T) {
 			}
 			// fragment 분리.
 			pathPart := target
-			if i := strings.Index(target, "#"); i >= 0 {
-				pathPart = target[:i]
+			if before, _, ok := strings.Cut(target, "#"); ok {
+				pathPart = before
 			}
 			// .md 만 검증.
 			if !strings.HasSuffix(pathPart, ".md") {

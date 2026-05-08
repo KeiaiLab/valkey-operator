@@ -19,7 +19,6 @@ func TestParseFlags(t *testing.T) {
 		{"", map[string]bool{"": true}}, // strings.Split 의 zero-value 동작 명시.
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.in, func(t *testing.T) {
 			t.Parallel()
 			got := parseFlags(c.in)
@@ -52,7 +51,6 @@ func TestParseSlotToken(t *testing.T) {
 		{"-", 0, 0, false},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.in, func(t *testing.T) {
 			t.Parallel()
 			r, ok := parseSlotToken(c.in)
@@ -147,7 +145,6 @@ func TestAtoi32(t *testing.T) {
 		{"16384", 16384},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.in, func(t *testing.T) {
 			t.Parallel()
 			if got := atoi32(c.in); got != c.want {
@@ -171,7 +168,6 @@ func TestResolveAddrIPPurePaths(t *testing.T) {
 	// IP literal pass-through (DNS 호출 안 함).
 	cases := []string{"192.168.1.1:6379", "10.0.0.1:6380", "::1:6379", "[::1]:6379"}
 	for _, addr := range cases {
-		addr := addr
 		t.Run(addr, func(t *testing.T) {
 			t.Parallel()
 			got, err := resolveAddrIP(ctx, addr)

@@ -82,8 +82,8 @@ func TestChartReadmeYAMLCodeblocksValid(t *testing.T) {
 		for _, block := range blocks {
 			rel, _ := filepath.Rel(repo, f)
 			// multi-doc YAML — `---` 로 분리해 각 doc 독립 검증.
-			docs := strings.Split(block[1], "\n---\n")
-			for _, body := range docs {
+			docs := strings.SplitSeq(block[1], "\n---\n")
+			for body := range docs {
 				for _, m := range modeRe.FindAllStringSubmatch(body, -1) {
 					checkedMode++
 					val := strings.Trim(m[1], "\"'")

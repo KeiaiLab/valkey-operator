@@ -66,7 +66,7 @@ func QueryClusterNodes(ctx context.Context, c *redis.Client) ([]NodeView, error)
 
 func parseClusterNodes(raw string) []NodeView {
 	var out []NodeView
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -106,16 +106,16 @@ func extractAddr(s string) string {
 
 func parseFlags(s string) map[string]bool {
 	out := map[string]bool{}
-	for _, f := range strings.Split(s, ",") {
+	for f := range strings.SplitSeq(s, ",") {
 		out[f] = true
 	}
 	return out
 }
 
 func parseSlotToken(s string) (SlotRange, bool) {
-	if i := strings.Index(s, "-"); i >= 0 {
-		a, errA := strconv.Atoi(s[:i])
-		b, errB := strconv.Atoi(s[i+1:])
+	if before, after, ok := strings.Cut(s, "-"); ok {
+		a, errA := strconv.Atoi(before)
+		b, errB := strconv.Atoi(after)
 		if errA != nil || errB != nil {
 			return SlotRange{}, false
 		}
