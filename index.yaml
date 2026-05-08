@@ -95,7 +95,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.5
-    created: "2026-05-08T17:18:18.428267+09:00"
+    created: "2026-05-08T17:30:02.343264+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 4696a61822415f6bada8b93d8990690ff0e42455e7b6339198fd3595d7cfbfc6
@@ -216,12 +216,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.4
-    created: "2026-05-08T17:18:18.426528+09:00"
+    created: "2026-05-08T17:30:02.341928+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: 4067be1593a6688b61bce2abcfdef09fa88f441f187a8fd6911872a88a873946
+    digest: 22db863a16f052dd0fab959217ac8c55258992d6416deb4b2c7bd003affdce85
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -339,12 +339,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.3
-    created: "2026-05-08T17:18:18.425159+09:00"
+    created: "2026-05-08T17:30:02.340455+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: fcb5da0fcb07f606b2e7aa0a4e7d57bbed301cc9f82a4891f1f769af701a482e
+    digest: 1b88d6ff21f3a32a7fb8fb966845e5514a040e45ea78bb948ea568e4b7c92d24
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -462,12 +462,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.2
-    created: "2026-05-08T17:18:18.422692+09:00"
+    created: "2026-05-08T17:30:02.338569+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: 1e5d260224f99ddddf7a050a9447ca9ec9b24d04c6f098fa763846fa773e7512
+    digest: 81468585f0eddae8083a02556e43c6382d5e8fac58ecbbc431f3ef8d5385b3fd
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -585,12 +585,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.1
-    created: "2026-05-08T17:18:18.421284+09:00"
+    created: "2026-05-08T17:30:02.337161+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: f7a37bfb61b246ee925e3169fb9686a71a11592825383a746de13c0a664bda76
+    digest: 036262f9558d68a9cbe3330eb0d96add0d50e2a2df138eb6dddcece44a5c43ae
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -706,12 +706,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-05-08T17:18:18.419952+09:00"
+    created: "2026-05-08T17:30:02.335756+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: e63c3092dc6e0b25f3f536bbfaed6ba44149f46ff73ec58db846b2888881aad8
+    digest: 8977adb17d4744615cb7f42a042be9122a8b937e9c9d5a25b2d1007cee47f939
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -827,12 +827,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.5
-    created: "2026-05-08T17:18:18.417876+09:00"
+    created: "2026-05-08T17:30:02.333597+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: 0e3db229f445f0852b1d8ef0e64807b9f6d5b3fd4db72bdb39334fa2d3fe4c6a
+    digest: 1067269d0484f8f714941000e116e97c39add9ebcaf235c364bed5bc94c935f0
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -958,12 +958,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.4
-    created: "2026-05-08T17:18:18.41649+09:00"
+    created: "2026-05-08T17:30:02.332214+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: 6a54e94085e39282309031f8ec39c672f0108197c0ef5e9ee07d4df0b9c5c265
+    digest: 94e92379f9f23d68701233681fa6e1d6c6157c67f4d178b3bc9545183b55bacd
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -1089,12 +1089,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.3
-    created: "2026-05-08T17:18:18.415122+09:00"
+    created: "2026-05-08T17:30:02.330169+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: a149c249e1e98ad4291522005b1b8875a62db192d0474873760076ca44d03ccd
+    digest: 40eb9baa3e355260c2f709952fae98273cdf74bb86226b1eea9ff17f17836d88
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -1220,12 +1220,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-05-08T17:18:18.412372+09:00"
+    created: "2026-05-08T17:30:02.32881+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: b5cc702dac3ac948b9c8d8e7587c588b5dda6138bfd354f1aa24d87a16e8ec39
+    digest: 8a6e526db8b94621fcb5f5b11620b64b4dce55ac9141b451e8fbae20298ff5c0
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -1349,12 +1349,12 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-05-08T17:18:18.410675+09:00"
+    created: "2026-05-08T17:30:02.327266+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: f9c3d86e7c59f5848104405796fb21c521eeff03ebf91d7adf6d02dae7b2e320
+    digest: d6b0e861dd560cd51d1c86e0d0f0da83c825b916945a87129516043a1b58001f
     home: https://github.com/keiailab/valkey-operator
-    icon: https://valkey.io/img/Valkey-Logo-RGB-Color.svg
+    icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
     - valkey
     - redis
@@ -1376,4 +1376,4 @@ entries:
     urls:
     - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-05-08T17:18:18.408347+09:00"
+generated: "2026-05-08T17:30:02.324538+09:00"
