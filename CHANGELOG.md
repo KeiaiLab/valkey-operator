@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- audit (4-repo cross-cut, 2026-05-09): RFC-0017 채택 — `.golangci.yml` + `.custom-gcl.yml` 신규 (postgres 표준 cp + depguard 정리), Makefile `validate` 타겟 추가 (kustomize + helm lint + helm template). ADR-0030 등재. 본 repo `.lefthook.yml` 은 RFC-0017 §3.1 표준 원본으로 승격됨 (변경 없음).
+
+### Fixed
+
+- `.golangci.yml` depguard 비활성 (golangci-lint v2.8 schema 가 빈 deny list 거부) — valkey internal boundary 도입 후 ADR 와 함께 재활성. 17 linter 활성 (logcheck plugin 포함).
+
 ## [1.0.5] - 2026-05-08
 
 ### Fixed
