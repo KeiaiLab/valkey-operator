@@ -109,12 +109,13 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return applyErrorCondition(ctx, r.Client, v, "ConfigMap", err, r.Recorder)
 	}
 
-	// 5. Headless + Client Service
-	hs := resources.BuildHeadlessService(v.Name, v.Namespace, false)
+	// 5. Headless + Client Service (TLS 활성 시 6380 port 추가 expose)
+	tlsEnabled := v.Spec.TLS != nil && v.Spec.TLS.Enabled
+	hs := resources.BuildHeadlessService(v.Name, v.Namespace, false, tlsEnabled)
 	if err := applyService(ctx, r.Client, r.Scheme, v, hs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "HeadlessService", err, r.Recorder)
 	}
-	cs := resources.BuildClientService(v.Name, v.Namespace)
+	cs := resources.BuildClientService(v.Name, v.Namespace, tlsEnabled)
 	if err := applyService(ctx, r.Client, r.Scheme, v, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ClientService", err, r.Recorder)
 	}

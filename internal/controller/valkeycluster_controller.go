@@ -118,11 +118,13 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// 5. Headless + Client Service. Headless 는 cluster-bus(16379) 포트 추가.
-	hs := resources.BuildHeadlessService(vc.Name, vc.Namespace, true)
+	// TLS 활성 시 client-tls(6380) 도 expose.
+	tlsEnabled := vc.Spec.TLS != nil && vc.Spec.TLS.Enabled
+	hs := resources.BuildHeadlessService(vc.Name, vc.Namespace, true, tlsEnabled)
 	if err := applyService(ctx, r.Client, r.Scheme, vc, hs); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "HeadlessService", err, r.Recorder)
 	}
-	cs := resources.BuildClientService(vc.Name, vc.Namespace)
+	cs := resources.BuildClientService(vc.Name, vc.Namespace, tlsEnabled)
 	if err := applyService(ctx, r.Client, r.Scheme, vc, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "ClientService", err, r.Recorder)
 	}

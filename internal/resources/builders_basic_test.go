@@ -156,7 +156,7 @@ func TestBuildPDBMinAvailableOverride(t *testing.T) {
 func TestBuildHeadlessService(t *testing.T) {
 	t.Parallel()
 	// non-cluster: client port 1개.
-	svc := BuildHeadlessService("rs", "ns", false)
+	svc := BuildHeadlessService("rs", "ns", false, false)
 	if svc.Spec.ClusterIP != "None" {
 		t.Error("Headless 는 ClusterIP=None")
 	}
@@ -167,7 +167,7 @@ func TestBuildHeadlessService(t *testing.T) {
 		t.Errorf("non-cluster: client 포트만, got %d ports", len(svc.Spec.Ports))
 	}
 	// cluster: client + cluster-bus.
-	svcC := BuildHeadlessService("rs", "ns", true)
+	svcC := BuildHeadlessService("rs", "ns", true, false)
 	if len(svcC.Spec.Ports) != 2 {
 		t.Errorf("cluster: 2 포트 기대, got %d", len(svcC.Spec.Ports))
 	}
@@ -184,7 +184,7 @@ func TestBuildHeadlessService(t *testing.T) {
 
 func TestBuildClientService(t *testing.T) {
 	t.Parallel()
-	svc := BuildClientService("rs", "ns")
+	svc := BuildClientService("rs", "ns", false)
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
 		t.Errorf("type: %v", svc.Spec.Type)
 	}

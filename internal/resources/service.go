@@ -11,9 +11,18 @@ import (
 )
 
 // BuildHeadlessService — pod-to-pod stable DNS (StatefulSet 필수).
-func BuildHeadlessService(crName, namespace string, clusterMode bool) *corev1.Service {
+//
+// tlsEnabled=true 시 TLS-port (6380) 를 추가 expose — Valkey 의 port (6379 plain) /
+// tls-port (6380 TLS) 분리 모델 정합. 외부 client (또는 inter-pod TLS replication)
+// 가 6380 으로 connect 가능. tls-auth-clients=yes 운영 시 client cert 필요.
+func BuildHeadlessService(crName, namespace string, clusterMode, tlsEnabled bool) *corev1.Service {
 	ports := []corev1.ServicePort{
 		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
+	}
+	if tlsEnabled {
+		ports = append(ports, corev1.ServicePort{
+			Name: "client-tls", Port: PortTLS, TargetPort: intstr.FromInt(PortTLS), Protocol: corev1.ProtocolTCP,
+		})
 	}
 	if clusterMode {
 		ports = append(ports, corev1.ServicePort{
@@ -65,7 +74,18 @@ func MetricsServiceLabels(crName string) map[string]string {
 }
 
 // BuildClientService — 외부 클라이언트용 ClusterIP Service.
-func BuildClientService(crName, namespace string) *corev1.Service {
+//
+// tlsEnabled=true 시 client-tls (6380) 도 expose — 외부 client 가 TLS connection
+// 사용 가능 (rediss:// scheme + tls-auth-clients=yes 시 client cert 필요).
+func BuildClientService(crName, namespace string, tlsEnabled bool) *corev1.Service {
+	ports := []corev1.ServicePort{
+		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
+	}
+	if tlsEnabled {
+		ports = append(ports, corev1.ServicePort{
+			Name: "client-tls", Port: PortTLS, TargetPort: intstr.FromInt(PortTLS), Protocol: corev1.ProtocolTCP,
+		})
+	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ClientServiceName(crName),
@@ -75,9 +95,7 @@ func BuildClientService(crName, namespace string) *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: SelectorLabels(crName),
-			Ports: []corev1.ServicePort{
-				{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
-			},
+			Ports:    ports,
 		},
 	}
 }

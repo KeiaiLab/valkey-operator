@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-05-08
+
+### Added
+
+- Service builder: TLS 활성 시 client-tls (6380) port expose. BuildClientService + BuildHeadlessService 의 tlsEnabled 인자 추가. 외부 client 가 rediss:// scheme 으로 connect 가능 (tls-auth-clients=yes 시 client cert 별도 발급 필요, 본 patch 는 server-side TLS 외부 노출 인프라).
+
 ## [1.0.1] - 2026-05-07
 
 ### Fixed
