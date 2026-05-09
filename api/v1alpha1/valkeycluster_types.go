@@ -115,6 +115,7 @@ type ValkeyClusterStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=vkc
+// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Shards",type="integer",JSONPath=".spec.shards"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".status.clusterState"
