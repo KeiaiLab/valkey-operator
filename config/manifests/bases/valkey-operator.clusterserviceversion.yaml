@@ -1,0 +1,129 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Seamless Upgrades
+    categories: Database, Storage
+    containerImage: ghcr.io/keiailab/valkey-operator:v1.0.9
+    createdAt: "2026-05-10T00:00:00Z"
+    description: |
+      Kubernetes operator for Valkey (Redis fork, BSD-3) — manages Standalone,
+      Replication (primary + replicas), and Cluster (16384 slot, sharded)
+      topologies via CRD-driven reconciliation. Cosign-signed images with
+      SLSA L2 provenance attestation.
+    repository: https://github.com/keiailab/valkey-operator
+    support: https://github.com/keiailab/valkey-operator/issues
+  name: valkey-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: ValkeyBackupTarget is an external storage target (S3/GCS/Azure)
+        for ValkeyBackup objects.
+      displayName: Valkey Backup Target
+      kind: ValkeyBackupTarget
+      name: valkeybackuptargets.cache.keiailab.io
+      version: v1alpha1
+    - description: ValkeyRestore restores an RDB backup into a target Valkey or ValkeyCluster.
+      displayName: Valkey Restore
+      kind: ValkeyRestore
+      name: valkeyrestores.cache.keiailab.io
+      version: v1alpha1
+    - description: ValkeyBackup is the Schema for the valkeybackups API.
+      displayName: Valkey Backup
+      kind: ValkeyBackup
+      name: valkeybackups.cache.keiailab.io
+      version: v1alpha1
+    - description: ValkeyCluster is the Schema for the valkeyclusters API.
+      displayName: Valkey Cluster
+      kind: ValkeyCluster
+      name: valkeyclusters.cache.keiailab.io
+      version: v1alpha1
+    - description: Valkey is the Schema for the valkeys API.
+      displayName: Valkey
+      kind: Valkey
+      name: valkeys.cache.keiailab.io
+      version: v1alpha1
+  description: |
+    # Valkey Operator
+
+    The Valkey Operator manages [Valkey](https://valkey.io/) (a high-performance,
+    BSD-3-licensed fork of Redis) instances on Kubernetes via Custom Resource
+    Definitions.
+
+    ## Features
+
+    - **Standalone, Replication, and Cluster topologies** — three distinct CRDs
+      (`Valkey`, `ValkeyCluster`) cover the operational range.
+    - **Automated failover** — Replication mode detects primary `NotReady` for
+      30s+ and promotes the replica with the largest `master_repl_offset`.
+    - **Cluster bootstrap + slot migration** — 16384 slot assignment, online
+      resharding (Auto / Manual policy), `CLUSTER MEET`/`CLUSTER REPLICATE`/
+      `CLUSTER ADDSLOTS` orchestration.
+    - **Backup / Restore** — RDB or AOF, PVC or external (S3/GCS/Azure) target,
+      retention policy, point-in-time restore.
+    - **Supply chain** — Cosign signed container images + SLSA L2 in-toto
+      provenance attestation (ADR-0033). SBOM (SPDX-2.3) on every release.
+    - **Security baseline** — Pod Security Standards Restricted, NetworkPolicy
+      auto-creation, RBAC least-privilege, ReadOnlyRootFilesystem, non-root
+      runAsUser. All toggleable via `v1alpha2.SecuritySpec.PodSecurityRestricted`
+      and `NetworkPolicy.AutoCreate`.
+
+    ## Documentation
+
+    - GitHub: https://github.com/keiailab/valkey-operator
+    - Helm Chart: https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator
+    - Discussions: https://github.com/keiailab/valkey-operator/discussions
+
+    ## Prerequisites
+
+    - Kubernetes 1.26+
+    - Storage class for PVCs
+    - (Optional) cert-manager for automatic TLS certificate management
+    - (Optional) Prometheus Operator for `ServiceMonitor` scraping
+  displayName: Valkey Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - valkey
+  - redis
+  - cache
+  - database
+  - cluster
+  - replication
+  - backup
+  - restore
+  links:
+  - name: GitHub
+    url: https://github.com/keiailab/valkey-operator
+  - name: Documentation
+    url: https://github.com/keiailab/valkey-operator/blob/main/README.md
+  - name: Helm Chart (ArtifactHub)
+    url: https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator
+  - name: Discussions
+    url: https://github.com/keiailab/valkey-operator/discussions
+  maintainers:
+  - email: help@masblue.studio
+    name: Keiailab
+  maturity: alpha
+  minKubeVersion: 1.26.0
+  provider:
+    name: Keiailab
+    url: https://github.com/keiailab
+  version: 0.0.0
