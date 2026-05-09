@@ -91,6 +91,45 @@ type ValkeySpec struct {
 	// +kubebuilder:default=true
 	// +optional
 	AutoFailover *bool `json:"autoFailover,omitempty"`
+
+	// Modules — Valkey 공식 module 활성화 (Plan §2 D9, ADR-0032).
+	//
+	// 본 spec 은 *Valkey 공식 module 만* preset 으로 인정 (BSD 라이선스
+	// 호환). Bitnami Redis Stack 의 RediSearch/RedisJSON/RedisBloom/
+	// RedisTimeSeries 는 RSALv2/SSPL 라이선스로 *호환 불가* — 본 필드
+	// 미지원.
+	//
+	// 사용자 커스텀 module 은 ModuleSpec.Image 로 *bring-your-own*
+	// (init container 가 .so 를 emptyDir 로 mount).
+	//
+	// +optional
+	Modules []ModuleSpec `json:"modules,omitempty"`
+}
+
+// ModuleSpec — Valkey module 정의 (Plan §2 D9, ADR-0032).
+//
+// 두 모드:
+//   - Name 만 지정: Valkey 공식 module preset (예: "valkey-search",
+//     "valkey-json", "valkey-bloom"). operator 가 alllow-list 검증 +
+//     공식 image 자동 resolve.
+//   - Image 명시: bring-your-own custom module. init container 가
+//     해당 image 의 /modules/<name>.so 를 emptyDir 로 mount, valkey
+//     container 가 `--loadmodule /modules/<name>.so <args>` 로 적재.
+//
+// 보안: PSS Restricted (ADR-0036) 와 정합 — module image 가 privileged
+// syscall 요구 시 webhook 거부. Sonatype Trust Score 검증 권장.
+type ModuleSpec struct {
+	// Name — module 식별자 (예: "valkey-search").
+	// +kubebuilder:validation:Pattern=`^[a-z][a-z0-9-]+$`
+	Name string `json:"name"`
+
+	// Image — custom module image (optional). 미지정 시 공식 preset 자동 resolve.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// LoadModuleArgs — `loadmodule <so> <args>` 의 args (optional).
+	// +optional
+	LoadModuleArgs []string `json:"loadModuleArgs,omitempty"`
 }
 
 // IsAutoFailoverEnabled — Spec.AutoFailover 가 nil 또는 true 면 true (default
