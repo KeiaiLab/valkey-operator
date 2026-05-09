@@ -204,7 +204,13 @@ func ptrInt64(i int64) *int64 { return &i }
 // 회귀 가드: PodSecurity Admission "restricted" 네임스페이스에서 pod 거부 시
 // 데이터 가용성 사고 가능 — commons 패키지 100% line coverage 단위 test 보장.
 func buildRestrictedContainerSecurityContext() *corev1.SecurityContext {
-	return security.RestrictedContainer(security.WithRunAsUser(999))
+	// argos cycle 21 stop hook 34차: ReadOnlyRootFilesystem 활성 (modern security
+	// baseline 마지막 layer). valkey-server 는 /data (PVC) + /etc/valkey
+	// (configmap) + /tmp (emptyDir, 별 cycle) 외 rootfs 쓰기 부재.
+	return security.RestrictedContainer(
+		security.WithRunAsUser(999),
+		security.WithReadOnlyRootFilesystem(true),
+	)
 }
 
 // PortIntOrString — helper for Probe/Service ports.
