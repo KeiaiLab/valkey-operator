@@ -42,7 +42,7 @@
 | 0031 | *Reserved — Password Rotation reflect path (Plan §2 D6, PR-B7).* 미작성. | Reserved | — |
 | 0032 | *Reserved — Custom Modules init container mount (Plan §2 D9, PR-C6).* 미작성. | Reserved | — |
 | [0033](0033-supply-chain-cosign-slsa.md) | Supply Chain — cosign sign + SLSA L2 in-toto attestation (Plan §2 D5, PR-A4) | Accepted | 2026-05-09 |
-| 0034 | *Reserved — Auth Optional v1alpha2 + conversion webhook (Plan §2 D1, PR-A2).* 미작성. ADR-0013 supersede 예정. | Reserved | — |
+| [0034](0034-auth-optional-v1alpha2.md) | Auth Optional + v1alpha2 신규 (supersedes ADR-0013, PR-A2.1 type module) | Accepted | 2026-05-09 |
 | 0035 | *Reserved — NetworkPolicy Optional toggle (Plan §2 D2, PR-A3).* 미작성. ADR-0057 supersede 예정. | Reserved | — |
 | 0036 | *Reserved — PodSecurityContext Restricted Optional (Plan §2 D3, PR-A3).* 미작성. | Reserved | — |
 | 0037 | *Reserved — OperatorHub.io bundle 등록 (Plan §2 D4, PR-B9).* 미작성. | Reserved | — |
