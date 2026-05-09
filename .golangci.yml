@@ -49,6 +49,13 @@ linters:
           - dupl
           - lll
         path: internal/*
+      # 테스트 파일에서는 goconst + unparam + gocyclo 비활성 — fixture 문자열
+      # 반복 + 헬퍼 함수 인자 hardcoded + 거대 통합 검증 함수는 정상 패턴.
+      - linters:
+          - goconst
+          - unparam
+          - gocyclo
+        path: _test\.go$
     paths:
       - third_party$
       - builtin$

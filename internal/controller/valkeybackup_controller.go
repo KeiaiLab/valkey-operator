@@ -217,12 +217,12 @@ func hasExternalDestination(b *cachev1alpha1.ValkeyBackup) bool {
 func (r *ValkeyBackupReconciler) validateClusterRef(ctx context.Context, b *cachev1alpha1.ValkeyBackup) error {
 	key := types.NamespacedName{Name: b.Spec.ClusterRef.Name, Namespace: b.Namespace}
 	switch b.Spec.ClusterRef.Kind {
-	case "ValkeyCluster":
+	case cachev1alpha1.KindValkeyCluster:
 		obj := &cachev1alpha1.ValkeyCluster{}
 		if err := r.Get(ctx, key, obj); err != nil {
 			return fmt.Errorf("get ValkeyCluster %s: %w", key, err)
 		}
-	case "Valkey":
+	case cachev1alpha1.KindValkey:
 		obj := &cachev1alpha1.Valkey{}
 		if err := r.Get(ctx, key, obj); err != nil {
 			return fmt.Errorf("get Valkey %s: %w", key, err)
@@ -234,6 +234,8 @@ func (r *ValkeyBackupReconciler) validateClusterRef(ctx context.Context, b *cach
 }
 
 // markFailed — 백업을 Failed phase 로 전이 + 에러 condition.
+//
+//nolint:unparam // controller-runtime 표준 (ctrl.Result, error) 시그니처 보존.
 func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha1.ValkeyBackup, reason, msg string) (ctrl.Result, error) {
 	MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Failed").Inc()
 	if r.Recorder != nil {
@@ -565,6 +567,8 @@ func keyOrDefault(s, def string) string {
 // finalizer 가 cleanup 진행. 미만료 시 RequeueAfter=time.Until(deadline).
 //
 // TTL 미명시 시 보존 (no-op).
+//
+//nolint:unparam // controller-runtime 표준 시그니처 보존.
 func (r *ValkeyBackupReconciler) handleBackupTerminal(
 	ctx context.Context, b *cachev1alpha1.ValkeyBackup,
 ) (ctrl.Result, error) {
@@ -594,6 +598,8 @@ func (r *ValkeyBackupReconciler) handleBackupTerminal(
 // Backup Job + Upload Job 정리. Owner-ref GC 가 RetainPVC=false 인 경우
 // PVC 도 처리하지만, RetainPVC=true 시 owner-ref 미설정 패턴 (별개 commit
 // 보강). 본 commit 은 *명시적 cleanup* 으로 안전 보장.
+//
+//nolint:unparam // controller-runtime 표준 시그니처 보존.
 func (r *ValkeyBackupReconciler) handleBackupDeletion(
 	ctx context.Context, b *cachev1alpha1.ValkeyBackup,
 ) (ctrl.Result, error) {
@@ -645,7 +651,7 @@ func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1a
 		nsName        = types.NamespacedName{Name: b.Spec.ClusterRef.Name, Namespace: b.Namespace}
 	)
 	switch b.Spec.ClusterRef.Kind {
-	case "Valkey":
+	case cachev1alpha1.KindValkey:
 		obj := &cachev1alpha1.Valkey{}
 		if err := r.Get(ctx, nsName, obj); err != nil {
 			return nil, err
@@ -657,7 +663,7 @@ func (r *ValkeyBackupReconciler) buildBackupJob(ctx context.Context, b *cachev1a
 			tlsEnabled = true
 			tlsSecretName = backupTargetTLSSecret(obj.Spec.TLS, obj.Name)
 		}
-	case "ValkeyCluster":
+	case cachev1alpha1.KindValkeyCluster:
 		obj := &cachev1alpha1.ValkeyCluster{}
 		if err := r.Get(ctx, nsName, obj); err != nil {
 			return nil, err

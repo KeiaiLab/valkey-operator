@@ -59,6 +59,11 @@ type ValkeyClusterReconciler struct {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create;update;patch;delete
 
+// Reconcile: cyclomatic 50 — cluster reconciliation 의 *순차 단계 분기*
+// (init / scaling / resharding / rebalance / cluster_state aggregate) 가 모두
+// 동일 함수 표현. 분해 시 호출 추적 비용 증가 + 회귀 위험. ADR-0030 정당화.
+//
+//nolint:gocyclo
 func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := observability.StartReconcileSpan(ctx, "ValkeyCluster", req.Namespace, req.Name)
 	defer span.End()

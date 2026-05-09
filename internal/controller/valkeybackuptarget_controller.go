@@ -30,6 +30,12 @@ import (
 	"github.com/keiailab/valkey-operator/internal/storage"
 )
 
+// Reason 상수 — verifyEndpoint 가 반환하는 reason 식별자 (goconst).
+const (
+	reasonEndpointPingFailed = "EndpointPingFailed"
+	reasonEndpointReachable  = "EndpointReachable"
+)
+
 // s3ClientBuilder — 테스트에서 mock client 주입을 위한 indirection.
 //
 // nil 시 기본 storage.BuildS3Client 사용.
@@ -159,7 +165,7 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 		reason := string(t.Status.Phase)
 		msg := t.Status.Message
 		for _, c := range *t.GetConditions() {
-			if c.Type == "Ready" {
+			if c.Type == CondTypeReady {
 				reason = c.Reason
 				break
 			}
@@ -264,7 +270,7 @@ func (r *ValkeyBackupTargetReconciler) verifyEndpoint(
 	defer cancel()
 	exists, err := s3c.Reachable(pingCtx)
 	if err != nil {
-		return "EndpointPingFailed",
+		return reasonEndpointPingFailed,
 			fmt.Sprintf("BucketExists failed: %s", err.Error()), false
 	}
 	if !exists {
@@ -272,7 +278,7 @@ func (r *ValkeyBackupTargetReconciler) verifyEndpoint(
 			fmt.Sprintf("bucket %s not found at %s", t.Spec.S3.Bucket, s3c.EndpointHost()),
 			false
 	}
-	return "EndpointReachable",
+	return reasonEndpointReachable,
 		fmt.Sprintf("S3 bucket %s @ %s reachable", t.Spec.S3.Bucket, s3c.EndpointHost()),
 		true
 }

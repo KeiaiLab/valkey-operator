@@ -25,6 +25,18 @@ const (
 	DefaultValkeyImage   = "docker.io/valkey/valkey"
 )
 
+// ClusterRef.Kind 표준 식별자 — RFC-0017 audit 후 4-repo cross-cut goconst
+// 추출 (valkeybackup_controller / valkeybackuptarget_controller 가 9 + 6 occurrences
+// 사용).
+const (
+	KindValkey        = "Valkey"
+	KindValkeyCluster = "ValkeyCluster"
+)
+
+// DefaultStorageSize — Spec.StorageSize / Backup.StorageSize 의 fallback 기본값.
+// CRD 의 +kubebuilder:default="8Gi" 와 정합 유지.
+const DefaultStorageSize = "8Gi"
+
 // supportedValkeyList — webhook validation 화이트리스트 (commons 위임).
 // 신규 추가 시 호환성 검증 (RDB format, replication wire protocol) 후 추가.
 // 9.0.4 = current stable, 8.1.7/8.0.9 = milestone patch baseline. 8.1.6 은

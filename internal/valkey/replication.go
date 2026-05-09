@@ -13,6 +13,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Valkey replication role 식별자 — Valkey/Redis 는 legacy "slave" 또는 modern
+// "replica" 로 role 을 보고. 둘 다 허용.
+const (
+	roleSlave   = "slave"
+	roleReplica = "replica"
+)
+
 // EnsureReplicaOf — replica 가 primary 를 가리키도록 REPLICAOF 명령 발행.
 // 이미 가리키고 있으면 no-op (멱등).
 func EnsureReplicaOf(ctx context.Context, c *redis.Client, primaryHost string, primaryPort int) error {
@@ -23,7 +30,7 @@ func EnsureReplicaOf(ctx context.Context, c *redis.Client, primaryHost string, p
 	currentRole, currentMaster := parseReplicationInfo(info)
 	want := fmt.Sprintf("%s:%d", primaryHost, primaryPort)
 	// Valkey/Redis 는 role 을 "slave" (legacy) 또는 "replica" 로 보고. 둘 다 허용.
-	if (currentRole == "slave" || currentRole == "replica") && currentMaster == want {
+	if (currentRole == roleSlave || currentRole == roleReplica) && currentMaster == want {
 		return nil
 	}
 	if err := c.ReplicaOf(ctx, primaryHost, fmt.Sprintf("%d", primaryPort)).Err(); err != nil {

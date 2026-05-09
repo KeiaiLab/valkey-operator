@@ -91,13 +91,13 @@ func tlsConfigForClusterRef(
 		headless = resources.HeadlessServiceName(ref.Name) + "." + namespace + ".svc"
 	)
 	switch ref.Kind {
-	case "Valkey":
+	case cachev1alpha1.KindValkey:
 		obj := &cachev1alpha1.Valkey{}
 		if err := c.Get(ctx, nsName, obj); err != nil {
 			return nil, err
 		}
 		tlsSpec = obj.Spec.TLS
-	case "ValkeyCluster":
+	case cachev1alpha1.KindValkeyCluster:
 		obj := &cachev1alpha1.ValkeyCluster{}
 		if err := c.Get(ctx, nsName, obj); err != nil {
 			return nil, err

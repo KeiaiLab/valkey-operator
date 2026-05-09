@@ -21,6 +21,9 @@ var CertificateGVK = schema.GroupVersionKind{
 	Kind:    "Certificate",
 }
 
+// IssuerKind 표준 식별자 — cert-manager 의 IssuerRef.Kind 기본값.
+const IssuerKindClusterIssuer = "ClusterIssuer"
+
 // CertificateSecretName — cert-manager 가 만들 Secret 이름.
 func CertificateSecretName(crName string) string { return crName + "-tls" }
 
@@ -45,7 +48,7 @@ func BuildCertificateForValkey(v *cachev1alpha1.Valkey) *unstructured.Unstructur
 		"*." + HeadlessServiceName(v.Name) + "." + v.Namespace + ".svc",
 	}
 
-	issuerKind := "ClusterIssuer"
+	issuerKind := IssuerKindClusterIssuer
 	if cm.IssuerRef.Kind != "" {
 		issuerKind = cm.IssuerRef.Kind
 	}
@@ -101,7 +104,7 @@ func BuildCertificateForCluster(vc *cachev1alpha1.ValkeyCluster) *unstructured.U
 		"*." + HeadlessServiceName(vc.Name) + "." + vc.Namespace + ".svc",
 	}
 
-	issuerKind := "ClusterIssuer"
+	issuerKind := IssuerKindClusterIssuer
 	if cm.IssuerRef.Kind != "" {
 		issuerKind = cm.IssuerRef.Kind
 	}

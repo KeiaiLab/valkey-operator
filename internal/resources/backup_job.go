@@ -38,7 +38,7 @@ const BackupRDBFileName = "dump.rdb"
 func BuildBackupPVC(b *cachev1alpha1.ValkeyBackup) *corev1.PersistentVolumeClaim {
 	size := b.Spec.StorageSize
 	if size == "" {
-		size = "8Gi"
+		size = cachev1alpha1.DefaultStorageSize
 	}
 	q := resource.MustParse(size)
 	return &corev1.PersistentVolumeClaim{

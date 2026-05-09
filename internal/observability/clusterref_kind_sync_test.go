@@ -77,7 +77,10 @@ func TestClusterRefKindAllHaveSwitchCase(t *testing.T) {
 		t.Fatalf("internal/controller not found: %v", candidates)
 	}
 	entries, _ := os.ReadDir(dir)
-	caseRe := regexp.MustCompile(`case\s+"([\w]+)":`)
+	// case "<Kind>": (string literal) 또는 case <pkg>.Kind<Name>: (const reference) 둘 다 catch.
+	// 2026-05-09 audit (RFC-0017 §3.2 goconst 추출) 후 const reference 패턴이 도입됨 —
+	// 본 정규식은 string literal "Valkey" 와 const cachev1alpha1.KindValkey 모두 인식.
+	caseRe := regexp.MustCompile(`case\s+(?:"([\w]+)"|[\w.]*\.?Kind(\w+)):`)
 	switchKindRe := regexp.MustCompile(`switch\s+\S*\.?Kind\s*\{`)
 
 	caseCounts := map[string]int{}
@@ -101,8 +104,13 @@ func TestClusterRefKindAllHaveSwitchCase(t *testing.T) {
 			continue
 		}
 		for _, m := range caseRe.FindAllStringSubmatch(s, -1) {
-			if _, tracked := caseCounts[m[1]]; tracked {
-				caseCounts[m[1]]++
+			// m[1] = string literal kind, m[2] = const Kind<Name> 의 <Name>.
+			kind := m[1]
+			if kind == "" {
+				kind = m[2]
+			}
+			if _, tracked := caseCounts[kind]; tracked {
+				caseCounts[kind]++
 			}
 		}
 	}

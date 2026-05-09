@@ -54,6 +54,8 @@ func reconcileSecretIfNotExists(
 }
 
 // handleFinalizerCleanup — deletionTimestamp 설정된 객체 정리 패턴.
+//
+//nolint:unparam // controller-runtime 표준 (ctrl.Result, error) 시그니처 보존 — 호출자 일관성.
 func handleFinalizerCleanup(
 	ctx context.Context,
 	c client.Client,
@@ -165,5 +167,5 @@ func isPaused(obj client.Object) bool {
 	if obj == nil {
 		return false
 	}
-	return obj.GetAnnotations()[PausedAnnotation] == "true"
+	return obj.GetAnnotations()[PausedAnnotation] == "true" //nolint:goconst // K8s annotation 값 "true" 표준
 }

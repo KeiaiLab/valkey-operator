@@ -58,6 +58,13 @@ type ValkeyReconciler struct {
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
+// Reconcile: 본 함수의 cyclomatic complexity 가 30을 초과하는 것은 의도적이다.
+// reconcile 흐름은 *순차 단계* (fetch → finalizer → spec normalize → resource
+// upsert × N → status aggregate) 로 구성되며, 각 단계는 *동일 함수 내 명시적
+// switch* 가 가독성 좋다. 분해 시 호출 chain 추적 비용 증가 + envtest 회귀
+// 위험. ADR-0030 AI-VK30-1 단계 3 정당화.
+//
+//nolint:gocyclo
 func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := observability.StartReconcileSpan(ctx, "Valkey", req.Namespace, req.Name)
 	defer span.End()

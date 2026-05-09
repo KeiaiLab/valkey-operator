@@ -257,6 +257,7 @@ func main() {
 	// cycle 80: feature gating env. chart 의 features.cluster.enabled=false 시
 	// RBAC 차단 → cache.WaitForCacheSync 실패 → CrashLoopBackOff. 본 env 가 chart
 	// values 와 동기 — false 면 reconciler skip (RBAC 권한 부재 시 정상 동작).
+	// nolint:goconst // env 비교 string 은 const 추출 시 가독성 저하 — inline 보존.
 	if os.Getenv("ENABLE_CLUSTER_RECONCILER") != "false" {
 		if err := (&controller.ValkeyClusterReconciler{
 			Client: mgr.GetClient(),
@@ -283,6 +284,7 @@ func main() {
 		}
 	}
 	// cycle 80: backup/restore feature gating — features.backup.enabled 와 정합.
+	// nolint:goconst // env 비교 string inline.
 	if os.Getenv("ENABLE_BACKUP_RECONCILER") != "false" {
 		if err := (&controller.ValkeyBackupReconciler{
 			Client: mgr.GetClient(),

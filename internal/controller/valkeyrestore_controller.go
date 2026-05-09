@@ -138,6 +138,8 @@ func (r *ValkeyRestoreReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 // transitionToPending — "" → Pending. 단순 status 초기화.
+//
+//nolint:unparam // controller-runtime 표준 시그니처 보존.
 func (r *ValkeyRestoreReconciler) transitionToPending(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
@@ -165,7 +167,7 @@ func (r *ValkeyRestoreReconciler) transitionToPending(
 func (r *ValkeyRestoreReconciler) handlePending(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
-	if rest.Spec.ClusterRef.Kind != "Valkey" && rest.Spec.ClusterRef.Kind != "ValkeyCluster" {
+	if rest.Spec.ClusterRef.Kind != cachev1alpha1.KindValkey && rest.Spec.ClusterRef.Kind != cachev1alpha1.KindValkeyCluster {
 		return r.markFailed(ctx, rest, "UnsupportedClusterKind",
 			fmt.Sprintf("kind=%s — Valkey 또는 ValkeyCluster 만 지원",
 				rest.Spec.ClusterRef.Kind))
@@ -434,13 +436,13 @@ func (r *ValkeyRestoreReconciler) restoreTarget(
 ) (client.Object, error) {
 	key := types.NamespacedName{Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace}
 	switch rest.Spec.ClusterRef.Kind {
-	case "Valkey":
+	case cachev1alpha1.KindValkey:
 		v := &cachev1alpha1.Valkey{}
 		if err := r.Get(ctx, key, v); err != nil {
 			return nil, err
 		}
 		return v, nil
-	case "ValkeyCluster":
+	case cachev1alpha1.KindValkeyCluster:
 		vc := &cachev1alpha1.ValkeyCluster{}
 		if err := r.Get(ctx, key, vc); err != nil {
 			return nil, err
@@ -493,7 +495,7 @@ func (r *ValkeyRestoreReconciler) isMultiPodTarget(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (bool, error) {
 	switch rest.Spec.ClusterRef.Kind {
-	case "Valkey":
+	case cachev1alpha1.KindValkey:
 		v := &cachev1alpha1.Valkey{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace,
@@ -501,7 +503,7 @@ func (r *ValkeyRestoreReconciler) isMultiPodTarget(
 			return false, err
 		}
 		return v.Spec.Replicas > 1, nil
-	case "ValkeyCluster":
+	case cachev1alpha1.KindValkeyCluster:
 		vc := &cachev1alpha1.ValkeyCluster{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace,
@@ -519,7 +521,7 @@ func (r *ValkeyRestoreReconciler) isMultiPodTarget(
 func (r *ValkeyRestoreReconciler) shardCountForTarget(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (int32, error) {
-	if rest.Spec.ClusterRef.Kind != "ValkeyCluster" {
+	if rest.Spec.ClusterRef.Kind != cachev1alpha1.KindValkeyCluster {
 		return 0, nil
 	}
 	vc := &cachev1alpha1.ValkeyCluster{}
@@ -674,7 +676,7 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 			break
 		}
 	}
-	if rest.Spec.ClusterRef.Kind == "ValkeyCluster" {
+	if rest.Spec.ClusterRef.Kind == cachev1alpha1.KindValkeyCluster {
 		shards, err := r.shardCountForTarget(ctx, rest)
 		if err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
@@ -800,6 +802,8 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 
 // handleDeletion — finalizer cleanup. STS 원복 + paused annotation 제거.
 // 정상 Completed 흐름에서는 이미 정리됨 — no-op.
+//
+//nolint:unparam // controller-runtime 표준 시그니처 보존.
 func (r *ValkeyRestoreReconciler) handleDeletion(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {

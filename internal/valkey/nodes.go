@@ -43,7 +43,7 @@ type SlotRange struct {
 func (n *NodeView) IsPrimary() bool { return n.Flags["master"] }
 
 // IsReplica — slave / replica flag.
-func (n *NodeView) IsReplica() bool { return n.Flags["slave"] || n.Flags["replica"] }
+func (n *NodeView) IsReplica() bool { return n.Flags[roleSlave] || n.Flags[roleReplica] }
 
 // HasSlot — slot s 가 본 노드에 할당되어 있는가.
 func (n *NodeView) HasSlot(s int) bool {
