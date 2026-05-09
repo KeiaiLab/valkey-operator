@@ -46,7 +46,7 @@
 | 0035 | *Reserved — NetworkPolicy Optional toggle (Plan §2 D2, PR-A3).* 미작성. ADR-0057 supersede 예정. | Reserved | — |
 | 0036 | *Reserved — PodSecurityContext Restricted Optional (Plan §2 D3, PR-A3).* 미작성. | Reserved | — |
 | 0037 | *Reserved — OperatorHub.io bundle 등록 (Plan §2 D4, PR-B9).* 미작성. | Reserved | — |
-| 0038 | *Reserved — RFC-0018 pkg/finalizer + pkg/status adoption (Plan §2 D10/D11, PR-A6).* 미작성. | Reserved | — |
+| [0038](0038-rfc-0018-pkg-finalizer-migration.md) | RFC-0018 채택 — pkg/finalizer migration (controllerutil → commons, 5 controller, PR-A6 first cut, status 별도) | Accepted | 2026-05-09 |
 
 ## 작성 가이드
 

@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -106,8 +107,8 @@ func (r *ValkeyRestoreReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !rest.DeletionTimestamp.IsZero() {
 		return r.handleDeletion(ctx, rest)
 	}
-	if !controllerutil.ContainsFinalizer(rest, finalizerValkeyRestore) {
-		controllerutil.AddFinalizer(rest, finalizerValkeyRestore)
+	if !commonsfinalizer.Has(rest, finalizerValkeyRestore) {
+		commonsfinalizer.Add(rest, finalizerValkeyRestore)
 		if err := r.Update(ctx, rest); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -831,7 +832,7 @@ func (r *ValkeyRestoreReconciler) handleDeletion(
 	// paused annotation 제거 (best-effort).
 	_ = r.unpauseRestoreTarget(ctx, rest)
 
-	controllerutil.RemoveFinalizer(rest, finalizerValkeyRestore)
+	commonsfinalizer.Remove(rest, finalizerValkeyRestore)
 	if err := r.Update(ctx, rest); err != nil {
 		return ctrl.Result{}, err
 	}

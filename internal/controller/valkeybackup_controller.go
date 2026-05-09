@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -89,8 +90,8 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !b.DeletionTimestamp.IsZero() {
 		return r.handleBackupDeletion(ctx, b)
 	}
-	if !controllerutil.ContainsFinalizer(b, finalizerValkeyBackup) {
-		controllerutil.AddFinalizer(b, finalizerValkeyBackup)
+	if !commonsfinalizer.Has(b, finalizerValkeyBackup) {
+		commonsfinalizer.Add(b, finalizerValkeyBackup)
 		if err := r.Update(ctx, b); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -630,7 +631,7 @@ func (r *ValkeyBackupReconciler) handleBackupDeletion(
 		}
 	}
 
-	controllerutil.RemoveFinalizer(b, finalizerValkeyBackup)
+	commonsfinalizer.Remove(b, finalizerValkeyBackup)
 	if err := r.Update(ctx, b); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
