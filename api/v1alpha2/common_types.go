@@ -229,9 +229,32 @@ type PodSpec struct {
 }
 
 // NetworkPolicySpec — opt-in NetworkPolicy. 기본 deny + 같은 인스턴스 pod 간 6379/16379 허용.
+//
+// v1alpha2 변경 (Plan §2 D2, ADR-0035): AutoCreate 필드 신규 추가.
+// Enabled 와 의미 분리:
+//   - Enabled: NetworkPolicy *정책 사용 여부* (사용자 의도).
+//   - AutoCreate: operator 가 *NP 리소스 자동 생성/관리* 책임을 가질지.
+//
+// AutoCreate=false + Enabled=true 시 사용자가 외부 NP 관리 책임
+// (Calico GlobalNetworkPolicy / Cilium ClusterwideNetworkPolicy 등).
+// secure-by-default 보존을 위해 default true.
 type NetworkPolicySpec struct {
 	// +kubebuilder:default=false
-	Enabled               bool                `json:"enabled"`
+	Enabled bool `json:"enabled"`
+
+	// AutoCreate — operator 의 NP 리소스 자동 생성/관리 책임 토글
+	// (Plan §2 D2, ADR-0035 — supersedes ADR-0057 가 정의한 자동 생성
+	// 강제 동작). default=true 유지로 secure-by-default 보존.
+	//
+	// nil (legacy 호환): true 로 처리 — v1alpha1 동작 유지.
+	// false: operator 가 NP 리소스 생성/갱신/삭제 안 함. 사용자가 외부
+	// 관리 책임 (Calico / Cilium / Antrea 등 cluster-wide policy
+	// engine 사용 시나리오 지원).
+	//
+	// +kubebuilder:default:=true
+	// +optional
+	AutoCreate *bool `json:"autoCreate,omitempty"`
+
 	AdditionalIngressFrom []NetworkPolicyPeer `json:"additionalIngressFrom,omitempty"`
 }
 
