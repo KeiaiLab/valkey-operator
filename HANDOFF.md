@@ -4,6 +4,87 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
+## 2026-05-09 Sprint A 진입 (PR-A2 / A3 / A4 / A6) — Helm 차트 비교 plan
+
+> Plan: `~/.claude/plans/1-https-artifacthub-io-packages-helm-clo-synthetic-gem.md`
+>
+> Sprint A 의 valkey-operator 측 4 PR 진입점. 본 HANDOFF 섹션은 *진입점
+> 명시* 만 포함하며, valkey-operator 코드 변경은 미진행 (commons v0.6.0
+> tag 머지 후 PR-A2 시작).
+
+### PR-A2: v1alpha2 + conversion webhook + AuthSpec.Required toggle (T3)
+
+- **의존**: 없음 (commons v0.6.0 무관 — v1alpha2 scaffold 자체는 commons 의 status/finalizer 비의존).
+- **시작 절차**:
+  1. `mkdir -p api/v1alpha2`
+  2. `cp api/v1alpha1/{groupversion_info,common_types,valkey_types,valkeycluster_types,valkeybackup_types,valkeybackuptarget_types,valkeyrestore_types,zz_generated.deepcopy}.go api/v1alpha2/`
+  3. `api/v1alpha2/groupversion_info.go` 의 `Version: "v1alpha2"` + 같은 group `cache.keiailab.io`.
+  4. `AuthSpec.Required *bool` (`omitempty`, `kubebuilder:default:=true`) 신규.
+  5. `api/v1alpha2/conversion.go` 신규 — v1alpha1 ↔ v1alpha2 양방향 (default true 로 v1alpha1 강제 동작 매핑).
+  6. v1alpha2 Hub 마킹 (`api/v1alpha2/conversion.go` 의 `func (*Valkey) Hub() {}`).
+  7. `make manifests` 후 chart CRD 동기 확인.
+- **ADR**: ADR-0034 신규 (`docs/kb/adr/0034-auth-optional-v1alpha2.md`) — ADR-0013 supersede, ADR-0026 deferred 회복.
+- **controller 변경**: `internal/controller/valkey_controller.go` 의 `ensureAuthSecret` 분기:
+  ```go
+  if !ptr.Deref(spec.Auth.Required, true) {
+      // skip auth provisioning — user opted out
+      return nil
+  }
+  ```
+- **검증**: `kubectl apply v1alpha1 sample` → v1alpha2 hub 저장 + 전체 spec 필드 보존, `kubectl apply v1alpha2-auth-disabled.yaml` → requirepass 미설정.
+
+### PR-A3: NetworkPolicy.AutoCreate + Security.PodSecurityRestricted toggle (T2)
+
+- **의존**: PR-A2 (v1alpha2 base).
+- **신규 필드** (api/v1alpha2):
+  - `NetworkPolicySpec.AutoCreate *bool` (default true) — 기존 `Enabled` 와 의미 분리: `Enabled` 는 *정책 사용 여부*, `AutoCreate` 는 *operator 가 NP 리소스 생성 책임을 가질지*.
+  - `SecuritySpec.PodSecurityRestricted *bool` (default true) + `PodSecurityContextOverride *corev1.PodSecurityContext`.
+- **ADR**: ADR-0035 (NetworkPolicy.AutoCreate optional, ADR-0057 supersede) + ADR-0036 (PSS Restricted optional).
+- **builder 분기**:
+  - `internal/resources/networkpolicy.go`: `AutoCreate=false` 시 빌드 스킵.
+  - `internal/resources/statefulset.go`: `PodSecurityRestricted=false` 시 `PodSecurityContextOverride` 적용 허용.
+
+### PR-A4: cosign + SLSA L2 in-toto attestation (T2, *독립적*)
+
+- **의존**: 없음 — PR-A2 와 병렬 가능.
+- **scripts/release.sh 변경 (Step 6 docker-buildx 후 신규 Step 6.5)**:
+  ```bash
+  # Step 6.5: cosign sign + SLSA L2 in-toto attestation
+  if command -v cosign >/dev/null && [[ -n "${COSIGN_KEY:-}" ]]; then
+    cosign sign --key "$COSIGN_KEY" --yes "$IMAGE"
+    cosign attest --predicate provenance.json --type slsaprovenance --key "$COSIGN_KEY" "$IMAGE"
+  fi
+  ```
+- **Makefile 신규 타겟**: `sign-image` + `attest-provenance` (기존 `release-notes` 타겟 패턴 사용).
+- **release-smoke-test.sh** 확장: `cosign verify` + `cosign verify-attestation --type slsaprovenance` 단계.
+- **ADR**: ADR-0033 (`docs/kb/adr/0033-supply-chain-cosign-slsa.md`).
+- **결정 (ADR-0033 본문)**: cosign keyless OIDC 는 GHA OIDC 의존 → RFC-0002 (GHA 영구 금지) 충돌 → **keyfile + GitHub Secret + 수동 release sign** 채택. Sigstore Rekor public ledger 보조.
+- **외부 비교 차용**: Cloudpirates redis chart 가 cosign signed (Phase 1 조사) — 동일 보증 수준.
+
+### PR-A6: pkg/finalizer + pkg/status migration (T3)
+
+- **의존**: operator-commons v0.6.0 (PR-A1 commit 완료 — `~/.claude/plans/1-...md` HANDOFF 의 PR-A1 결정) tag 머지.
+- **변경 범위**: 4 controller (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore, ValkeyBackupTarget):
+  - `controllerutil.AddFinalizer/RemoveFinalizer` → `finalizer.Add/Remove` (`pkg/finalizer.Prefix` + repo 별 suffix).
+  - `setCondition` 호출 → `status.SetReady/SetReadyFalse/SetAvailable` 위임 (도메인 ConditionType `ShardReady` 등 보존).
+- **ADR**: ADR-0038 신규 (`docs/kb/adr/0038-rfc-0018-pkg-status-finalizer-adoption.md`).
+- **회귀**: 기존 envtest 전부 통과 + e2e (kind cluster).
+
+### 차단점
+
+- PR-A2/A3/A6 는 commons v0.6.0 tag 머지 후 진입. PR-A4 는 독립 — *지금 즉시 진입 가능*.
+- 본 세션은 commons PR-A1 변경만 완료, valkey 측 코드 변경 없음.
+
+### 근거 링크
+
+- Plan §2 D1/D2/D3 (사용자 결정 1: Auth + NetworkPolicy + PSS optional, v1alpha2 + conversion webhook).
+- Plan §2 D5 (cosign + SLSA — P0 supply chain).
+- Plan §2 D10/D11 (RFC-0018 pkg/status + pkg/finalizer adoption).
+- Plan §3 (v1alpha2 CRD 설계 — `api/v1alpha2/common_types.go` 신규).
+- ADR-0013 (Auth always enabled, supersede 대상), ADR-0017 (failover 보존), ADR-0026 (conversion webhook deferred, 회복 대상), ADR-0057 (NetworkPolicy 자동 생성, supersede 대상).
+
+---
+
 ## 현재 상태 (2026-05-07, Valkey latest default 정렬 완료)
 
 - **이번 세션 추가 구현**:

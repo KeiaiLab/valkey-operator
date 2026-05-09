@@ -80,6 +80,26 @@ echo "==> Building multi-arch image: $IMAGE (VERSION=$VERSION)"
 make docker-buildx IMG="$IMAGE" VERSION="$VERSION"
 echo "✓ image pushed: $IMAGE"
 
+# 6.5. Supply Chain — cosign sign + SLSA L2 in-toto attestation (ADR-0033).
+# Bitnami in-toto + Cloudpirates cosign 차용 — 동등 보증 수준.
+# COSIGN_KEY 미설정 시 warning 후 skip (개발자 로컬 release 테스트 허용).
+# RFC-0002 (GHA 영구 금지) 와의 충돌 회피: keyless OIDC 대신 keyfile 사용.
+if [[ -n "${COSIGN_KEY:-}" ]] && command -v cosign >/dev/null 2>&1; then
+  echo "==> Supply chain: cosign sign + SLSA L2 attest"
+  make sign-image VERSION="$VERSION" COSIGN_KEY="$COSIGN_KEY"
+  # SBOM 먼저 생성 — provenance subject digest 와 정합 보존.
+  make sbom VERSION="$VERSION" || echo "WARN: SBOM 생성 실패 — provenance 만 진행" >&2
+  make attest-provenance VERSION="$VERSION" COSIGN_KEY="$COSIGN_KEY"
+  echo "✓ image signed + provenance attested"
+else
+  echo "WARN: COSIGN_KEY unset 또는 cosign 미설치 — supply chain attest skip" >&2
+  echo "  활성 절차:"
+  echo "    1. brew install cosign jq"
+  echo "    2. cosign generate-key-pair  (cosign.key + cosign.pub 생성)"
+  echo "    3. export COSIGN_KEY=/path/to/cosign.key COSIGN_PASSWORD=<pwd>"
+  echo "    4. release.sh 재실행"
+fi
+
 # 7. install.yaml 생성.
 echo "==> Generating dist/install.yaml"
 make build-installer IMG="$IMAGE"

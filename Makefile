@@ -488,6 +488,32 @@ sbom: ## syft 로 SBOM (SPDX-2.3) 생성 — image 의 binary + Go modules. SLSA
 	@SIZE=$$(wc -c < "/tmp/valkey-operator-$(VERSION).spdx.json" | tr -d ' '); \
 	echo "✓ SBOM: /tmp/valkey-operator-$(VERSION).spdx.json ($$SIZE bytes)"
 
+.PHONY: sign-image
+sign-image: ## cosign 으로 image 서명 (keyfile + Sigstore Rekor public ledger). VERSION + COSIGN_KEY 필수. ADR-0033.
+	@command -v cosign >/dev/null 2>&1 || { echo "[error] cosign not installed: brew install cosign"; exit 1; }
+	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION 필수"; exit 1; fi
+	@if [ -z "$(COSIGN_KEY)" ]; then echo "ERROR: COSIGN_KEY 필수 (cosign.key 경로 — keyless OIDC 는 RFC-0002 GHA 금지로 회피)"; exit 1; fi
+	@echo "=== cosign sign ghcr.io/keiailab/valkey-operator:$(VERSION) ==="
+	cosign sign --key "$(COSIGN_KEY)" --yes ghcr.io/keiailab/valkey-operator:$(VERSION)
+	@echo "✓ image signed (Sigstore Rekor entry 생성)"
+
+.PHONY: attest-provenance
+attest-provenance: ## SLSA L2 in-toto provenance attestation (cosign attest). VERSION + COSIGN_KEY 필수. ADR-0033.
+	@command -v cosign >/dev/null 2>&1 || { echo "[error] cosign not installed: brew install cosign"; exit 1; }
+	@command -v jq >/dev/null 2>&1 || { echo "[error] jq not installed: brew install jq"; exit 1; }
+	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION 필수"; exit 1; fi
+	@if [ -z "$(COSIGN_KEY)" ]; then echo "ERROR: COSIGN_KEY 필수"; exit 1; fi
+	@echo "=== generate SLSA L2 provenance v1 statement ==="
+	@PROV="/tmp/valkey-operator-$(VERSION).provenance.json"; \
+	  GIT_COMMIT="$$(git rev-parse HEAD)"; \
+	  jq -n --arg v "$(VERSION)" --arg img "ghcr.io/keiailab/valkey-operator:$(VERSION)" \
+	    --arg now "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg sha "$$GIT_COMMIT" \
+	    '{_type:"https://in-toto.io/Statement/v1", subject:[{name:$$img, digest:{}}], predicateType:"https://slsa.dev/provenance/v1", predicate:{buildDefinition:{buildType:"https://keiailab.io/valkey-operator/release/v1", externalParameters:{version:$$v, gitCommit:$$sha}}, runDetails:{builder:{id:"https://keiailab.io/valkey-operator/scripts/release.sh"}, metadata:{invocationId:$$sha, startedOn:$$now, finishedOn:$$now}}}}' \
+	    > "$$PROV"; \
+	  echo "=== cosign attest --predicate $$PROV --type slsaprovenance ==="; \
+	  cosign attest --predicate "$$PROV" --type slsaprovenance --key "$(COSIGN_KEY)" --yes ghcr.io/keiailab/valkey-operator:$(VERSION); \
+	  echo "✓ provenance attested (Rekor entry 생성)"
+
 .PHONY: helm-docs
 helm-docs: ## helm-docs 로 chart README 의 values 표 자동 생성 (values.yaml `--` 주석 → MD).
 	@command -v helm-docs >/dev/null 2>&1 || { echo "[error] helm-docs not installed: brew install norwoodj/tap/helm-docs"; exit 1; }

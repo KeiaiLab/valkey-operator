@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # release-smoke-test.sh — 첫 publish 또는 release 직후 5층 smoke 검증.
 #
-# 검증 항목:
+# 검증 항목 (7 층):
 #   1. GH Release tag 존재 + asset 첨부 (.tgz)
 #   2. GHCR image manifest 가져오기 (digest 일치)
 #   3. GitHub Pages built status
 #   4. Helm repo index.yaml fetch + version entry
 #   5. helm pull + helm template (default + all-features)
+#   6. trivy image post-publish vulnerability scan (HIGH+CRITICAL)
+#   7. cosign verify image + verify-attestation (SLSA L2 provenance) — ADR-0033
 #
 # 사용법:
 #   scripts/release-smoke-test.sh                        # Chart.yaml 의 현재 version
 #   scripts/release-smoke-test.sh v0.1.0-alpha.1         # 특정 version
 #
 # 환경: gh CLI 인증 + helm + curl 필요. trivy/cosign optional.
+# COSIGN_PUBLIC_KEY env (cosign.pub 경로) 설정 시 cosign 검증 활성.
 #
 # Exit code: 0 = 모두 PASS, 1 = 1건 이상 fail.
 
@@ -186,7 +189,7 @@ fi
 
 # 6. trivy image post-publish vulnerability scan (exit-code 기반)
 echo ""
-echo "▸ [6/6] trivy image post-publish scan (HIGH+CRITICAL, fixed only)"
+echo "▸ [6/7] trivy image post-publish scan (HIGH+CRITICAL, fixed only)"
 if command -v trivy >/dev/null 2>&1; then
   TRIVY_OUT="/tmp/release-smoke-trivy-$$.txt"
   # --exit-code 1 → CVE 검출 시 exit 1 (정직한 fail). --ignore-unfixed → fix 가능한 것만.
@@ -200,6 +203,30 @@ if command -v trivy >/dev/null 2>&1; then
   rm -f "$TRIVY_OUT"
 else
   echo "  ○ trivy 미설치 — skip (brew install trivy 권장)"
+fi
+
+# 7. cosign verify image + attestation (SLSA L2 provenance) — ADR-0033
+echo ""
+echo "▸ [7/7] cosign verify image + verify-attestation (ADR-0033)"
+if command -v cosign >/dev/null 2>&1; then
+  if [[ -z "${COSIGN_PUBLIC_KEY:-}" ]]; then
+    echo "  ○ COSIGN_PUBLIC_KEY 미설정 — skip (export COSIGN_PUBLIC_KEY=/path/to/cosign.pub)"
+  else
+    # 7a. image 서명 검증.
+    if cosign verify --key "$COSIGN_PUBLIC_KEY" "$IMAGE_REF" >/dev/null 2>&1; then
+      pass "cosign verify image: 서명 통과"
+    else
+      fail "cosign verify image: 서명 부재 또는 무효 — make sign-image 후 재시도"
+    fi
+    # 7b. SLSA L2 provenance 검증.
+    if cosign verify-attestation --type slsaprovenance --key "$COSIGN_PUBLIC_KEY" "$IMAGE_REF" >/dev/null 2>&1; then
+      pass "cosign verify-attestation: SLSA L2 provenance 통과"
+    else
+      fail "cosign verify-attestation: provenance 부재 또는 무효 — make attest-provenance 후 재시도"
+    fi
+  fi
+else
+  echo "  ○ cosign 미설치 — skip (brew install cosign 권장)"
 fi
 
 # Summary
