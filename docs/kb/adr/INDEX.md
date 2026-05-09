@@ -45,7 +45,7 @@
 | [0034](0034-auth-optional-v1alpha2.md) | Auth Optional + v1alpha2 신규 (supersedes ADR-0013, PR-A2.1 type module) | Accepted | 2026-05-09 |
 | [0035](0035-networkpolicy-autocreate-optional.md) | NetworkPolicy.AutoCreate Optional Toggle (v1alpha2, PR-A3.1 type module — controller 분기 PR-A3.1.2 후속) | Accepted | 2026-05-09 |
 | [0036](0036-pod-security-restricted-optional.md) | PodSecurity Restricted Optional Toggle (v1alpha2 PodSpec.PodSecurityRestricted, PR-A3.2 type module — controller 분기 PR-A3.2.2 후속) | Accepted | 2026-05-09 |
-| 0037 | *Reserved — OperatorHub.io bundle 등록 (Plan §2 D4, PR-B9).* 미작성. | Reserved | — |
+| [0037](0037-operatorhub-bundle-scaffold.md) | OperatorHub.io bundle scaffold — operator-sdk v1.42 + kustomize, 5 CRD owned, Makefile bundle/bundle-build 타겟 (PR-B9 first cut, alm-examples + community-operators PR 후속) | Accepted | 2026-05-10 |
 | [0038](0038-rfc-0018-pkg-finalizer-migration.md) | RFC-0018 채택 — pkg/finalizer migration (controllerutil → commons, 5 controller, PR-A6 first cut, status 별도) | Accepted | 2026-05-09 |
 
 ## 작성 가이드
