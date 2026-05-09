@@ -29,9 +29,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -89,8 +89,8 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return r.gracefulClusterTeardown(fctx, vc)
 			})
 	}
-	if !controllerutil.ContainsFinalizer(vc, finalizerValkeyCluster) {
-		controllerutil.AddFinalizer(vc, finalizerValkeyCluster)
+	if !commonsfinalizer.Has(vc, finalizerValkeyCluster) {
+		commonsfinalizer.Add(vc, finalizerValkeyCluster)
 		if err := r.Update(ctx, vc); err != nil {
 			return ctrl.Result{}, err
 		}

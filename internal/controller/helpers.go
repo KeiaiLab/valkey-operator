@@ -16,6 +16,7 @@ import (
 	"context"
 	"fmt"
 
+	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -63,7 +64,7 @@ func handleFinalizerCleanup(
 	finalizer string,
 	cleanup func(context.Context) error,
 ) (ctrl.Result, error) {
-	if !controllerutil.ContainsFinalizer(obj, finalizer) {
+	if !commonsfinalizer.Has(obj, finalizer) {
 		return ctrl.Result{}, nil
 	}
 	if cleanup != nil {
@@ -71,7 +72,7 @@ func handleFinalizerCleanup(
 			return ctrl.Result{}, fmt.Errorf("finalizer cleanup: %w", err)
 		}
 	}
-	controllerutil.RemoveFinalizer(obj, finalizer)
+	commonsfinalizer.Remove(obj, finalizer)
 	if err := c.Update(ctx, obj); err != nil {
 		return ctrl.Result{}, err
 	}
