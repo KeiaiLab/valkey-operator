@@ -121,6 +121,23 @@ type AuthSpec struct {
 	// +optional
 	PasswordSecretRef *corev1.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
+	// RotationPolicy — Password 회전 정책 (Plan §2 D6, ADR-0031).
+	//
+	//   - "Manual" (default): 사용자가 외부에서 PasswordSecretRef Secret
+	//     변경 시 operator 무영향. 회전은 사용자 책임 (운영 매뉴얼).
+	//   - "OnSecretChange": Secret resourceVersion 변경 감지 시 operator 가
+	//     자동으로 valkey CONFIG SET requirepass 발행 (무중단 회전 path).
+	//     replication mode 에서는 replica 먼저 reauth 후 primary 갱신
+	//     (race 방지).
+	//
+	// 운영 규약: operator 자체는 *회전 수행* 안 함 (외부 ESO/OpenBao 위임).
+	// 본 필드는 *외부 회전 반영* 만 — Plan §2 D6 의 "회전 수행 X, 반영 O" 정책.
+	//
+	// +kubebuilder:validation:Enum=Manual;OnSecretChange
+	// +kubebuilder:default:=Manual
+	// +optional
+	RotationPolicy string `json:"rotationPolicy,omitempty"`
+
 	// +optional
 	Users []ValkeyUser `json:"users,omitempty"`
 }
