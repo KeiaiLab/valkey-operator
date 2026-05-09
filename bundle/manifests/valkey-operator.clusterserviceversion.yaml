@@ -159,7 +159,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Database, Storage
     containerImage: ghcr.io/keiailab/valkey-operator:v1.0.9
-    createdAt: "2026-05-09T23:32:04Z"
+    createdAt: "2026-05-09T23:37:42Z"
     description: |
       Kubernetes operator for Valkey (Redis fork, BSD-3) — manages Standalone,
       Replication (primary + replicas), and Cluster (16384 slot, sharded)

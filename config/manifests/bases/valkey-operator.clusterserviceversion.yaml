@@ -2,7 +2,160 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: '[]'
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "cache.keiailab.io/v1alpha1",
+          "kind": "Valkey",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "valkey-operator",
+              "app.kubernetes.io/managed-by": "kustomize"
+            },
+            "name": "valkey-sample"
+          },
+          "spec": {
+            "mode": "Standalone",
+            "replicas": 1,
+            "version": {
+              "image": "docker.io/valkey/valkey",
+              "version": "9.0.4"
+            },
+            "storage": {
+              "size": "8Gi"
+            },
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "256Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "1Gi"
+              }
+            },
+            "auth": {
+              "enabled": true
+            },
+            "podDisruptionBudget": {
+              "enabled": true
+            },
+            "monitoring": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "apiVersion": "cache.keiailab.io/v1alpha1",
+          "kind": "ValkeyCluster",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "valkey-operator",
+              "app.kubernetes.io/managed-by": "kustomize"
+            },
+            "name": "valkeycluster-sample"
+          },
+          "spec": {
+            "shards": 3,
+            "replicasPerShard": 1,
+            "version": {
+              "image": "docker.io/valkey/valkey",
+              "version": "9.0.4"
+            },
+            "storage": {
+              "size": "8Gi"
+            },
+            "resources": {
+              "requests": {
+                "cpu": "200m",
+                "memory": "512Mi"
+              },
+              "limits": {
+                "cpu": 1,
+                "memory": "2Gi"
+              }
+            },
+            "auth": {
+              "enabled": true
+            },
+            "autoFailover": true,
+            "podDisruptionBudget": {
+              "enabled": true
+            },
+            "monitoring": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "apiVersion": "cache.keiailab.io/v1alpha1",
+          "kind": "ValkeyBackup",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "valkey-operator",
+              "app.kubernetes.io/managed-by": "kustomize"
+            },
+            "name": "valkeybackup-sample"
+          },
+          "spec": {
+            "clusterRef": {
+              "kind": "Valkey",
+              "name": "valkey-sample"
+            },
+            "type": "RDB",
+            "storageSize": "1Gi",
+            "retainPVC": true
+          }
+        },
+        {
+          "apiVersion": "cache.keiailab.io/v1alpha1",
+          "kind": "ValkeyBackupTarget",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "valkey-operator",
+              "app.kubernetes.io/managed-by": "kustomize"
+            },
+            "name": "valkeybackuptarget-sample"
+          },
+          "spec": {
+            "type": "S3",
+            "s3": {
+              "endpoint": "https://s3.ap-northeast-2.amazonaws.com",
+              "region": "ap-northeast-2",
+              "bucket": "valkey-backups",
+              "prefix": "cluster-A/",
+              "forcePathStyle": false,
+              "credentialsSecretRef": {
+                "name": "s3-creds"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "cache.keiailab.io/v1alpha1",
+          "kind": "ValkeyRestore",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "valkey-operator",
+              "app.kubernetes.io/managed-by": "kustomize"
+            },
+            "name": "valkeyrestore-sample"
+          },
+          "spec": {
+            "clusterRef": {
+              "kind": "Valkey",
+              "name": "valkey-sample"
+            },
+            "source": {
+              "pvc": {
+                "name": "valkeybackup-sample-backup",
+                "path": "dump.rdb"
+              }
+            },
+            "restoreType": "RDB"
+          }
+        }
+      ]
     capabilities: Seamless Upgrades
     categories: Database, Storage
     containerImage: ghcr.io/keiailab/valkey-operator:v1.0.9
