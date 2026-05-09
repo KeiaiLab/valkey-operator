@@ -1,10 +1,39 @@
 # ADR-0026: Conversion Webhook — v1alpha1 Stable 도달 후 v1beta1 도입
 
-- Date: 2026-05-06
-- Status: Accepted
+- Date: 2026-05-06 (Initial Accepted) / 2026-05-09 (Partial Recovery 진행)
+- Status: Superseded-in-part by ADR-0034 (v1alpha2 도입 — *부분 회복 진행 중*)
 - Authors: @phil
 
-## Context
+## 2026-05-09 부분 회복 (Plan §2 D1, ADR-0034)
+
+ArtifactHub 비교 분석 (Plan §1 Phase 1) 결과 사용자 결정 4 (v1alpha2 +
+conversion webhook) 채택. 본 ADR 의 *deferred 결정* 을 *부분 회복*:
+
+- **v1beta1 대신 v1alpha2 도입** — Auth/NetworkPolicy/PSS 토글 +
+  RotationPolicy + Modules 신규 필드 추가가 v1beta1 promotion 까지 대기
+  불필요.
+- **PR-A2.2 sub-PR 진행 현황**:
+  - PR-A2.1 (#6, 머지): v1alpha2 type module + AuthSpec.Required.
+  - PR-A3.1 / A3.2 (#9 / #10): NetworkPolicy.AutoCreate + PodSecurityRestricted.
+  - PR-B7.1 (#12): AuthSpec.RotationPolicy enum.
+  - PR-C6.1 (#14): ValkeySpec.Modules.
+  - PR-A2.2.1 (#15): Hub marker 5 type.
+  - PR-A2.2.2 (#16): ConvertTo/ConvertFrom 5 type (JSON byte-copy).
+  - PR-A2.2.3.a (#17): cmd/main.go SchemeBuilder 등록.
+  - **PR-A2.2.3.b (후속)**: conversion webhook 활성 + CRD
+    spec.conversion.strategy=Webhook + cert-manager Certificate + helm chart.
+  - **PR-A2.2.4 (후속)**: 4 controller import v1alpha1 → v1alpha2 +
+    ensureAuthSecret Required 분기.
+  - **PR-A2.2.5 (후속)**: controller-gen 재실행 + zz_generated.deepcopy.go 갱신.
+
+본 ADR 의 *결정 자체* (v1alpha1 stable → v1beta1) 는 *유지* — 단 *v1alpha2
+가 v1beta1 의 prerequisite* 로 도입. v1beta1 promotion 은 v1alpha2
+stable 도달 후. ADR-0034 가 본 ADR *부분 supersede* — v1alpha2 는 deferred
+회복, v1beta1 은 원 결정 유지.
+
+---
+
+## Context (Initial 2026-05-06)
 
 Plan §3 Track F 의 *Conversion webhook (v1alpha1 → v1beta1 준비)*. 현재
 모든 5 CRD (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore,
