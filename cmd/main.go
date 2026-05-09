@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	cachev1alpha2 "github.com/keiailab/valkey-operator/api/v1alpha2"
 	"github.com/keiailab/valkey-operator/internal/cli"
 	"github.com/keiailab/valkey-operator/internal/controller"
 	"github.com/keiailab/valkey-operator/internal/observability"
@@ -66,6 +67,11 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(cachev1alpha1.AddToScheme(scheme))
+	// PR-A2.2.3.a (Plan §2 D1, ADR-0034): v1alpha2 Hub 등록.
+	// conversion webhook 활성 + CRD spec.conversion.strategy=Webhook 은
+	// PR-A2.2.3.b 후속. 본 PR 은 SchemeBuilder 등록 만 — kubectl apply
+	// cache.keiailab.io/v1alpha2 시 *type 인식* 가능 (단 conversion 미작동).
+	utilruntime.Must(cachev1alpha2.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
