@@ -20,18 +20,19 @@ import (
 
 // STSParams — Valkey / ValkeyCluster 양쪽이 공유하는 STS 빌드 파라미터.
 type STSParams struct {
-	CRName       string
-	Namespace    string
-	Replicas     int32
-	Image        string
-	PullPolicy   corev1.PullPolicy
-	Resources    corev1.ResourceRequirements
-	StorageClass string
-	StorageSize  resource.Quantity
-	PasswordRef  *corev1.SecretKeySelector
-	ClusterMode  bool
-	ExporterImg  string // 비어 있으면 sidecar 없음
-	Pod          *cachev1alpha1.PodSpec
+	CRName            string
+	Namespace         string
+	Replicas          int32
+	Image             string
+	PullPolicy        corev1.PullPolicy
+	Resources         corev1.ResourceRequirements
+	StorageClass      string
+	StorageSize       resource.Quantity
+	PasswordRef       *corev1.SecretKeySelector
+	ClusterMode       bool
+	ExporterImg       string                      // 비어 있으면 sidecar 없음
+	ExporterResources corev1.ResourceRequirements // metrics sidecar 의 resources (cycle 21 stop hook 15차 — IaC drift 0 진정 도달)
+	Pod               *cachev1alpha1.PodSpec
 	// TLSSecretName — 비어 있지 않으면 해당 Secret (kubernetes.io/tls + ca.crt) 을
 	// `/tls` 에 readOnly 마운트. configmap 의 tls-* 디렉티브 가 이 경로 를 참조.
 	TLSSecretName string
@@ -114,6 +115,9 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			Name:            "metrics",
 			Image:           p.ExporterImg,
 			SecurityContext: buildRestrictedContainerSecurityContext(),
+			// cycle 21 stop hook 15차: ExporterResources 를 sidecar 에 명시. 빈
+			// ResourceRequirements 면 K8s default (Burstable QoS) — 이전 동작과 동등.
+			Resources: p.ExporterResources,
 			Env: []corev1.EnvVar{
 				{Name: "REDIS_ADDR", Value: "redis://127.0.0.1:6379"},
 				{Name: "REDIS_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: p.PasswordRef}},

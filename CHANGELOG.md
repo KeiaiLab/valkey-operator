@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `monitoring.exporter.resources` 가 metrics sidecar 까지 reconcile 안 됨 (cycle 21 stop hook 15차, argos 통합):
+  - `STSParams.ExporterResources corev1.ResourceRequirements` 신규 필드 (internal/resources/statefulset.go).
+  - `BuildStatefulSet` 의 metrics container 가 `p.ExporterResources` 적용.
+  - Valkey + ValkeyCluster controller 가 `exporterResources(spec.Monitoring)` helper 로 전달.
+  - 빈 ResourceRequirements (default) → K8s Burstable QoS, 이전 동작 동등 호환.
+
 ### Changed
 
 - audit (4-repo cross-cut, 2026-05-09): RFC-0017 채택 — `.golangci.yml` + `.custom-gcl.yml` 신규 (postgres 표준 cp + depguard 정리), Makefile `validate` 타겟 추가 (kustomize + helm lint + helm template). ADR-0030 등재. 본 repo `.lefthook.yml` 은 RFC-0017 §3.1 표준 원본으로 승격됨 (변경 없음).

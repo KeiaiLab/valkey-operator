@@ -159,6 +159,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	if v.Spec.Monitoring != nil && v.Spec.Monitoring.Enabled {
 		stsParams.ExporterImg = exporterImage(v.Spec.Monitoring)
+		stsParams.ExporterResources = exporterResources(v.Spec.Monitoring)
 	}
 	sts := resources.BuildStatefulSet(stsParams)
 
@@ -355,6 +356,16 @@ func exporterImage(m *cachev1alpha1.MonitoringSpec) string {
 		return "oliver006/redis_exporter:latest"
 	}
 	return m.Exporter.Image
+}
+
+// exporterResources — metrics sidecar 의 resources. 빈 ResourceRequirements 면
+// K8s default (Burstable QoS) 로 fallback. cycle 21 stop hook 15차 (argos 통합):
+// CR spec.monitoring.exporter.resources 가 sts container 까지 진정 mapping.
+func exporterResources(m *cachev1alpha1.MonitoringSpec) corev1.ResourceRequirements {
+	if m == nil || m.Exporter == nil {
+		return corev1.ResourceRequirements{}
+	}
+	return buildResourceReq(m.Exporter.Resources)
 }
 
 // ensureAuthSecret — PasswordSecretRef 미지정 시 자동 생성. 항상 (password, ref, err) 반환.

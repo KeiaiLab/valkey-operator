@@ -193,6 +193,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	if vc.Spec.Monitoring != nil && vc.Spec.Monitoring.Enabled {
 		stsParams.ExporterImg = exporterImage(vc.Spec.Monitoring)
+		stsParams.ExporterResources = exporterResources(vc.Spec.Monitoring)
 	}
 	sts := resources.BuildStatefulSet(stsParams)
 	if err := applyStatefulSet(ctx, r.Client, r.Scheme, vc, sts, preserveReplicas); err != nil {
