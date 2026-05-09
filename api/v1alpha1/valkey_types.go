@@ -119,6 +119,7 @@ type ValkeyStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=vk
+// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Mode",type="string",JSONPath=".spec.mode"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Ready",type="integer",JSONPath=".status.readyReplicas"

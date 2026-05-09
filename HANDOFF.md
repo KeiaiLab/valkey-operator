@@ -4,6 +4,38 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
+## 2026-05-10 PR-A2.2.5 controller-gen regenerate — storageversion regression fix
+
+- **branch**: `feat/pr-a2.2.5-controller-gen-regenerate` (push 완료, PR 미생성)
+- **commit**: `b138322 fix(api): v1alpha1 storageversion 마커 추가 + controller-gen regenerate (PR-A2.2.5)`
+- **문제 진단**: 직전 세션의 미커밋 working tree (5 CRD diff 5001 lines) 가
+  *모든 CRD 에서 storage:false* 상태였다. 이 상태로 `kubectl apply` 시 K8s
+  validation error (정확히 1 storage:true 요구). controller-gen v0.18+ 는
+  multi-version CRD 에 `+kubebuilder:storageversion` 명시 마커 강제 — v1alpha2
+  type 도입 후 5 root type 모두 마커 부재로 본 regression 발생.
+- **결정**: v1alpha1 에 마커 추가 (production storage 보존). conversion webhook
+  ADR-0026 deferred 상태이므로 v1alpha2 storage 승격은 *별 PR (PR-A2.3 webhook
+  본격 도입)* 시점으로 미룸. 5 type 모두 동일 패턴 적용.
+- **검증 인용**:
+  ```
+  $ make manifests
+  ✓ controller-gen regenerate / charts/valkey-operator/crds 자동 sync
+  $ for f in config/crd/bases/cache.keiailab.io_valkey*.yaml; do
+      grep -c "storage: true" $f; done
+  1 1 1 1 1   (5 CRD 정확히 1 storage:true)
+  $ make lint
+  0 issues
+  $ go test ./api/... ./internal/webhook/...
+  ok api/v1alpha1, api/v1alpha2, internal/webhook/v1alpha1 (3 PASS)
+  $ git push origin feat/pr-a2.2.5-controller-gen-regenerate
+  pre-push hooks: helm-lint + helm-template + platforms-amd64-guard
+                  + unit-test (20.74s) 모두 PASS
+  ```
+- **다음 단계 (사용자 invocation 시점)**:
+  1. PR 생성: `gh pr create --base main --title "fix(api): v1alpha1 storageversion 마커 추가 (PR-A2.2.5)"` — 사용자 명시 승인 권장 (외부 effect).
+  2. 머지 후 PR-A2.2.6 (controller import 변경 + ensureAuthSecret Required 분기) 진입.
+  3. 또는 PR-A4 (cosign + SLSA L2) 독립 진행 가능.
+
 ## 2026-05-09 Sprint A 진입 (PR-A2 / A3 / A4 / A6) — Helm 차트 비교 plan
 
 > Plan: `~/.claude/plans/1-https-artifacthub-io-packages-helm-clo-synthetic-gem.md`
