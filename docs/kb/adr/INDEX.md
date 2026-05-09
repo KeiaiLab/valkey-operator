@@ -26,7 +26,7 @@
 | [0015](0015-valkeyrestore-init-container-pattern.md) | ValkeyRestore — Init Container 기반 RDB 로드 + STS 재시작 | Accepted | 2026-05-06 |
 | [0016](0016-valkeybackuptarget-crd-external-storage.md) | ValkeyBackupTarget CRD — S3-compatible 외부 저장 추상화 | Accepted | 2026-05-06 |
 | [0017](0017-replication-failover-replica-with-largest-offset.md) | Replication Mode Failover — Replica with Largest master_repl_offset | Accepted | 2026-05-06 |
-| 0018 | *Reserved — Cluster Resharding (slot batch + ASKING 처리)*. 미작성. plans/ethereal-fluttering-wand 에서 예약됨. | Reserved | — |
+| [0018](0018-cluster-auto-resharding.md) | Cluster Auto-Resharding (SlotMigrationPolicy Auto 활성, PR-B8.1 ADR 정식 작성 — controller 구현 PR-B8.2 후속) | Accepted | 2026-05-09 |
 | 0019 | *Reserved (사용 미정)*. | Reserved | — |
 | 0020 | *Reserved (사용 미정)*. | Reserved | — |
 | [0021](0021-helm-chart-kubebuilder-helm-plugin.md) | Helm Chart — kubebuilder helm/v2-alpha plugin 채택 | Superseded by 0024 | 2026-05-06 |
