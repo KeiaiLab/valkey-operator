@@ -40,7 +40,7 @@
 | [0029](0029-gitops-deploy-overlay.md) | GitOps deploy 오버레이 도입 (3-repo 정합) | Accepted | 2026-05-06 |
 | [0030](0030-rfc-0017-tooling-unification-adoption.md) | RFC-0017 operator tooling unification 채택 (.golangci.yml 신규 + Makefile validate + HEALTHCHECK) | Proposed | 2026-05-09 |
 | [0031](0031-auth-rotation-policy.md) | Password Rotation reflect path (AuthSpec.RotationPolicy enum, v1alpha2 PR-B7.1 type module — controller 분기 PR-B7.2 후속) | Accepted | 2026-05-09 |
-| 0032 | *Reserved — Custom Modules init container mount (Plan §2 D9, PR-C6).* 미작성. | Reserved | — |
+| [0032](0032-custom-modules-init-container.md) | Valkey Custom Modules — init container mount + 공식 preset only (v1alpha2 PR-C6.1 type module — controller 분기 PR-C6.2 후속) | Accepted | 2026-05-09 |
 | [0033](0033-supply-chain-cosign-slsa.md) | Supply Chain — cosign sign + SLSA L2 in-toto attestation (Plan §2 D5, PR-A4) | Accepted | 2026-05-09 |
 | [0034](0034-auth-optional-v1alpha2.md) | Auth Optional + v1alpha2 신규 (supersedes ADR-0013, PR-A2.1 type module) | Accepted | 2026-05-09 |
 | [0035](0035-networkpolicy-autocreate-optional.md) | NetworkPolicy.AutoCreate Optional Toggle (v1alpha2, PR-A3.1 type module — controller 분기 PR-A3.1.2 후속) | Accepted | 2026-05-09 |
