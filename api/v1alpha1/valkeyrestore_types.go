@@ -146,6 +146,7 @@ type ValkeyRestoreStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=vkr
+// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.clusterRef.name"
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.restoreType"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
