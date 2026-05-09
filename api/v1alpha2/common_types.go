@@ -209,7 +209,28 @@ type ExporterSpec struct {
 }
 
 // PodSpec — pod 레벨 스케줄/보안 옵션.
+//
+// v1alpha2 변경 (Plan §2 D3, ADR-0036): PodSecurityRestricted 필드 신규.
+// default=true 시 operator 가 Pod Security Admission "restricted"
+// profile 강제 (v1alpha1 동작 동등 — capabilities.drop=ALL, runAsNonRoot,
+// readOnlyRootFilesystem 등). false 시 SecurityContext /
+// ContainerSecurityContext 의 사용자 정의 우선.
 type PodSpec struct {
+	// PodSecurityRestricted — PSA "restricted" profile 강제 토글
+	// (Plan §2 D3, ADR-0036). default=true 유지로 secure-by-default 보존.
+	//
+	// nil (legacy 호환): true 처리.
+	// true (default): operator 가 restricted SecurityContext 강제 적용 —
+	// SecurityContext / ContainerSecurityContext 사용자 정의는 *enforced
+	// fields* 외 영역만 적용.
+	// false: 사용자 정의 SecurityContext / ContainerSecurityContext 우선.
+	// 외부 PSA policy (custom admission controller) 또는 K8s 1.25+ PSA
+	// label namespace 분리 시나리오 지원.
+	//
+	// +kubebuilder:default:=true
+	// +optional
+	PodSecurityRestricted *bool `json:"podSecurityRestricted,omitempty"`
+
 	// +optional
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 	// +optional
