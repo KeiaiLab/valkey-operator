@@ -39,6 +39,14 @@
 | [0028](0028-helm-kustomize-parity-invariant.md) | Helm vs Kustomize Parity Invariant — 5 sibling silent failure family 차단 | Accepted | 2026-05-06 |
 | [0029](0029-gitops-deploy-overlay.md) | GitOps deploy 오버레이 도입 (3-repo 정합) | Accepted | 2026-05-06 |
 | [0030](0030-rfc-0017-tooling-unification-adoption.md) | RFC-0017 operator tooling unification 채택 (.golangci.yml 신규 + Makefile validate + HEALTHCHECK) | Proposed | 2026-05-09 |
+| 0031 | *Reserved — Password Rotation reflect path (Plan §2 D6, PR-B7).* 미작성. | Reserved | — |
+| 0032 | *Reserved — Custom Modules init container mount (Plan §2 D9, PR-C6).* 미작성. | Reserved | — |
+| [0033](0033-supply-chain-cosign-slsa.md) | Supply Chain — cosign sign + SLSA L2 in-toto attestation (Plan §2 D5, PR-A4) | Accepted | 2026-05-09 |
+| 0034 | *Reserved — Auth Optional v1alpha2 + conversion webhook (Plan §2 D1, PR-A2).* 미작성. ADR-0013 supersede 예정. | Reserved | — |
+| 0035 | *Reserved — NetworkPolicy Optional toggle (Plan §2 D2, PR-A3).* 미작성. ADR-0057 supersede 예정. | Reserved | — |
+| 0036 | *Reserved — PodSecurityContext Restricted Optional (Plan §2 D3, PR-A3).* 미작성. | Reserved | — |
+| 0037 | *Reserved — OperatorHub.io bundle 등록 (Plan §2 D4, PR-B9).* 미작성. | Reserved | — |
+| 0038 | *Reserved — RFC-0018 pkg/finalizer + pkg/status adoption (Plan §2 D10/D11, PR-A6).* 미작성. | Reserved | — |
 
 ## 작성 가이드
 
