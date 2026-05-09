@@ -31,7 +31,8 @@ const (
 	certmanagerVersion        = "v1.20.2"
 	certmanagerURLTmpl        = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
 	prometheusOperatorVersion = "v0.87.0"
-	prometheusCRDURLTmpl      = "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/%s/example/prometheus-operator-crd/%s"
+	prometheusCRDURLTmpl      = "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/" +
+		"%s/example/prometheus-operator-crd/%s"
 
 	defaultKindBinary  = "kind"
 	defaultKindCluster = "kind"

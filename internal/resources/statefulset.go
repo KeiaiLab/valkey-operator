@@ -122,17 +122,17 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		})
 	}
 
-	volumes := []corev1.Volume{
-		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: ConfigMapName(p.CRName)},
-				},
+	tlsVols := tlsVolumes(p.TLSSecretName)
+	volumes := make([]corev1.Volume, 0, 1+len(tlsVols))
+	volumes = append(volumes, corev1.Volume{
+		Name: "config",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: ConfigMapName(p.CRName)},
 			},
 		},
-	}
-	volumes = append(volumes, tlsVolumes(p.TLSSecretName)...)
+	})
+	volumes = append(volumes, tlsVols...)
 
 	podSpec := corev1.PodSpec{
 		Containers: containers,

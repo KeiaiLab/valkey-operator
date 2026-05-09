@@ -713,7 +713,7 @@ func TestBuildNetworkPolicy(t *testing.T) {
 	// 별 rules 로 나누든 *동작 동등*. 본 test 는 rule 개수 비교 대신 *합산 from peers*
 	// + *port set* 으로 semantic equivalence 검증.
 	allFromPeers := func(np *networkingv1.NetworkPolicy) []networkingv1.NetworkPolicyPeer {
-		var all []networkingv1.NetworkPolicyPeer
+		all := make([]networkingv1.NetworkPolicyPeer, 0, len(np.Spec.Ingress))
 		for _, rule := range np.Spec.Ingress {
 			all = append(all, rule.From...)
 		}

@@ -178,12 +178,12 @@ type fakeS3Client struct {
 func (f *fakeS3Client) Reachable(_ context.Context) (bool, error) { return f.exists, f.pingErr }
 func (f *fakeS3Client) EndpointHost() string                      { return f.host }
 
-func mockBuilder(client *fakeS3Client, buildErr error) s3ClientBuilder {
+func mockBuilder(s3c *fakeS3Client, buildErr error) s3ClientBuilder {
 	return func(_ *cachev1alpha1.S3Spec, _, _ string) (s3Reachable, error) {
 		if buildErr != nil {
 			return nil, buildErr
 		}
-		return client, nil
+		return s3c, nil
 	}
 }
 

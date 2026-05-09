@@ -32,7 +32,8 @@ func fakeRestoreReconciler(rest *cachev1alpha1.ValkeyRestore, others ...client.O
 	_ = cachev1alpha1.AddToScheme(scheme)
 	_ = corev1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
-	objs := []client.Object{rest}
+	objs := make([]client.Object, 0, 1+len(others))
+	objs = append(objs, rest)
 	objs = append(objs, others...)
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
