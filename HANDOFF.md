@@ -4,10 +4,11 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
-## 2026-05-10 PR-A2.2.5 controller-gen regenerate — storageversion regression fix
+## 2026-05-10 PR-A2.2.5 storageversion regression fix (MERGED)
 
-- **branch**: `feat/pr-a2.2.5-controller-gen-regenerate` (push 완료, PR 미생성)
-- **commit**: `b138322 fix(api): v1alpha1 storageversion 마커 추가 + controller-gen regenerate (PR-A2.2.5)`
+- **PR**: [#19](https://github.com/keiailab/valkey-operator/pull/19) MERGED → main `9aaaa45` (squash)
+- **branch**: `feat/pr-a2.2.5-controller-gen-regenerate` (deleted)
+- **commit (pre-squash)**: `b138322 fix(api): v1alpha1 storageversion 마커 추가 + controller-gen regenerate (PR-A2.2.5)`
 - **문제 진단**: 직전 세션의 미커밋 working tree (5 CRD diff 5001 lines) 가
   *모든 CRD 에서 storage:false* 상태였다. 이 상태로 `kubectl apply` 시 K8s
   validation error (정확히 1 storage:true 요구). controller-gen v0.18+ 는
@@ -31,10 +32,11 @@
   pre-push hooks: helm-lint + helm-template + platforms-amd64-guard
                   + unit-test (20.74s) 모두 PASS
   ```
-- **다음 단계 (사용자 invocation 시점)**:
-  1. PR 생성: `gh pr create --base main --title "fix(api): v1alpha1 storageversion 마커 추가 (PR-A2.2.5)"` — 사용자 명시 승인 권장 (외부 effect).
-  2. 머지 후 PR-A2.2.6 (controller import 변경 + ensureAuthSecret Required 분기) 진입.
-  3. 또는 PR-A4 (cosign + SLSA L2) 독립 진행 가능.
+- **다음 단계 (다음 ralph-loop iteration 진입점)**:
+  1. PR-A2.2.6 — controller import 변경 + ensureAuthSecret Required 분기 (v1alpha2 전환 마지막 단계).
+  2. PR-A6 — pkg/finalizer migration (mongodb #119 패턴 차용 — 4 controller).
+  3. PR-A4 — cosign + SLSA L2 (독립적, 즉시 가능).
+  4. PR-A3 — NetworkPolicy.AutoCreate + PodSecurityRestricted toggle.
 
 ## 2026-05-09 Sprint A 진입 (PR-A2 / A3 / A4 / A6) — Helm 차트 비교 plan
 
