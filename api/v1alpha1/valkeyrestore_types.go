@@ -26,7 +26,7 @@ const (
 
 // RestorePhase — 라이프사이클 (ADR-0015).
 //
-// +kubebuilder:validation:Enum=Pending;Mounting;Restoring;Verifying;Completed;Failed
+// +kubebuilder:validation:Enum=Pending;Mounting;Restoring;Verifying;Completed;Failed;PITRRollbackPending
 type RestorePhase string
 
 const (
@@ -46,6 +46,12 @@ const (
 	RestorePhaseCompleted RestorePhase = "Completed"
 	// RestorePhaseFailed — 임의 단계 실패. 사용자 개입 필요. STS 원복 시도.
 	RestorePhaseFailed RestorePhase = "Failed"
+	// RestorePhasePITRRollbackPending — PITR replay 실패 (init container
+	// CrashLoopBackOff). PR #72 의 backup file (dump.aof.original) 이 staging
+	// PVC 에 존재 — 운영자 수동 rollback 권장 (docs/operations/pitr-guide.md
+	// §Recovery from Failed PITR). 본 phase 는 *사용자 명시 승인 후 자동* 으로
+	// reconciler 가 transition (별도 epic) — 현재는 *manual signal* 용.
+	RestorePhasePITRRollbackPending RestorePhase = "PITRRollbackPending"
 )
 
 // RestoreSourcePVC — Source.PVC: 기존 backup PVC 에서 RDB 직접 사용.

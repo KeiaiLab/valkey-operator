@@ -245,6 +245,7 @@ spec:
                 - Verifying
                 - Completed
                 - Failed
+                - PITRRollbackPending
                 type: string
               restoredKeys:
                 description: RDB 가 cluster 에 로드된 후 INFO 로 추정한 키 개수 (검증 단계 결과).
