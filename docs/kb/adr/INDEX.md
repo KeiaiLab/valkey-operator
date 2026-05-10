@@ -47,6 +47,7 @@
 | [0036](0036-pod-security-restricted-optional.md) | PodSecurity Restricted Optional Toggle (v1alpha2 PodSpec.PodSecurityRestricted, PR-A3.2 type module — controller 분기 PR-A3.2.2 후속) | Accepted | 2026-05-09 |
 | [0037](0037-operatorhub-bundle-scaffold.md) | OperatorHub.io bundle scaffold — operator-sdk v1.42 + kustomize, 5 CRD owned, Makefile bundle/bundle-build 타겟 (PR-B9 first cut, alm-examples + community-operators PR 후속) | Accepted | 2026-05-10 |
 | [0038](0038-rfc-0018-pkg-finalizer-migration.md) | RFC-0018 채택 — pkg/finalizer migration (controllerutil → commons, 5 controller, PR-A6 first cut, status 별도) | Accepted | 2026-05-09 |
+| [0039](0039-cluster-self-heal-post-init.md) | ValkeyCluster post-init self-heal — INC-0001 영구 fix, ClusterInitialized=true && state!=ok 시 ensureClusterMeet 재호출 | Accepted | 2026-05-10 |
 
 ## 작성 가이드
 

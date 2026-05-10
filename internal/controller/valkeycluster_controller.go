@@ -221,10 +221,30 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
-	// 9. CLUSTER MEET + ADDSLOTS + REPLICATE — 모든 pod 가 Ready 되었을 때 1회 호출.
-	//    멱등성: ClusterInitialized 플래그 + 사전 QueryClusterInfo 로 이중 가드.
+	// 9. CLUSTER MEET + ADDSLOTS + REPLICATE — 첫 bootstrap 또는 INC-0001 자가치유.
+	//
+	//    멱등성: ClusterInitialized 플래그 + ensureClusterMeet 의 사전 QueryClusterInfo
+	//    가드 (state=ok && slots=16384 시 skip) 로 이중 보호.
+	//
+	//    INC-0001 (2026-05-09 19h cluster fail): pod 재시작 후 nodes.conf 의 myself
+	//    IP stale → cluster gossip fail → state=fail. 기존 로직은 ClusterInitialized=
+	//    true 면 bootstrap skip → 자가치유 불가. 본 fix 는 *post-init cluster 가
+	//    state != ok 또는 slots != 16384* 인 경우 ensureClusterMeet 재호출 — CLUSTER
+	//    MEET 은 멱등, CreateCluster 의 ADDSLOTS 은 이미 owner 있는 slot 은 거부되지만
+	//    *없는 slot 은 새로 assign* 되어 partial recovery + 다음 reconcile 에 수렴.
 	allReady := stsObj.readyReplicas == totalReplicas && totalReplicas > 0
-	if allReady && !vc.Status.ClusterInitialized {
+	shouldBootstrap := allReady && !vc.Status.ClusterInitialized
+	if allReady && vc.Status.ClusterInitialized {
+		preInfo, _, _ := r.pollClusterState(ctx, vc, password)
+		if preInfo != nil && (preInfo.State != "ok" || preInfo.SlotsAssigned != 16384) {
+			logger.Info("ValkeyCluster post-init fail detected; attempting re-bootstrap (INC-0001 self-heal)",
+				"state", preInfo.State,
+				"slotsAssigned", preInfo.SlotsAssigned,
+				"slotsOK", preInfo.SlotsOK)
+			shouldBootstrap = true
+		}
+	}
+	if shouldBootstrap {
 		if err := r.ensureClusterMeet(ctx, vc, password); err != nil {
 			logger.Error(err, "Cluster bootstrap pending — will retry")
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
