@@ -94,15 +94,32 @@ const (
 	SourcePVCAccessModeROX SourcePVCAccessMode = "ReadOnlyMany"
 )
 
-// RestoreSource — PVC 또는 외부 target 중 하나.
+// RestoreSource — PVC / 외부 target / VolumeSnapshot 중 하나.
 //
-// 두 필드가 동시에 명시되면 webhook validation 거절 (별개 commit).
+// 둘 이상 동시 명시 시 webhook validation reject.
 type RestoreSource struct {
 	// +optional
 	PVC *RestoreSourcePVC `json:"pvc,omitempty"`
 
 	// +optional
 	TargetRef *RestoreSourceTargetRef `json:"targetRef,omitempty"`
+
+	// VolumeSnapshot — k8s native snapshot.storage.k8s.io/v1 VolumeSnapshot 참조.
+	// PR #51 의 BackupTypeVolumeSnapshot 결과물 또는 외부 도구가 만든 snapshot
+	// 양쪽 모두 사용 가능. 채택 시 reconciler 가 PVC.spec.dataSource 로 inject 한
+	// 새 PVC 생성 → STS 가 그 PVC 마운트하여 즉시 데이터 plane 사용.
+	//
+	// +optional
+	VolumeSnapshot *RestoreSourceVolumeSnapshot `json:"volumeSnapshot,omitempty"`
+}
+
+// RestoreSourceVolumeSnapshot — k8s native VolumeSnapshot 참조.
+//
+// CSI driver 가 snapshot → PVC clone (`dataSource: VolumeSnapshot`) 를 지원
+// 해야 함 (대다수 CSI driver 가 지원).
+type RestoreSourceVolumeSnapshot struct {
+	// VolumeSnapshot CR 이름 (같은 namespace).
+	Name string `json:"name"`
 }
 
 // ValkeyRestoreSpec — restore 트리거 정의.
