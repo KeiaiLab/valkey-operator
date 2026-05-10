@@ -95,10 +95,29 @@ phase 2 가 위 1-3 단계를 *operator 가 자동* 처리.
 
 본 가이드의 phase 2 dispatch 활성화 위해:
 
-1. **AOF timestamp parse 라이브러리** — Valkey 9.x 의 timestamp-enabled AOF 형식 spec 정합
+1. ~~**AOF timestamp parse 라이브러리**~~ → ✅ **PR #68** `internal/aoftime` 패키지 GA
+   (Valkey 8.0+ `aof-timestamp-enabled yes` 의 `#TS:<unix>` marker 파싱.
+   `TruncateOffset(aof, cutoff time.Time) int` 가 truncation 위치 반환)
 2. **valkey-cli --pipe 통합** — operator 가 valkey 노드에 AOF 줄별 적용
+   (`valkey-cli -h <pod> --pipe < truncated.aof`)
 3. **PointInTime <= backup CompletedAt invariant** webhook 추가
 4. **rollback** — replay 중 실패 시 backup 시점으로 fallback
+
+## PR #68 사용 예 (Go 코드 통합)
+
+```go
+import "github.com/keiailab/valkey-operator/internal/aoftime"
+
+aofBytes, _ := os.ReadFile("dump.aof")
+if !aoftime.HasTimestamps(aofBytes) {
+    // PITR 불가 — 전체 replay 만 가능
+    return errors.New("AOF lacks timestamps (set aof-timestamp-enabled yes for PITR)")
+}
+cutoff := time.Date(2026, 5, 10, 14, 30, 0, 0, time.UTC)
+offset := aoftime.TruncateOffset(aofBytes, cutoff)
+truncated := aofBytes[:offset]
+// truncated 를 valkey-cli --pipe 에 stream → cutoff 시각까지의 데이터만 복원
+```
 
 ## 후속 가이드
 
