@@ -120,6 +120,29 @@ test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expect
 	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
 	$(MAKE) cleanup-test-e2e
 
+# chaos-mesh manifest URL — ADR-0041 §References. v2.7.x stable (2026-04 기준).
+CHAOS_MESH_VERSION ?= v2.7.2
+
+.PHONY: chaos-mesh-install
+chaos-mesh-install: ## Install chaos-mesh into the current kubeconfig context (test only).
+	kubectl create namespace chaos-mesh --dry-run=client -o yaml | kubectl apply -f -
+	curl -sSL https://mirrors.chaos-mesh.org/$(CHAOS_MESH_VERSION)/install.sh | \
+		bash -s -- --local kind --name $(KIND_CLUSTER)
+
+.PHONY: chaos-mesh-uninstall
+chaos-mesh-uninstall: ## Remove chaos-mesh CRDs + namespace.
+	kubectl delete --ignore-not-found namespace chaos-mesh
+	kubectl get crd -o name | grep chaos-mesh.org | xargs -r kubectl delete --ignore-not-found
+
+.PHONY: chaos-e2e
+chaos-e2e: manifests generate fmt vet ## Run chaos engineering e2e (ADR-0041, requires chaos-mesh installed).
+	@echo "==> chaos-e2e: 실행 전 다음이 충족돼야 합니다:"
+	@echo "    1. valkey-operator 가 cluster 에 deploy 됨 (make deploy)"
+	@echo "    2. chaos-mesh CRD + controller 설치 (make chaos-mesh-install)"
+	@echo "    3. namespace=$$CHAOS_TEST_NAMESPACE 에 ValkeyCluster vc-chaos healthy"
+	@echo ""
+	go test -tags=chaos ./test/chaos/... -v -ginkgo.v -timeout=30m
+
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
