@@ -22,6 +22,14 @@ const (
 	CapabilityMonitoring        = "Monitoring"
 )
 
+// AllCapabilities — Prometheus Metric 의 inactive=0 명시 set 위해 전체 리스트
+// 노출. 신규 토큰 추가 시 본 슬라이스에도 반영 의무.
+var AllCapabilities = []string{
+	CapabilityTLS, CapabilityTLSAutoCA, CapabilityAuth, CapabilityAutoscaling,
+	CapabilitySlowLog, CapabilityEncryptionAudit, CapabilityEncryptionEnforce,
+	CapabilityNetworkPolicy, CapabilityMonitoring,
+}
+
 // computeValkeyCapabilities — Valkey CR 의 활성 optional features 슬라이스 산출.
 // reconciler 가 매 reconcile 에서 호출 → Status.Capabilities 갱신.
 //

@@ -145,6 +145,21 @@ var (
 		labelNamespaceName,
 	)
 
+	// MetricCapabilityActive — CR 의 활성 optional capability 추적 (PR #62 Status.Capabilities
+	// 의 Prometheus 측 노출). fleet-wide 채택 추적 용:
+	//   sum by (capability) (valkey_cluster_capability_active) → namespace 별 채택 CR 수
+	//
+	// 라벨 cardinality: |capabilities| (≤9) × cluster 수. 운영 1000 cluster + 9 capability
+	// = 9000 series — Prometheus 단일 instance 한계 (~10M) 대비 무시.
+	MetricCapabilityActive = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Subsystem: metricSubsystem,
+			Name:      "capability_active",
+			Help:      "1 if the optional capability is active for this CR, 0 otherwise",
+		},
+		[]string{"namespace", "name", "capability"},
+	)
+
 	// MetricBuildInfo — kube-state-metrics 표준 패턴. {version, commit, date}
 	// 라벨로 운영 중 image 의 정확한 release tag 식별. cycles 53-56 의 ldflags
 	// chain 과 정합 — `kubectl exec ... --version` 의 *Prometheus 등가물*.
@@ -171,6 +186,7 @@ func init() {
 		MetricBackupTotal,
 		MetricRestoreTotal,
 		MetricFailoverTotal,
+		MetricCapabilityActive,
 		MetricBuildInfo,
 	)
 }
@@ -204,9 +220,32 @@ func DeleteMetricsFor(namespace, name string) {
 	for _, p := range allPhases {
 		MetricPhase.DeleteLabelValues(namespace, name, p)
 	}
-	// MetricReconcileErrors 는 component 차원이 추가되어 별도 cleanup 어려움.
-	// CR 삭제 시점에는 component 종류를 모두 알지 못하므로 label-match-delete 사용.
+	// MetricReconcileErrors / MetricCapabilityActive 는 component / capability
+	// 차원이 추가되어 label-match-delete 사용.
 	MetricReconcileErrors.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace, "name": name,
 	})
+	MetricCapabilityActive.DeletePartialMatch(prometheus.Labels{
+		"namespace": namespace, "name": name,
+	})
+}
+
+// SetCapabilityMetrics — Status.Capabilities 슬라이스를 Prometheus Gauge 로 반영.
+// active 한 capability 만 1 로 set, 본 함수가 inactive 를 명시 0 으로 set 하지
+// 는 않음 (cleanup 은 DeleteMetricsFor 또는 다음 reconcile 에서 자동 갱신).
+//
+// 단, *비활성 전환* 케이스 (사용자가 spec field 제거) 처리 위해 caller 가 가능
+// capability 전체 리스트 를 함께 전달 — inactive 는 0 으로 명시 set.
+func SetCapabilityMetrics(namespace, name string, allCapabilities []string, active []string) {
+	activeSet := make(map[string]bool, len(active))
+	for _, cap := range active {
+		activeSet[cap] = true
+	}
+	for _, cap := range allCapabilities {
+		v := 0.0
+		if activeSet[cap] {
+			v = 1.0
+		}
+		MetricCapabilityActive.WithLabelValues(namespace, name, cap).Set(v)
+	}
 }

@@ -86,6 +86,7 @@ rate(valkey_cluster_reconcile_duration_seconds_sum[5m])
 |---|---|---|---|
 | `up{job=~"valkey-operator.*"}` | Prometheus scraping | `1` | `0` 2m → `ValkeyOperatorDown` (critical) |
 | `valkey_cluster_build_info{version,commit,date}` | `SetBuildInfo` 부팅 1회 | always `1` (현재 release tag 식별용) | 라벨 mismatch = ldflags 주입 실패 (cycles 53-56) |
+| `valkey_cluster_capability_active{namespace,name,capability}` | reconcile 마다 갱신 (PR #64) | active=`1`, inactive=`0`. capability 토큰: TLS / TLS-AutoCA / Auth / Autoscaling / SlowLog / EncryptionAudit / EncryptionEnforce / NetworkPolicy / Monitoring | fleet-wide 채택 추적 — `sum by (capability) (valkey_cluster_capability_active)` |
 
 ## 6. 파생 / 권장 PromQL (운영 dashboard)
 
