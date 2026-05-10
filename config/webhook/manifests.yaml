@@ -130,3 +130,23 @@ webhooks:
     resources:
     - valkeyclusters
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-cache-keiailab-io-v1alpha1-valkeyrestore
+  failurePolicy: Fail
+  name: vvalkeyrestore-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - cache.keiailab.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - valkeyrestores
+  sideEffects: None
