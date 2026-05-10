@@ -150,17 +150,18 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 6. StatefulSet
 	stsParams := resources.STSParams{
-		CRName:       v.Name,
-		Namespace:    v.Namespace,
-		Replicas:     desiredReplicas(v),
-		Image:        imageOrDefault(v.Spec.Version),
-		PullPolicy:   v.Spec.Version.ImagePullPolicy,
-		Resources:    buildResourceReq(v.Spec.Resources),
-		StorageClass: v.Spec.Storage.StorageClassName,
-		StorageSize:  v.Spec.Storage.Size,
-		PasswordRef:  secretRef,
-		ClusterMode:  false,
-		Pod:          v.Spec.Pod,
+		CRName:         v.Name,
+		Namespace:      v.Namespace,
+		Replicas:       desiredReplicas(v),
+		Image:          imageOrDefault(v.Spec.Version),
+		PullPolicy:     v.Spec.Version.ImagePullPolicy,
+		Resources:      buildResourceReq(v.Spec.Resources),
+		StorageClass:   v.Spec.Storage.StorageClassName,
+		StorageSize:    v.Spec.Storage.Size,
+		PasswordRef:    secretRef,
+		ClusterMode:    false,
+		Pod:            v.Spec.Pod,
+		AuthSecretHash: hashAuthSecret(password),
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		switch {

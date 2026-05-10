@@ -179,17 +179,18 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	vc.Status.PendingScale = pendingScale
 
 	stsParams := resources.STSParams{
-		CRName:       vc.Name,
-		Namespace:    vc.Namespace,
-		Replicas:     totalReplicas,
-		Image:        imageOrDefault(vc.Spec.Version),
-		PullPolicy:   vc.Spec.Version.ImagePullPolicy,
-		Resources:    buildResourceReq(vc.Spec.Resources),
-		StorageClass: vc.Spec.Storage.StorageClassName,
-		StorageSize:  vc.Spec.Storage.Size,
-		PasswordRef:  secretRef,
-		ClusterMode:  true,
-		Pod:          vc.Spec.Pod,
+		CRName:         vc.Name,
+		Namespace:      vc.Namespace,
+		Replicas:       totalReplicas,
+		Image:          imageOrDefault(vc.Spec.Version),
+		PullPolicy:     vc.Spec.Version.ImagePullPolicy,
+		Resources:      buildResourceReq(vc.Spec.Resources),
+		StorageClass:   vc.Spec.Storage.StorageClassName,
+		StorageSize:    vc.Spec.Storage.Size,
+		PasswordRef:    secretRef,
+		ClusterMode:    true,
+		Pod:            vc.Spec.Pod,
+		AuthSecretHash: hashAuthSecret(password),
 	}
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
 		// CertManager 와 CustomCert 둘 다 동일 secret 마운트 — webhook 이 둘 중 하나만
