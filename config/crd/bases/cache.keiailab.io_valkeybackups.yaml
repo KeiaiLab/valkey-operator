@@ -134,10 +134,19 @@ spec:
                 type: string
               type:
                 default: RDB
-                description: BackupType — RDB snapshot 또는 AOF rewrite.
+                description: BackupType — RDB snapshot / AOF rewrite / VolumeSnapshot
+                  (k8s native).
                 enum:
                 - RDB
                 - AOF
+                - VolumeSnapshot
+                type: string
+              volumeSnapshotClassName:
+                description: |-
+                  VolumeSnapshotClassName — Type=VolumeSnapshot 시 사용할
+                  snapshot.storage.k8s.io/v1 VolumeSnapshotClass 이름.
+                  미명시 시 cluster default 사용 (CSI driver 별 동작).
+                  Type=RDB/AOF 일 때는 무시.
                 type: string
             required:
             - clusterRef

@@ -163,10 +163,13 @@ func boolToConditionStatus(b bool) metav1.ConditionStatus {
 // Deletion 은 paused 와 무관하게 진행 — finalizer cleanup 차단 위험 회피.
 const PausedAnnotation = "cache.keiailab.io/paused"
 
+// pausedAnnotationTrue — PausedAnnotation 의 표준 active 값. goconst 회피용 const.
+const pausedAnnotationTrue = "true"
+
 // isPaused — 객체에 PausedAnnotation="true" 가 있으면 true.
 func isPaused(obj client.Object) bool {
 	if obj == nil {
 		return false
 	}
-	return obj.GetAnnotations()[PausedAnnotation] == "true" //nolint:goconst // K8s annotation 값 "true" 표준
+	return obj.GetAnnotations()[PausedAnnotation] == pausedAnnotationTrue
 }
