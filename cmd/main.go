@@ -289,6 +289,14 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	// ValkeyBackupTarget admission webhook — Type vs sub-spec 일관성 + immutability.
+	// nolint:goconst
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err := webhookv1alpha1.SetupValkeyBackupTargetWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create webhook", "webhook", "ValkeyBackupTarget")
+			os.Exit(1)
+		}
+	}
 	// cycle 80: backup/restore feature gating — features.backup.enabled 와 정합.
 	// nolint:goconst // env 비교 string inline.
 	if os.Getenv("ENABLE_BACKUP_RECONCILER") != "false" {
