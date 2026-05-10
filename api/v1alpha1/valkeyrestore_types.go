@@ -141,6 +141,25 @@ type ValkeyRestoreSpec struct {
 	// +kubebuilder:default="ReadWriteOnce"
 	// +optional
 	SourcePVCAccessMode SourcePVCAccessMode `json:"sourcePVCAccessMode,omitempty"`
+
+	// PointInTime — Point-In-Time Recovery 대상 시각. AOF type restore 에서만
+	// 의미 (RDB 는 snapshot 시각으로 고정, replay 불가).
+	//
+	// 채택 시 reconciler 가 AOF 파일을 다운로드 → `valkey-cli --pipe` 또는 직접
+	// AOF replay 로 본 시각까지 commands 적용. 이후 AOF entry 무시.
+	//
+	// nil = 전체 AOF replay (default — backup 시점까지 모두 적용).
+	// 명시 = 해당 시각까지만 (commercial PITR).
+	//
+	// 제약 (webhook validation):
+	//   - RestoreType=AOF 가 아니면 reject (RDB 는 PITR 불가)
+	//   - PointInTime 이 backup CompletedAt 이후이면 reject
+	//
+	// Phase 1 (현재): API + webhook validation 만 GA. reconciler dispatch 는
+	// phase 2 (별도 epic) — AOF replay-to-timestamp 의 valkey-cli 통합 필요.
+	//
+	// +optional
+	PointInTime *metav1.Time `json:"pointInTime,omitempty"`
 }
 
 // ValkeyRestoreStatus — 진행 상황.
