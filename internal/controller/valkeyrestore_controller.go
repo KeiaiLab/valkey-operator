@@ -250,6 +250,15 @@ func (r *ValkeyRestoreReconciler) handlePending(
 					"multi-pod target + Source.TargetRef → Spec.SourcePVCAccessMode=ReadOnlyMany 명시 필수")
 			}
 		}
+		// Source.VolumeSnapshot 시: phase 1 한정 (Standalone only). multi-pod 은
+		// per-ordinal 동시 PVC clone + STS dataSource swap 필요 (별도 epic, ADR-0042
+		// §후속 enterprise-tier).
+		if resources.IsVolumeSnapshotRestore(&rest.Spec) {
+			return r.markFailed(ctx, rest, "VolumeSnapshotMultiPodNotSupported",
+				"multi-pod target (Replication replicas>1 또는 ValkeyCluster) + Source.VolumeSnapshot 은 phase 1 미지원 — Standalone 만 지원. "+
+					"phase 2 epic 후속 (per-ordinal PVC clone + STS dataSource swap). "+
+					"임시 우회: backup 을 Source.TargetRef (S3) 로 만들고 SourcePVCAccessMode=ReadOnlyMany.")
+		}
 	}
 
 	// → Mounting.
