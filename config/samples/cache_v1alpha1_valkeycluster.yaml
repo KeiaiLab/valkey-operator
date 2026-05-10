@@ -14,6 +14,8 @@ spec:
     version: "9.0.4"
   storage:
     size: 8Gi
+    # encryptionRequired: true             # PR #45 — SC 가 encryption 미표시 시 Warning event
+    # encryptionEnforce: true              # PR #55 — encryptionRequired + 본 필드 시 reconcile reject
   resources:
     requests:
       cpu: 200m
@@ -26,11 +28,15 @@ spec:
   # tls:                                   # cert-manager 사용 시 활성화
   #   enabled: true
   #   certManager:
-  #     issuerRef:
+  #     issuerRef:                         # 외부 Issuer 명시 또는
   #       kind: ClusterIssuer
   #       name: ca-issuer
-  autoFailover: true                       # primary 장애 시 자동 promote (ADR 진행 중)
-  podDisruptionBudget:
-    enabled: true
+  #     # autoSelfSigned: true             # PR #40 — operator 가 SelfSigned Issuer 자동 생성
+  autoFailover: true                       # primary 장애 시 자동 promote (ADR-0017)
+  # podDisruptionBudget:                   # PR #49 — replicas>=2 시 자동 생성 (default-on)
+  #   enabled: false                       # 명시적 opt-out
   monitoring:
     enabled: true
+  # slowLog:                               # PR #45 — slowlog-log-slower-than directive 주입
+  #   thresholdMicros: 5000                # 5ms 보다 오래 걸린 명령 기록
+  #   maxEntries: 256

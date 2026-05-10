@@ -1,7 +1,7 @@
-# ValkeyRestore — backup PVC 또는 외부 저장 (S3) 의 RDB 를 cluster 로 복원.
+# ValkeyRestore — backup 의 RDB / AOF / VolumeSnapshot 을 cluster 로 복원.
 # ADR-0015 (Init Container 패턴 + STS template patch + 원복).
 #
-# Source 는 PVC 또는 TargetRef 둘 중 하나 (XOR). 동시 명시 시 Failed.
+# Source 는 PVC / TargetRef / VolumeSnapshot 3-type 중 정확히 1개 (PR #54 webhook 강제).
 apiVersion: cache.keiailab.io/v1alpha1
 kind: ValkeyRestore
 metadata:
@@ -23,6 +23,16 @@ spec:
   #   targetRef:
   #     name: valkeybackuptarget-sample
   #     path: 2026-05-06/dump.rdb
+  # 옵션 3: VolumeSnapshot 에서 복원 (PR #52 + #58, k8s native, 빠름).
+  # source:
+  #   volumeSnapshot:
+  #     name: vk-snap-2026-05-10            # 사전 생성된 VolumeSnapshot CR
   restoreType: RDB
+  # restoreType 선택지:
+  #   RDB (default) — snapshot 기반, fixed-time
+  #   AOF — append-only file replay (PR #54 PointInTime 지원)
   # Replication / Cluster (replicas>1) + Source.TargetRef 시 ROX 명시 필수.
   # sourcePVCAccessMode: ReadOnlyMany
+  # PITR (PR #54 phase 1 API):
+  # restoreType: AOF
+  # pointInTime: "2026-05-10T14:30:00Z"      # 본 시각까지만 replay (phase 2 dispatch 후 동작)

@@ -10,6 +10,10 @@ spec:
     kind: Valkey
     name: valkey-sample
   type: RDB
+  # type 선택지:
+  #   RDB (default) — BGSAVE 기반 snapshot, dump.rdb 파일 생성 후 PVC 또는 외부 저장
+  #   AOF — BGREWRITEAOF, append-only file 보존
+  #   VolumeSnapshot — k8s native snapshot.storage.k8s.io/v1 (PR #51, fast for large dataset)
   # storageSize: backup PVC 크기 (operator 가 동적 생성). 기본 8Gi.
   storageSize: 1Gi
   # targetPVC: 미명시 = operator 자동 생성 (권장 default).
@@ -18,3 +22,14 @@ spec:
   # targetPVC:
   #   name: my-pre-created-backup-pvc
   retainPVC: true
+  # type=VolumeSnapshot 시 (PR #51 + #57 lifecycle 통합):
+  # type: VolumeSnapshot
+  # volumeSnapshotClassName: ebs-snapshot-class   # CSI 별 VolumeSnapshotClass 명시
+  # storageSize 필드는 무시 (in-cluster snapshot, 별도 PVC 미생성)
+  #
+  # 외부 저장 (S3 / GCS / Azure) 사용 시:
+  # destination:
+  #   type: TargetRef
+  #   targetRef:
+  #     name: s3-prod                              # ValkeyBackupTarget CR 이름
+  #     path: backup/dump.rdb                       # bucket 안 path
