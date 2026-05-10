@@ -64,9 +64,20 @@ type ValkeyClusterReconciler struct {
 // 동일 함수 표현. 분해 시 호출 추적 비용 증가 + 회귀 위험. ADR-0030 정당화.
 //
 //nolint:gocyclo
-func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrlResult ctrl.Result, retErr error) {
 	ctx, span := observability.StartReconcileSpan(ctx, "ValkeyCluster", req.Namespace, req.Name)
 	defer span.End()
+
+	// SLO histogram — wall-clock latency 관측. result label: success|error.
+	start := time.Now()
+	defer func() {
+		result := "success"
+		if retErr != nil {
+			result = "error"
+		}
+		MetricReconcileLatency.WithLabelValues(req.Namespace, req.Name, result).
+			Observe(time.Since(start).Seconds())
+	}()
 
 	logger := log.FromContext(ctx)
 	MetricReconcileTotal.WithLabelValues(req.Namespace, req.Name).Inc()

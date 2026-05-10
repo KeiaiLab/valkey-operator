@@ -15,6 +15,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	appsv1 "k8s.io/api/apps/v1"
@@ -68,9 +69,20 @@ type ValkeyReconciler struct {
 // 위험. ADR-0030 AI-VK30-1 단계 3 정당화.
 //
 //nolint:gocyclo
-func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrlResult ctrl.Result, retErr error) {
 	ctx, span := observability.StartReconcileSpan(ctx, "Valkey", req.Namespace, req.Name)
 	defer span.End()
+
+	// SLO histogram — wall-clock latency 관측. result label: success|error.
+	start := time.Now()
+	defer func() {
+		result := "success"
+		if retErr != nil {
+			result = "error"
+		}
+		MetricReconcileLatency.WithLabelValues(req.Namespace, req.Name, result).
+			Observe(time.Since(start).Seconds())
+	}()
 
 	logger := log.FromContext(ctx)
 
