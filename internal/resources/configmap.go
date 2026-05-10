@@ -7,6 +7,7 @@ package resources
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +33,30 @@ type ConfigData struct {
 	// TLSEnabled=false 일 때는 사용 안 됨.
 	TLSAuthClients string
 	Extra          map[string]string
+}
+
+// mergeSlowLog — Spec.SlowLog 의 ThresholdMicros / MaxEntries 를 valkey.conf
+// directive 로 변환해 AdditionalConfig 와 합친다 (사용자 직접 설정 우선).
+//
+//   - slowlog-log-slower-than: 임계값 microsec (0 = 비활성, -1 = 모든 명령)
+//   - slowlog-max-len: FIFO 보존 entry 수
+//
+// AdditionalConfig 에 이미 동일 key 가 있으면 사용자 명시 우선 (override).
+func mergeSlowLog(extra map[string]string, sl *cachev1alpha1.SlowLogSpec) map[string]string {
+	if sl == nil {
+		return extra
+	}
+	out := make(map[string]string, len(extra)+2)
+	if sl.ThresholdMicros != 0 || sl.MaxEntries != 0 {
+		if sl.ThresholdMicros != 0 {
+			out["slowlog-log-slower-than"] = fmt.Sprintf("%d", sl.ThresholdMicros)
+		}
+		if sl.MaxEntries != 0 {
+			out["slowlog-max-len"] = fmt.Sprintf("%d", sl.MaxEntries)
+		}
+	}
+	maps.Copy(out, extra) // 사용자 명시 우선 (override).
+	return out
 }
 
 // resolveTLSAuthClients — TLSSpec.ClientAuth 의 enum 값을 valkey.conf 의
@@ -101,7 +126,7 @@ func configDataFromValkey(vk *cachev1alpha1.Valkey, password string) ConfigData 
 		PersistenceMode: "RDB",
 		RDBSchedule:     "3600 1 300 100 60 10000",
 		AOFFsync:        "everysec",
-		Extra:           vk.Spec.AdditionalConfig,
+		Extra:           mergeSlowLog(vk.Spec.AdditionalConfig, vk.Spec.SlowLog),
 	}
 	if vk.Spec.Persistence != nil {
 		if vk.Spec.Persistence.Mode != "" {
@@ -131,7 +156,7 @@ func configDataFromCluster(vc *cachev1alpha1.ValkeyCluster, password string) Con
 		ClusterEnabled:           true,
 		ClusterNodeTimeout:       vc.Spec.NodeTimeoutMillis,
 		ClusterReplicaNoFailover: !vc.Spec.AutoFailover,
-		Extra:                    vc.Spec.AdditionalConfig,
+		Extra:                    mergeSlowLog(vc.Spec.AdditionalConfig, vc.Spec.SlowLog),
 	}
 	if d.ClusterNodeTimeout == 0 {
 		d.ClusterNodeTimeout = 15000

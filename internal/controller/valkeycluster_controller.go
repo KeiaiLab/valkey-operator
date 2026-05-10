@@ -216,6 +216,20 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return applyErrorCondition(ctx, r.Client, vc, "PVCResize", err, r.Recorder)
 	}
 
+	// 6.6 Encryption-at-rest audit — Spec.Storage.EncryptionRequired=true 시
+	// StorageClass 가 encryption 표시자를 노출하는지 검사. 미표시 시 Warning event.
+	if vc.Spec.Storage.EncryptionRequired {
+		encrypted, hint, err := auditEncryptionAtRest(ctx, r.Client, vc.Spec.Storage.StorageClassName)
+		if err != nil {
+			r.Recorder.Eventf(vc, "Warning", "EncryptionAuditFailed",
+				"Failed to audit StorageClass for encryption: %v", err)
+		} else if !encrypted {
+			r.Recorder.Eventf(vc, "Warning", "EncryptionNotVerified",
+				"Storage.EncryptionRequired=true but StorageClass %q: %s",
+				vc.Spec.Storage.StorageClassName, hint)
+		}
+	}
+
 	// 7. PDB / NetworkPolicy (opt-in).
 	if vc.Spec.PodDisruptionBudget != nil && vc.Spec.PodDisruptionBudget.Enabled {
 		pdb := resources.BuildPDB(vc.Name, vc.Namespace, totalReplicas, vc.Spec.PodDisruptionBudget)

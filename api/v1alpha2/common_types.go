@@ -338,6 +338,35 @@ type PendingScale struct {
 	Reason          string `json:"reason,omitempty"`
 }
 
+// AutoscalingSpec — operator-managed HorizontalPodAutoscaler v2 (ADR-0027).
+// v1alpha1 동일 구조 — type-only module.
+type AutoscalingSpec struct {
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=15
+	// +optional
+	MinReplicas int32 `json:"minReplicas,omitempty"`
+
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=15
+	// +optional
+	MaxReplicas int32 `json:"maxReplicas,omitempty"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:default=70
+	// +optional
+	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage,omitempty"`
+
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	// +optional
+	TargetMemoryUtilizationPercentage int32 `json:"targetMemoryUtilizationPercentage,omitempty"`
+}
+
 // PersistencePolicy — RDB / AOF 정책.
 type PersistencePolicy struct {
 	// +kubebuilder:validation:Enum=RDB;AOF;Both;None

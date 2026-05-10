@@ -75,6 +75,30 @@ type StorageSpec struct {
 
 	// +kubebuilder:default="/data"
 	DataDirPath string `json:"dataDirPath,omitempty"`
+
+	// EncryptionRequired — true 시 reconciler 가 StorageClass parameters 를
+	// 검사해 encryption 표시자 (encrypted=true / type=Premium_LRS 등) 가 없으면
+	// Warning event 발행 (compliance audit). 강제 reject 는 아님 — 운영자가
+	// 의도적 평문 SC 사용 시 차단되지 않도록.
+	// +kubebuilder:default=false
+	// +optional
+	EncryptionRequired bool `json:"encryptionRequired,omitempty"`
+}
+
+// SlowLogSpec — Valkey SLOWLOG 임계값 + 보존 entry 수.
+//
+// Threshold 보다 오래 걸린 명령은 SLOWLOG 에 기록 — `valkey-cli SLOWLOG GET` 로 조회.
+// redis_exporter sidecar 가 자동으로 redis_slowlog_length metric 으로 노출.
+type SlowLogSpec struct {
+	// 단위: microseconds. 0 = SLOWLOG 비활성. -1 = 모든 명령 기록 (debug 만).
+	// +kubebuilder:default=10000
+	// +optional
+	ThresholdMicros int64 `json:"thresholdMicros,omitempty"`
+
+	// 보존 entry 수 — FIFO. 초과 시 가장 오래된 entry 폐기.
+	// +kubebuilder:default=128
+	// +optional
+	MaxEntries int32 `json:"maxEntries,omitempty"`
 }
 
 // ResourcesSpec — pod resource requests/limits.
@@ -259,6 +283,47 @@ type PendingScale struct {
 	DesiredReplicas int32  `json:"desiredReplicas"`
 	RequestedAt     string `json:"requestedAt,omitempty"`
 	Reason          string `json:"reason,omitempty"`
+}
+
+// AutoscalingSpec — operator-managed HorizontalPodAutoscaler v2.
+//
+// ADR-0027 (Replication mode 만 — Cluster mode 는 slot 재분배 위험으로 미지원).
+// Enabled=true 시 operator 가 ValkeyName 기반 HPA CRD 자동 생성/갱신/삭제.
+//
+// 제약:
+//   - Mode=Replication 만 — Standalone (replicas=1) / Cluster mode 는 webhook reject.
+//   - ScalePolicy.Deliberate 는 무시 (HPA 가 즉시 scale).
+//   - Spec.Replicas 는 *default 값* — HPA 활성 시 reconciler 가 STS replicas 보존.
+//   - PodDisruptionBudget.MinAvailable 은 MinReplicas 와 일관 권장 (webhook warn 대상).
+type AutoscalingSpec struct {
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// HPA minReplicas — Replication mode 의 최소 replica 수 (primary 포함).
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=15
+	// +optional
+	MinReplicas int32 `json:"minReplicas,omitempty"`
+
+	// HPA maxReplicas — 최대 replica 수.
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=15
+	// +optional
+	MaxReplicas int32 `json:"maxReplicas,omitempty"`
+
+	// 평균 CPU 사용률 (resources.requests.cpu 대비 %).
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:default=70
+	// +optional
+	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage,omitempty"`
+
+	// 평균 메모리 사용률 (resources.requests.memory 대비 %). 0 = 미설정.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	// +optional
+	TargetMemoryUtilizationPercentage int32 `json:"targetMemoryUtilizationPercentage,omitempty"`
 }
 
 // PersistencePolicy — RDB / AOF 정책.

@@ -84,6 +84,9 @@ type ValkeyClusterSpec struct {
 	Persistence *PersistencePolicy `json:"persistence,omitempty"`
 	// +optional
 	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
+
+	// +optional
+	SlowLog *SlowLogSpec `json:"slowLog,omitempty"`
 }
 
 type ShardStatus struct {

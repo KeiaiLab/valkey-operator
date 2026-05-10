@@ -35,7 +35,7 @@
 | [0024](0024-helm-chart-manual-pattern-artifacthub.md) | Helm Chart — 수기 작성 + ArtifactHub publish 패턴 (3-repo 통일, supersedes 0021) | Accepted | 2026-05-06 |
 | [0025](0025-otel-tracer-provider-optional.md) | OTEL Tracer Provider — Optional, OTLP gRPC Exporter | Accepted | 2026-05-06 |
 | [0026](0026-conversion-webhook-deferred-until-v1alpha1-stable.md) | Conversion Webhook — v1alpha1 Stable 도달 후 v1beta1 도입 (deferred) | Accepted | 2026-05-06 |
-| [0027](0027-hpa-replication-mode-only-deferred.md) | HPA — Replication Mode 만 + Operator-managed (deferred) | Accepted | 2026-05-06 |
+| [0027](0027-hpa-replication-mode-only-deferred.md) | HPA — Replication Mode 만 + Operator-managed (impl 2026-05-10) | Accepted | 2026-05-10 |
 | [0028](0028-helm-kustomize-parity-invariant.md) | Helm vs Kustomize Parity Invariant — 5 sibling silent failure family 차단 | Accepted | 2026-05-06 |
 | [0029](0029-gitops-deploy-overlay.md) | GitOps deploy 오버레이 도입 (3-repo 정합) | Accepted | 2026-05-06 |
 | [0030](0030-rfc-0017-tooling-unification-adoption.md) | RFC-0017 operator tooling unification 채택 (.golangci.yml 신규 + Makefile validate + HEALTHCHECK) | Proposed | 2026-05-09 |
