@@ -1,8 +1,9 @@
 # ADR-0027: HPA — Replication Mode 만 + Operator-managed (deferred)
 
-- Date: 2026-05-06
+- Date: 2026-05-06 (impl: 2026-05-10)
 - Status: Accepted
-- Authors: @phil
+- Authors: @phil, @eightynine01 (impl)
+- Impl: deferred → done (ValkeySpec.Autoscaling + HPA reconcile + webhook)
 
 ## Context
 

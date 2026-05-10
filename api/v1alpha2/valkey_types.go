@@ -104,6 +104,10 @@ type ValkeySpec struct {
 	//
 	// +optional
 	Modules []ModuleSpec `json:"modules,omitempty"`
+
+	// Autoscaling — operator-managed HPA v2 (ADR-0027, Replication mode 만).
+	// +optional
+	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
 }
 
 // ModuleSpec — Valkey module 정의 (Plan §2 D9, ADR-0032).

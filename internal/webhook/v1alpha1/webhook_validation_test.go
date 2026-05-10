@@ -359,3 +359,74 @@ func TestValkey_TLS_AutoSelfSigned_with_IssuerRef_rejected(t *testing.T) {
 		t.Fatal("expected validation error for AutoSelfSigned + IssuerRef.Name simultaneous")
 	}
 }
+
+func TestValkey_Autoscaling_replication_passes(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeReplication
+	vc.Spec.Replicas = 2
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.Storage.Size = resource.MustParse("8Gi")
+	vc.Spec.Autoscaling = &cachev1alpha1.AutoscalingSpec{
+		Enabled:     true,
+		MinReplicas: 2,
+		MaxReplicas: 5,
+	}
+	if _, err := v.ValidateCreate(context.Background(), vc); err != nil {
+		t.Fatalf("autoscaling Replication: %v", err)
+	}
+}
+
+func TestValkey_Autoscaling_standalone_rejected(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeStandalone
+	vc.Spec.Replicas = 1
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.Storage.Size = resource.MustParse("8Gi")
+	vc.Spec.Autoscaling = &cachev1alpha1.AutoscalingSpec{
+		Enabled:     true,
+		MinReplicas: 2,
+		MaxReplicas: 5,
+	}
+	_, err := v.ValidateCreate(context.Background(), vc)
+	if err == nil || !strings.Contains(err.Error(), "Replication") {
+		t.Errorf("expected Replication-only reject, got %v", err)
+	}
+}
+
+func TestValkey_Autoscaling_min_below_2_rejected(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeReplication
+	vc.Spec.Replicas = 2
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.Storage.Size = resource.MustParse("8Gi")
+	vc.Spec.Autoscaling = &cachev1alpha1.AutoscalingSpec{
+		Enabled:     true,
+		MinReplicas: 1,
+		MaxReplicas: 5,
+	}
+	_, err := v.ValidateCreate(context.Background(), vc)
+	if err == nil || !strings.Contains(err.Error(), "minReplicas") {
+		t.Errorf("expected min-replicas reject, got %v", err)
+	}
+}
+
+func TestValkey_Autoscaling_max_below_min_rejected(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeReplication
+	vc.Spec.Replicas = 2
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.Storage.Size = resource.MustParse("8Gi")
+	vc.Spec.Autoscaling = &cachev1alpha1.AutoscalingSpec{
+		Enabled:     true,
+		MinReplicas: 5,
+		MaxReplicas: 3,
+	}
+	_, err := v.ValidateCreate(context.Background(), vc)
+	if err == nil || !strings.Contains(err.Error(), "maxReplicas") {
+		t.Errorf("expected max-replicas reject, got %v", err)
+	}
+}
