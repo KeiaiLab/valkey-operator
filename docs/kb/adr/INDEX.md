@@ -49,6 +49,7 @@
 | [0038](0038-rfc-0018-pkg-finalizer-migration.md) | RFC-0018 채택 — pkg/finalizer migration (controllerutil → commons, 5 controller, PR-A6 first cut, status 별도) | Accepted | 2026-05-09 |
 | [0039](0039-cluster-self-heal-post-init.md) | ValkeyCluster post-init self-heal — INC-0001 영구 fix, ClusterInitialized=true && state!=ok 시 ensureClusterMeet 재호출 | Accepted | 2026-05-10 |
 | [0040](0040-helm-chart-vs-operator-adoption.md) | Helm chart vs Operator 채택 정책 (Bitnami / CloudPirates / valkey-operator 의사결정 매트릭스 + 5 gap) | Accepted | 2026-05-10 |
+| [0041](0041-chaos-engineering-chaos-mesh.md) | Chaos Engineering — chaos-mesh 채택 (4 시나리오 e2e, ADR-0040 §gap #4) | Accepted | 2026-05-10 |
 
 ## 작성 가이드
 
