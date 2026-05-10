@@ -260,13 +260,19 @@ features:
   # ValkeyCluster — 분산 클러스터 (Redis Cluster 호환 모드). alpha 안정화 진행 중.
   cluster:
     enabled: false
-  # ValkeyBackup + ValkeyBackupTarget + ValkeyRestore — S3/PVC 대상 백업/복원. alpha.
+  # ValkeyBackup + ValkeyBackupTarget + ValkeyRestore — S3/GCS/Azure/PVC/VolumeSnapshot.
+  # 27 PR commercial parity series (PR #38-#64) 후 *production-ready*.
+  # type 옵션: RDB / AOF / VolumeSnapshot (PR #51 + #57 lifecycle).
+  # destination: PVC (default) 또는 TargetRef (외부 ValkeyBackupTarget).
   backup:
     enabled: false
-  # Auto-scaling (HPA) — DEFERRED (ADR-0027). 본 chart 의 features.autoscaling.enabled
-  # 는 *RBAC 권한 만 부여* (autoscaling/horizontalpodautoscalers). operator 코드 가
-  # HPA reconciler 미보유 — 활성화해도 *실제 동작 없음*. v0.1.0 stable 후 ADR-0027
-  # trigger 시 구현 예정 (Replication mode only + operator-managed).
+  # Auto-scaling (HPA) — ADR-0027 구현 완료 (PR #44, 2026-05-10).
+  # features.autoscaling.enabled=true 시:
+  #   - RBAC 부여 (autoscaling/horizontalpodautoscalers)
+  #   - operator 가 ValkeySpec.Autoscaling.Enabled=true 인 CR 의 HPA CR 자동 생성/관리
+  # CR-level 옵션: Spec.Autoscaling.{MinReplicas, MaxReplicas,
+  # TargetCPUUtilizationPercentage, TargetMemoryUtilizationPercentage}.
+  # 제약: Replication mode 만 (Cluster mode 는 slot 재분배 위험으로 별도 epic).
   autoscaling:
     enabled: false
 

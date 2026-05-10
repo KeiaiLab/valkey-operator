@@ -5,15 +5,24 @@ A Kubernetes Operator for deploying and managing Valkey instances and Clusters
 
 ## Features
 
-- **Valkey instance**: Standalone or replica deployment with persistent storage
-- **Valkey Cluster**: Redis Cluster compatible distributed mode (opt-in)
-- **TLS Encryption**: Automatic TLS with cert-manager integration
-- **Authentication**: ACL-based auth with secret-managed credentials
-- **Monitoring**: Native cluster metrics with ServiceMonitor support
-- **Backup/Restore**: S3 / PVC backup targets and point-in-time restore (opt-in)
-- **Auto-scaling**: HPA — *DEFERRED (ADR-0027)*. RBAC 권한만 부여, 실제 HPA reconciler 미구현. v0.1.0 stable 후 활성 예정.
-- **PodDisruptionBudget**: opt-in disruption guards
+- **Valkey instance**: Standalone or Replication (1 primary + N replicas) with persistent storage
+- **Valkey Cluster**: Redis Cluster compatible (16384 slots, auto-resharding)
+- **TLS Encryption**: cert-manager integration + auto-generated SelfSigned Issuer (PR #40)
+- **Authentication**: password + ACL v2 + auto rolling restart on rotation (PR #46)
+- **Monitoring**: 12 Prometheus metrics (PR #47 reconcile latency Histogram, PR #59 SLO alerts, PR #64 capability Gauge) + ServiceMonitor + 12 PrometheusRule alerts
+- **Backup/Restore**: S3 / GCS / Azure / PVC / VolumeSnapshot 5 backend (PR #42 + #51 + #57)
+- **Auto-scaling**: HPA for Replication mode (PR #44, ADR-0027 implemented) — CPU + Memory targets
+- **PodDisruptionBudget**: HA default — auto-create when replicas≥2 (PR #49)
 - **NetworkPolicy**: deny-by-default ingress automation
+- **TopologySpreadConstraints**: HA default — multi-AZ + multi-node spread when replicas≥2 (PR #48)
+- **Encryption-at-rest**: StorageClass audit + enforce mode for compliance (PR #45 + #55)
+- **Slow-log**: configurable threshold + max entries (PR #45)
+- **PVC auto-resize**: Spec.Storage.Size 변경 시 자동 expansion (PR #39)
+- **Chaos engineering**: chaos-mesh foundation (PR #41, ADR-0041)
+- **PITR foundation**: Source.VolumeSnapshot + PointInTime API (PR #51-#58 + #54)
+- **Status.Capabilities**: kubectl get -o wide 한눈에 활성 features (PR #62)
+
+자세한 평가: `docs/operations/commercial-parity-status.md` (Redis Enterprise ~94% parity).
 
 ## Prerequisites
 
