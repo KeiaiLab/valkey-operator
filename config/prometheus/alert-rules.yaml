@@ -174,3 +174,70 @@ spec:
               OOMKilled / liveness probe).
               `kubectl describe pod {{ $labels.name }}-0` + 로그 점검.
             runbook_url: docs/operations/runbook.md#910-valkeyfailoverhigh
+
+        # 10. Reconcile latency SLO p95 — 1초 초과 10분 지속 → warning.
+        # PR #47 의 valkey_cluster_reconcile_duration_seconds Histogram 활용.
+        - alert: ValkeyOperatorReconcileLatencyP95High
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le, namespace, name) (
+                rate(valkey_cluster_reconcile_duration_seconds_bucket{result="success"}[5m])
+              )
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "Reconcile p95 latency > 1s (10m) for {{ $labels.namespace }}/{{ $labels.name }}"
+            description: |
+              Reconcile 의 success path p95 latency 가 1초 초과 — typical SLO
+              위반. 가능 원인:
+                - cluster API server 부하
+                - operator pod resources 부족 (CPU throttling)
+                - reconciler 내 외부 호출 timeout
+              ADR-0040 §observability SLO.
+            runbook_url: docs/operations/runbook.md#911-valkeyoperatorreconcilelatencyp95high
+
+        # 11. Reconcile latency SLO p99 — 5초 초과 10분 지속 → critical.
+        - alert: ValkeyOperatorReconcileLatencyP99Critical
+          expr: |
+            histogram_quantile(0.99,
+              sum by (le, namespace, name) (
+                rate(valkey_cluster_reconcile_duration_seconds_bucket[5m])
+              )
+            ) > 5
+          for: 10m
+          labels:
+            severity: critical
+            component: valkey-operator
+          annotations:
+            summary: "Reconcile p99 latency > 5s (10m) — SLO 위반"
+            description: |
+              Reconcile 의 *모든 결과* (success+error) p99 latency 가 5초 초과 —
+              심각한 SLO 위반. controller-runtime 의 default 30s context timeout
+              에 가까워지는 위험 신호.
+            runbook_url: docs/operations/runbook.md#912-valkeyoperatorreconcilelatencyp99critical
+
+        # 12. Reconcile error rate — error result 비율 5% 초과 10분 지속.
+        - alert: ValkeyOperatorReconcileErrorRateHigh
+          expr: |
+            (
+              sum by (namespace, name) (
+                rate(valkey_cluster_reconcile_duration_seconds_count{result="error"}[5m])
+              )
+              /
+              sum by (namespace, name) (
+                rate(valkey_cluster_reconcile_duration_seconds_count[5m])
+              )
+            ) > 0.05
+          for: 10m
+          labels:
+            severity: warning
+            component: valkey-operator
+          annotations:
+            summary: "Reconcile error rate > 5% for {{ $labels.namespace }}/{{ $labels.name }}"
+            description: |
+              Reconcile 호출의 5% 이상이 error 로 종료. valkey_cluster_reconcile_errors_total
+              의 component 라벨로 어느 단계가 실패하는지 식별 가능.
+            runbook_url: docs/operations/runbook.md#913-valkeyoperatorreconcileerrorratehigh

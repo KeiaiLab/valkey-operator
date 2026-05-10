@@ -372,6 +372,27 @@ Trigger → Diagnosis → Mitigation → Escalation 순서로 진행.
   이전 (read replica 활용). disk I/O 병목 점검.
 - **Escalation**: split-brain 의심 → §2.3 절차 + ADR-0017 확인.
 
+### 9.11 ValkeyOperatorReconcileLatencyP95High
+- **Trigger**: reconcile success p95 > 1s for 10m.
+- **Diagnosis**: cluster API server 부하 / operator pod CPU throttling /
+  reconciler 내 외부 호출 timeout. `kubectl top pod -n valkey-operator-system`
+  로 CPU 사용률 확인.
+- **Mitigation**: operator pod resources.requests.cpu 증액 / 다른 controller
+  의 API burst 영향 차단.
+
+### 9.12 ValkeyOperatorReconcileLatencyP99Critical
+- **Trigger**: reconcile (success+error) p99 > 5s for 10m. controller-runtime
+  default context timeout (30s) 에 가까워지는 위험 신호.
+- **Diagnosis**: 9.11 과 동일하나 *심각한 saturation*. operator pod 상태 +
+  reconcile_errors_total 의 component 라벨 분포 확인.
+- **Mitigation**: operator pod 즉시 재시작 (`kubectl rollout restart deploy/valkey-operator-controller-manager -n valkey-operator-system`).
+
+### 9.13 ValkeyOperatorReconcileErrorRateHigh
+- **Trigger**: reconcile error rate > 5% for 10m.
+- **Diagnosis**: `valkey_cluster_reconcile_errors_total` 의 component 라벨로
+  어느 단계 (secret / sts / svc / tls / backup) 가 실패하는지 식별.
+- **Mitigation**: §2.1 Phase=Failed CR 절차 적용 (Conditions Reason 분류).
+
 ## 8. ADR / RFC 참조
 
 - ADR-0010 cert-manager 자동 인식 / ADR-0013 Auth 강제 / ADR-0014 TLS volume mount
