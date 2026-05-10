@@ -9,7 +9,10 @@ package v1alpha1
 
 import (
 	"context"
+	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -209,5 +212,73 @@ func TestValkeyDefaulter_replication_min_2(t *testing.T) {
 	_ = d.Default(context.Background(), vc)
 	if vc.Spec.Replicas != 2 {
 		t.Errorf("Replication should default Replicas=2, got %d", vc.Spec.Replicas)
+	}
+}
+
+func TestValkeyClusterValidate_Update_storageSize_shrink_rejected(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	old := &cachev1alpha1.ValkeyCluster{}
+	old.Spec.Shards = 3
+	old.Spec.ReplicasPerShard = 1
+	old.Spec.Version.Version = "8.1.6"
+	old.Spec.Storage.Size = resource.MustParse("16Gi")
+	new := old.DeepCopy()
+	new.Spec.Storage.Size = resource.MustParse("8Gi")
+
+	_, err := v.ValidateUpdate(context.Background(), old, new)
+	if err == nil {
+		t.Fatal("expected validation error for storage.size decrease")
+	}
+	if !strings.Contains(err.Error(), "storage.size cannot be decreased") {
+		t.Errorf("error message should mention shrink, got: %v", err)
+	}
+}
+
+func TestValkeyClusterValidate_Update_storageSize_grow_accepted(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	old := &cachev1alpha1.ValkeyCluster{}
+	old.Spec.Shards = 3
+	old.Spec.ReplicasPerShard = 1
+	old.Spec.Version.Version = "8.1.6"
+	old.Spec.Storage.Size = resource.MustParse("8Gi")
+	new := old.DeepCopy()
+	new.Spec.Storage.Size = resource.MustParse("16Gi")
+
+	if _, err := v.ValidateUpdate(context.Background(), old, new); err != nil {
+		t.Fatalf("expected no error for storage.size grow, got %v", err)
+	}
+}
+
+func TestValkeyValidate_Update_storageSize_shrink_rejected(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	old := &cachev1alpha1.Valkey{}
+	old.Spec.Mode = cachev1alpha1.ModeStandalone
+	old.Spec.Replicas = 1
+	old.Spec.Version.Version = "8.1.6"
+	old.Spec.Storage.Size = resource.MustParse("16Gi")
+	new := old.DeepCopy()
+	new.Spec.Storage.Size = resource.MustParse("8Gi")
+
+	_, err := v.ValidateUpdate(context.Background(), old, new)
+	if err == nil {
+		t.Fatal("expected validation error for storage.size decrease")
+	}
+	if !strings.Contains(err.Error(), "storage.size cannot be decreased") {
+		t.Errorf("error message should mention shrink, got: %v", err)
+	}
+}
+
+func TestValkeyValidate_Update_storageSize_grow_accepted(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	old := &cachev1alpha1.Valkey{}
+	old.Spec.Mode = cachev1alpha1.ModeStandalone
+	old.Spec.Replicas = 1
+	old.Spec.Version.Version = "8.1.6"
+	old.Spec.Storage.Size = resource.MustParse("8Gi")
+	new := old.DeepCopy()
+	new.Spec.Storage.Size = resource.MustParse("16Gi")
+
+	if _, err := v.ValidateUpdate(context.Background(), old, new); err != nil {
+		t.Fatalf("expected no error for storage.size grow, got %v", err)
 	}
 }

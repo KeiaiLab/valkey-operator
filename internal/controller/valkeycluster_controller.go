@@ -200,6 +200,12 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return applyErrorCondition(ctx, r.Client, vc, "StatefulSet", err, r.Recorder)
 	}
 
+	// 6.5 PVC online expansion — STS VCT 가 immutable 이므로 기존 PVC 직접 patch.
+	// webhook 에서 size 감소는 reject. 증가만 도달.
+	if err := expandDataPVCs(ctx, r.Client, vc.Namespace, vc.Name, vc.Spec.Storage.Size); err != nil {
+		return applyErrorCondition(ctx, r.Client, vc, "PVCResize", err, r.Recorder)
+	}
+
 	// 7. PDB / NetworkPolicy (opt-in).
 	if vc.Spec.PodDisruptionBudget != nil && vc.Spec.PodDisruptionBudget.Enabled {
 		pdb := resources.BuildPDB(vc.Name, vc.Namespace, totalReplicas, vc.Spec.PodDisruptionBudget)
