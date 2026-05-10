@@ -250,14 +250,17 @@ func (r *ValkeyRestoreReconciler) handlePending(
 					"multi-pod target + Source.TargetRef → Spec.SourcePVCAccessMode=ReadOnlyMany 명시 필수")
 			}
 		}
-		// Source.VolumeSnapshot 시: phase 1 한정 (Standalone only). multi-pod 은
-		// per-ordinal 동시 PVC clone + STS dataSource swap 필요 (별도 epic, ADR-0042
-		// §후속 enterprise-tier).
+		// Source.VolumeSnapshot + multi-pod: phase 1.5 — N개 cloned PVC 생성 + Bound
+		// 대기 (Mounting 단계). STS data PVC 자동 swap 은 phase 2 (별도 epic).
+		// ValkeyCluster (sharded) 는 여전히 phase 1 미지원 — slot 별 PVC 매핑 복잡.
 		if resources.IsVolumeSnapshotRestore(&rest.Spec) {
-			return r.markFailed(ctx, rest, "VolumeSnapshotMultiPodNotSupported",
-				"multi-pod target (Replication replicas>1 또는 ValkeyCluster) + Source.VolumeSnapshot 은 phase 1 미지원 — Standalone 만 지원. "+
-					"phase 2 epic 후속 (per-ordinal PVC clone + STS dataSource swap). "+
-					"임시 우회: backup 을 Source.TargetRef (S3) 로 만들고 SourcePVCAccessMode=ReadOnlyMany.")
+			if rest.Spec.ClusterRef.Kind == cachev1alpha1.KindValkeyCluster {
+				return r.markFailed(ctx, rest, "VolumeSnapshotClusterModeNotSupported",
+					"ValkeyCluster (sharded) + Source.VolumeSnapshot 은 phase 1 미지원 — "+
+						"shard 별 snapshot mapping 복잡 (별도 epic). "+
+						"임시 우회: ValkeyBackup type=AOF/RDB + Source.TargetRef (S3) 사용.")
+			}
+			// Replication mode 는 phase 1.5 통과 — handleMounting 에서 N개 PVC 생성.
 		}
 	}
 
@@ -300,8 +303,28 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 			return res, err
 		}
 	case resources.IsVolumeSnapshotRestore(&rest.Spec):
-		if res, ok, err := r.ensureVolumeSnapshotSource(ctx, rest); !ok {
-			return res, err
+		// multi-pod 여부에 따라 dispatch:
+		//   Standalone → ensureVolumeSnapshotSource (single PVC, PR #58)
+		//   Replication multi-pod → ensureMultiPodVolumeSnapshotSources (N PVCs, PR #67)
+		multiPod, err := r.isMultiPodTarget(ctx, rest)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
+		}
+		if multiPod {
+			// Replication mode 의 replicas 조회.
+			v := &cachev1alpha1.Valkey{}
+			if err := r.Get(ctx, types.NamespacedName{
+				Name: rest.Spec.ClusterRef.Name, Namespace: rest.Namespace,
+			}, v); err != nil {
+				return ctrl.Result{RequeueAfter: requeueProgress}, nil
+			}
+			if res, ok, err := r.ensureMultiPodVolumeSnapshotSources(ctx, rest, v.Spec.Replicas); !ok {
+				return res, err
+			}
+		} else {
+			if res, ok, err := r.ensureVolumeSnapshotSource(ctx, rest); !ok {
+				return res, err
+			}
 		}
 	}
 
