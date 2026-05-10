@@ -5,6 +5,7 @@ Copyright 2026 Keiailab.
 package aoftime
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -149,4 +150,68 @@ func TestTruncateOffset_invalid_timestamp_skipped(t *testing.T) {
 	if off != expected {
 		t.Errorf("invalid marker skip + 3000 marker truncate: got %d want %d", off, expected)
 	}
+}
+
+func TestTruncateAOFFile_truncates_to_cutoff(t *testing.T) {
+	srcPath := t.TempDir() + "/src.aof"
+	dstPath := t.TempDir() + "/dst.aof"
+
+	aof := makeAOF(
+		ts(1000), setCommand("a", "1"),
+		ts(2000), setCommand("b", "2"),
+		ts(3000), setCommand("c", "3"),
+	)
+	if err := writeFile(srcPath, []byte(aof)); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+
+	written, truncated, err := TruncateAOFFile(srcPath, dstPath, time.Unix(2500, 0))
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if !truncated {
+		t.Error("expected truncated=true (timestamps present)")
+	}
+	expected := strings.Index(aof, "#TS:3000")
+	if written != expected {
+		t.Errorf("written: got %d want %d", written, expected)
+	}
+}
+
+func TestTruncateAOFFile_no_timestamps_full_copy(t *testing.T) {
+	srcPath := t.TempDir() + "/src.aof"
+	dstPath := t.TempDir() + "/dst.aof"
+	aof := setCommand("a", "1") + setCommand("b", "2")
+	if err := writeFile(srcPath, []byte(aof)); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+
+	written, truncated, err := TruncateAOFFile(srcPath, dstPath, time.Unix(1000, 0))
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if truncated {
+		t.Error("AOF without timestamps should report truncated=false (full copy fallback)")
+	}
+	if written != len(aof) {
+		t.Errorf("full copy: written %d want %d", written, len(aof))
+	}
+}
+
+func TestTruncateAOFFile_src_not_found(t *testing.T) {
+	dstPath := t.TempDir() + "/dst.aof"
+	_, _, err := TruncateAOFFile("/nonexistent/path.aof", dstPath, time.Now())
+	if err == nil {
+		t.Fatal("expected err for nonexistent src")
+	}
+}
+
+// writeFile — test helper.
+func writeFile(path string, data []byte) error {
+	return osWriteFile(path, data, 0o600)
+}
+
+// 별도 alias — strconv import 줄임 + os.WriteFile 사용.
+var osWriteFile = func(path string, data []byte, mode os.FileMode) error {
+	return os.WriteFile(path, data, mode)
 }
