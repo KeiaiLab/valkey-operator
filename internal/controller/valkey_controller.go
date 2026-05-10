@@ -237,8 +237,9 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
-	// 7. PDB / NetworkPolicy (opt-in)
-	if v.Spec.PodDisruptionBudget != nil && v.Spec.PodDisruptionBudget.Enabled {
+	// 7. PDB — HA default: replicas >= 2 + PDB 미명시 시 auto-create (minAvailable=N-1).
+	//    명시적 opt-out: Spec.PodDisruptionBudget = {Enabled: false}.
+	if shouldAutoCreatePDB(v.Spec.PodDisruptionBudget, desiredReplicas(v)) {
 		pdb := resources.BuildPDB(v.Name, v.Namespace, desiredReplicas(v), v.Spec.PodDisruptionBudget)
 		if err := applyPDB(ctx, r.Client, r.Scheme, v, pdb); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "PDB", err, r.Recorder)
