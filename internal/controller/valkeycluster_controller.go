@@ -242,8 +242,8 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	// 7. PDB / NetworkPolicy (opt-in).
-	if vc.Spec.PodDisruptionBudget != nil && vc.Spec.PodDisruptionBudget.Enabled {
+	// 7. PDB — HA default (auto-create when replicas >= 2 + PDB 미명시).
+	if shouldAutoCreatePDB(vc.Spec.PodDisruptionBudget, totalReplicas) {
 		pdb := resources.BuildPDB(vc.Name, vc.Namespace, totalReplicas, vc.Spec.PodDisruptionBudget)
 		if err := applyPDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
 			return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
