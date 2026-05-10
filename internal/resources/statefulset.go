@@ -36,6 +36,12 @@ type STSParams struct {
 	// TLSSecretName — 비어 있지 않으면 해당 Secret (kubernetes.io/tls + ca.crt) 을
 	// `/tls` 에 readOnly 마운트. configmap 의 tls-* 디렉티브 가 이 경로 를 참조.
 	TLSSecretName string
+
+	// AuthSecretHash — AuthSecret data 의 SHA256 (hex) hash. PodTemplate 의
+	// annotation `cache.keiailab.io/auth-secret-hash` 로 주입되어, hash 변경 시
+	// STS rolling update 가 자동 트리거 (pod 들이 새 password 로 재시작).
+	// 빈 문자열이면 annotation 미설정 (rotation 추적 비활성).
+	AuthSecretHash string
 }
 
 // BuildStatefulSet — Valkey 데이터 STS.
@@ -177,8 +183,11 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Selector:            &metav1.LabelSelector{MatchLabels: selector},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: labels},
-				Spec:       podSpec,
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: podTemplateAnnotations(p),
+				},
+				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{dataPVC},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -195,6 +204,18 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 func ptrBool(b bool) *bool    { return &b }
 func ptrInt32(i int32) *int32 { return &i }
 func ptrInt64(i int64) *int64 { return &i }
+
+// AnnotationAuthSecretHash — pod template annotation 키. AuthSecret rotation
+// 추적용. 값 변경 시 STS RollingUpdate 가 자동 발동되어 모든 pod 가 새 password
+// 로 재시작.
+const AnnotationAuthSecretHash = "cache.keiailab.io/auth-secret-hash"
+
+func podTemplateAnnotations(p STSParams) map[string]string {
+	if p.AuthSecretHash == "" {
+		return nil
+	}
+	return map[string]string{AnnotationAuthSecretHash: p.AuthSecretHash}
+}
 
 // PodSecurity "restricted" 정책을 만족하는 컨테이너 SecurityContext.
 // restore init container, upload/download job container 등 4 곳에서 동일 정의가
