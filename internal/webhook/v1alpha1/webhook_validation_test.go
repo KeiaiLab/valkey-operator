@@ -282,3 +282,80 @@ func TestValkeyValidate_Update_storageSize_grow_accepted(t *testing.T) {
 		t.Fatalf("expected no error for storage.size grow, got %v", err)
 	}
 }
+
+func TestValkeyCluster_TLS_AutoSelfSigned_alone_passes(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled:     true,
+		CertManager: &cachev1alpha1.CertManagerSpec{AutoSelfSigned: true},
+	}
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err != nil {
+		t.Fatalf("AutoSelfSigned alone should pass: %v", err)
+	}
+}
+
+func TestValkeyCluster_TLS_AutoSelfSigned_with_IssuerRef_rejected(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled: true,
+		CertManager: &cachev1alpha1.CertManagerSpec{
+			AutoSelfSigned: true,
+			IssuerRef:      cachev1alpha1.CertIssuerRef{Name: "external"},
+		},
+	}
+
+	_, err := v.ValidateCreate(context.Background(), vc)
+	if err == nil {
+		t.Fatal("expected validation error for AutoSelfSigned + IssuerRef.Name simultaneous")
+	}
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Errorf("error message should mention mutual exclusion, got: %v", err)
+	}
+}
+
+func TestValkey_TLS_AutoSelfSigned_alone_passes(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeStandalone
+	vc.Spec.Replicas = 1
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.Storage.Size = resource.MustParse("8Gi")
+	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled:     true,
+		CertManager: &cachev1alpha1.CertManagerSpec{AutoSelfSigned: true},
+	}
+
+	if _, err := v.ValidateCreate(context.Background(), vc); err != nil {
+		t.Fatalf("AutoSelfSigned alone should pass: %v", err)
+	}
+}
+
+func TestValkey_TLS_AutoSelfSigned_with_IssuerRef_rejected(t *testing.T) {
+	v := &ValkeyCustomValidator{}
+	vc := &cachev1alpha1.Valkey{}
+	vc.Spec.Mode = cachev1alpha1.ModeStandalone
+	vc.Spec.Replicas = 1
+	vc.Spec.Version.Version = "8.1.6"
+	vc.Spec.Storage.Size = resource.MustParse("8Gi")
+	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled: true,
+		CertManager: &cachev1alpha1.CertManagerSpec{
+			AutoSelfSigned: true,
+			IssuerRef:      cachev1alpha1.CertIssuerRef{Name: "external"},
+		},
+	}
+
+	_, err := v.ValidateCreate(context.Background(), vc)
+	if err == nil {
+		t.Fatal("expected validation error for AutoSelfSigned + IssuerRef.Name simultaneous")
+	}
+}
