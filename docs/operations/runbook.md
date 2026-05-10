@@ -42,16 +42,79 @@ kubectl logs <pod> -c valkey
 
 ### 2.3 ValkeyCluster cluster_state=fail
 
+**ADR-0039 (2026-05-10) 기준 자가치유**: operator 가 `ClusterInitialized=true`
+상태에서 `cluster_state != ok` 또는 `slots != 16384` 감지 시 자동
+`ensureClusterMeet` 재호출. 본 절은 자가치유 *실패* 시점 (5min+ stuck) 의 수동 대응.
+
 ```sh
 PASS=$(kubectl get secret <name>-auth -o jsonpath='{.data.password}' | base64 -d)
 kubectl exec <name>-0 -- valkey-cli -a "$PASS" cluster info
 kubectl exec <name>-0 -- valkey-cli -a "$PASS" cluster nodes
 ```
 
-대응:
-1. 슬롯 분배 확인 (16384 vs 실제) — `cluster_slots_assigned` 점검
-2. 노드 멤버십 — `cluster nodes` 의 master/replica 매핑
-3. 필요 시 `cluster reset` (주의: 데이터 손실 가능) — 운영 데이터 백업 후만
+#### 진단 순서
+
+1. **Pods Ready 점검**: `kubectl get pod -n <ns> -l app.kubernetes.io/instance=<name>`.
+   모든 pods Running 2/2 가 아니면 그쪽 fix 우선 (PVC pending / NetworkPolicy 등).
+2. **operator log**: `kubectl logs -n <op-ns> deploy/<op-name>` 에서 *INC-0001
+   self-heal* 시도 로그 확인:
+   ```
+   ValkeyCluster post-init fail detected; attempting re-bootstrap (INC-0001 self-heal)
+     state=fail slotsAssigned=0 slotsOK=0
+   ```
+   본 메시지 30분+ 반복 시 self-heal 실패 → 단계 3 으로 진입.
+3. **nodes.conf myself IP 확인**: 각 pod 의 `/data/nodes.conf` 에서 `myself`
+   line 의 IP 가 *실제 pod IP* (kubectl get pod -o wide) 와 일치하는지.
+   불일치 = INC-0001 시나리오 재발 → 단계 4.
+
+#### 수동 회복 (INC-0001 패턴)
+
+데이터 손실 평가 우선:
+
+```sh
+# 모든 pods 의 keys 수
+for i in 0 1 2 3 4 5; do
+  echo "pod-$i: $(kubectl exec <name>-$i -- valkey-cli -a "$PASS" dbsize | tail -1)"
+done
+
+# keys sample (production data 인지 식별)
+kubectl exec <name>-0 -- valkey-cli -a "$PASS" --scan | head -20
+```
+
+**production data 가 있으면**: 회복 *전* `make backup` (또는 valkey-cli `BGSAVE`)
+로 dump 추출. ValkeyBackup CR 활용 권장.
+
+**test data 만이면** (또는 손실 허용):
+
+```sh
+# 1. 6 pods PVC wipe (AOF + nodes.conf)
+for i in 0 1 2 3 4 5; do
+  kubectl exec <name>-$i -- sh -c 'rm -rf /data/appendonlydir /data/nodes.conf /data/dump.rdb'
+done
+
+# 2. 동시 pod restart (controller 가 STS 자동 재생성)
+kubectl delete pod <name>-0 <name>-1 <name>-2 <name>-3 <name>-4 <name>-5 --wait=false
+
+# 3. ClusterInitialized=false 강제 patch (controller bootstrap 재진입 trigger)
+kubectl patch valkeycluster <name> --type=json --subresource=status \
+  -p='[{"op":"replace","path":"/status/clusterInitialized","value":false},
+       {"op":"replace","path":"/status/shards","value":[]},
+       {"op":"replace","path":"/status/clusterState","value":""}]'
+
+# 4. spec mutation 으로 reconcile event trigger
+kubectl patch valkeycluster <name> --type=merge \
+  -p '{"spec":{"nodeTimeoutMillis":15001}}'
+
+# 5. 60s 대기 후 검증
+kubectl exec <name>-0 -- valkey-cli -a "$PASS" cluster info
+# 기대: cluster_state:ok, cluster_slots_assigned:16384, cluster_slots_ok:16384
+```
+
+#### 근거
+
+- INC-0001: `docs/kb/incident/INC-0001-cluster-fail-bootstrap-skip.md` (2026-05-09 19h fail).
+- ADR-0039: `docs/kb/adr/0039-cluster-self-heal-post-init.md` (영구 fix).
+- Alert: PrometheusRule `ValkeyClusterStateNotOK` (5min for, critical) — 본 절 진입점.
 
 ## 3. Backup / Restore
 
@@ -238,10 +301,16 @@ Trigger → Diagnosis → Mitigation → Escalation 순서로 진행.
 
 ### 9.1 ValkeyClusterStateNotOK
 - **Trigger**: `valkey_cluster_state_ok == 0` for 5m. CLUSTER INFO 의 cluster_state ≠ ok.
-- **Diagnosis**: §2.3 ("ValkeyCluster cluster_state=fail") 절차 그대로. slot 분배
-  또는 quorum 이슈.
-- **Mitigation**: 누락된 slot 식별 후 `CLUSTER ADDSLOTS` 또는 operator 가
-  reshard 진행 대기.
+- **Self-heal (ADR-0039)**: operator 가 `ClusterInitialized=true` 상태에서도
+  자동 `ensureClusterMeet` 재호출. operator log 에 "INC-0001 self-heal" 메시지.
+  5min for 안에 회복되지 않으면 self-heal 도 실패한 상태 → manual 진입.
+- **Diagnosis**: §2.3 ("ValkeyCluster cluster_state=fail") 절차 그대로 (진단
+  순서 + 수동 회복 절차 포함).
+- **Mitigation**:
+  1. 누락된 slot 식별 + `CLUSTER ADDSLOTS` (5min 안 회복 기대).
+  2. nodes.conf stale 시 §2.3 "수동 회복" 절차 (PVC wipe + clusterInitialized
+     reset). 데이터 백업 우선.
+- **References**: INC-0001, ADR-0039.
 
 ### 9.2 ValkeyClusterSlotsMismatch
 - **Trigger**: `valkey_cluster_assigned_slots != 16384` for 5m.
