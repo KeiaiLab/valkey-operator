@@ -170,6 +170,12 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			}
 		}
 	}
+	// HA out-of-box default: Spec.Pod.TopologySpreadConstraints 미명시 + replicas >= 2
+	// 시 zone + node 2-축 spread 자동 주입. 단일 노드/zone 장애에 의한 동시 장애 방지.
+	// MaxSkew=1, ScheduleAnyway (강제 not-Schedulable 회피).
+	if len(podSpec.TopologySpreadConstraints) == 0 && p.Replicas >= 2 {
+		podSpec.TopologySpreadConstraints = defaultTopologySpread(selector)
+	}
 
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -204,6 +210,30 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 func ptrBool(b bool) *bool    { return &b }
 func ptrInt32(i int32) *int32 { return &i }
 func ptrInt64(i int64) *int64 { return &i }
+
+// defaultTopologySpread — Spec.Pod.TopologySpreadConstraints 미명시 + replicas >= 2
+// 시 자동 주입되는 zone + node 2-축 spread. ScheduleAnyway 로 강제 unschedulable
+// 회피 (single-zone cluster 환경 호환).
+//
+// MaxSkew=1: 동일 zone/node 에 +1 이상 몰리는 것 방지.
+// 사용자가 Spec.Pod.TopologySpreadConstraints 명시하면 그쪽이 우선 (override).
+func defaultTopologySpread(selector map[string]string) []corev1.TopologySpreadConstraint {
+	labelSelector := &metav1.LabelSelector{MatchLabels: selector}
+	return []corev1.TopologySpreadConstraint{
+		{
+			MaxSkew:           1,
+			TopologyKey:       "topology.kubernetes.io/zone",
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+			LabelSelector:     labelSelector,
+		},
+		{
+			MaxSkew:           1,
+			TopologyKey:       "kubernetes.io/hostname",
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+			LabelSelector:     labelSelector,
+		},
+	}
+}
 
 // AnnotationAuthSecretHash — pod template annotation 키. AuthSecret rotation
 // 추적용. 값 변경 시 STS RollingUpdate 가 자동 발동되어 모든 pod 가 새 password
