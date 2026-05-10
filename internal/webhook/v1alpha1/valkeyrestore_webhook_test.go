@@ -159,3 +159,47 @@ func TestRestoreValidate_no_PointInTime_AOF_passes(t *testing.T) {
 		t.Errorf("AOF without PointInTime should pass: %v", err)
 	}
 }
+
+func TestRestoreValidate_PointInTime_future_rejected(t *testing.T) {
+	v := &ValkeyRestoreCustomValidator{}
+	obj := validRestoreTargetRefSource()
+	obj.Spec.RestoreType = cachev1alpha1.RestoreTypeAOF
+	future := time.Now().Add(48 * time.Hour)
+	obj.Spec.PointInTime = &metav1.Time{Time: future}
+
+	_, err := v.ValidateCreate(context.Background(), obj)
+	if err == nil {
+		t.Fatal("future PointInTime 은 reject 되어야")
+	}
+	if !strings.Contains(err.Error(), "future") {
+		t.Errorf("error message should mention future, got %v", err)
+	}
+}
+
+func TestRestoreValidate_PointInTime_too_far_past_rejected(t *testing.T) {
+	v := &ValkeyRestoreCustomValidator{}
+	obj := validRestoreTargetRefSource()
+	obj.Spec.RestoreType = cachev1alpha1.RestoreTypeAOF
+	farPast := time.Now().AddDate(0, 0, -60) // 60일 전
+	obj.Spec.PointInTime = &metav1.Time{Time: farPast}
+
+	_, err := v.ValidateCreate(context.Background(), obj)
+	if err == nil {
+		t.Fatal("60일 전 PointInTime 은 reject 되어야 (max 30일)")
+	}
+	if !strings.Contains(err.Error(), "days in the past") {
+		t.Errorf("error message should mention past, got %v", err)
+	}
+}
+
+func TestRestoreValidate_PointInTime_within_30days_passes(t *testing.T) {
+	v := &ValkeyRestoreCustomValidator{}
+	obj := validRestoreTargetRefSource()
+	obj.Spec.RestoreType = cachev1alpha1.RestoreTypeAOF
+	withinRetention := time.Now().AddDate(0, 0, -7) // 7일 전 (정상 retention)
+	obj.Spec.PointInTime = &metav1.Time{Time: withinRetention}
+
+	if _, err := v.ValidateCreate(context.Background(), obj); err != nil {
+		t.Errorf("7일 전 (retention 내) PointInTime 통과해야: %v", err)
+	}
+}
