@@ -1,13 +1,11 @@
 # ValkeyBackupTarget — 외부 저장 (S3/GCS/Azure) endpoint + 자격증명 추상화.
 # ValkeyBackup ↔ ValkeyRestore 가 동일 target 참조 (ADR-0016).
+# Type 별 sub-spec 정확히 1개 명시 (PR #43 admission webhook 강제).
 #
 # 자격증명 Secret (별도 생성):
-#   apiVersion: v1
-#   kind: Secret
-#   metadata: { name: s3-creds, namespace: default }
-#   stringData:
-#     AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE..."
-#     AWS_SECRET_ACCESS_KEY: "secret..."
+#   S3:    AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+#   GCS:   key.json (service account JSON)
+#   Azure: AZURE_STORAGE_ACCOUNT_KEY
 apiVersion: cache.keiailab.io/v1alpha1
 kind: ValkeyBackupTarget
 metadata:
@@ -16,7 +14,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: valkeybackuptarget-sample
 spec:
-  type: S3                                 # 첫 구현. GCS/Azure 추후.
+  type: S3                                 # S3 / GCS / Azure (PR #42 + #43)
   s3:
     endpoint: https://s3.ap-northeast-2.amazonaws.com
     region: ap-northeast-2
@@ -28,3 +26,26 @@ spec:
       # accessKeyIDKey: AWS_ACCESS_KEY_ID   # default
       # secretAccessKeyKey: AWS_SECRET_ACCESS_KEY  # default
     # serverSideEncryption: AES256          # 옵션 (AWS:kms 등)
+# ---
+# GCS 예시 (PR #42):
+# spec:
+#   type: GCS
+#   gcs:
+#     bucket: valkey-backups
+#     prefix: cluster-A/
+#     credentialsSecretRef:
+#       name: gcs-sa
+#       serviceAccountJSONKey: key.json     # Secret 안의 key (default)
+# ---
+# Azure 예시 (PR #42):
+# spec:
+#   type: Azure
+#   azure:
+#     accountName: mystorageacct
+#     container: valkey-backups
+#     prefix: cluster-A/
+#     # serviceURL: ""                       # default https://<accountName>.blob.core.windows.net
+#                                            # Azurite (test) 시 http://127.0.0.1:10000/devstoreaccount1/
+#     credentialsSecretRef:
+#       name: azure-key
+#       accountKeyKey: AZURE_STORAGE_ACCOUNT_KEY  # default
