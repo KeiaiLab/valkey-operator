@@ -156,5 +156,6 @@ ADR-0040 §4.2 의 *"5 gap 충족 시 70~75%"* 추정 → 실제 18 gap 해소�
 
 - ADR-0040: Helm chart vs Operator 채택 정책 + 5 gap
 - ADR-0041: Chaos engineering — chaos-mesh 채택
-- PR #38-#55: 18개 atomic merge — operator-runbook / PVC resize / cert-manager / chaos foundation / GCS-Azure backend / BackupTarget admission webhook / HPA Replication / encryption+slowlog / secret rotation auto-restart / reconcile latency Histogram / TSC defaults / PDB defaults / parity-status / VolumeSnapshot backup / VolumeSnapshot restore helper / parity-status v2 / Restore webhook + PITR API foundation / EncryptionEnforce + PITR phase 1 가이드
+- **ADR-0042: Commercial Parity Series 종합 — PR #38-#60 closure (본 문서의 부모 ADR)**
+- PR #38-#60: 23개 atomic merge — operator-runbook / PVC resize / cert-manager / chaos / GCS-Azure / admission webhook / HPA / encryption+slowlog / secret rotation / reconcile latency / TSC / PDB / parity-status v1-v3 / VolumeSnapshot full cycle (4 PR) / Restore webhook + PITR foundation / EncryptionEnforce + PITR docs / SLO alerts / sample CRs 갱신
 - 외부 분석 보고서: `~/.claude/plans/1-https-artifacthub-io-packages-helm-clo-hazy-sketch.md`
