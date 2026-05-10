@@ -1925,6 +1925,18 @@ spec:
                   dataDirPath:
                     default: /data
                     type: string
+                  encryptionEnforce:
+                    default: false
+                    description: |-
+                      EncryptionEnforce — EncryptionRequired=true + 본 필드 true 시 *audit 외에
+                      강제 reject*. StorageClass 가 encryption 미표시 → reconcile 실패 → STS 미생성
+                      (data plane noncompliant 위험 사전 차단).
+
+                      권장:
+                        dev/test: EncryptionRequired=false
+                        staging: EncryptionRequired=true (audit Warning only)
+                        production compliance: EncryptionRequired=true + EncryptionEnforce=true
+                    type: boolean
                   encryptionRequired:
                     default: false
                     description: |-

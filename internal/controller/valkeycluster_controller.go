@@ -228,14 +228,20 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return applyErrorCondition(ctx, r.Client, vc, "PVCResize", err, r.Recorder)
 	}
 
-	// 6.6 Encryption-at-rest audit — Spec.Storage.EncryptionRequired=true 시
-	// StorageClass 가 encryption 표시자를 노출하는지 검사. 미표시 시 Warning event.
+	// 6.6 Encryption-at-rest audit/enforce — Spec.Storage.EncryptionRequired=true 시
+	// StorageClass 가 encryption 표시자를 노출하는지 검사.
+	// EncryptionEnforce=true 추가 시 미표시 → reconcile 실패 (compliance hard-fail).
 	if vc.Spec.Storage.EncryptionRequired {
 		encrypted, hint, err := auditEncryptionAtRest(ctx, r.Client, vc.Spec.Storage.StorageClassName)
 		if err != nil {
 			r.Recorder.Eventf(vc, "Warning", "EncryptionAuditFailed",
 				"Failed to audit StorageClass for encryption: %v", err)
 		} else if !encrypted {
+			if vc.Spec.Storage.EncryptionEnforce {
+				return applyErrorCondition(ctx, r.Client, vc, "EncryptionEnforce",
+					fmt.Errorf("StorageClass %q does not advertise encryption-at-rest: %s",
+						vc.Spec.Storage.StorageClassName, hint), r.Recorder)
+			}
 			r.Recorder.Eventf(vc, "Warning", "EncryptionNotVerified",
 				"Storage.EncryptionRequired=true but StorageClass %q: %s",
 				vc.Spec.Storage.StorageClassName, hint)
