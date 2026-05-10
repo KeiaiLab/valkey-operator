@@ -271,6 +271,13 @@ func validateClusterImmutable(oldObj, newObj *cachev1alpha1.ValkeyCluster) field
 			"storage.dataDirPath is immutable",
 		))
 	}
+	if !oldObj.Spec.Storage.Size.IsZero() &&
+		newObj.Spec.Storage.Size.Cmp(oldObj.Spec.Storage.Size) < 0 {
+		errs = append(errs, field.Forbidden(
+			p.Child("storage", "size"),
+			"storage.size cannot be decreased (Kubernetes PVC shrink is unsupported)",
+		))
+	}
 
 	oldTLS := oldObj.Spec.TLS != nil && oldObj.Spec.TLS.Enabled
 	newTLS := newObj.Spec.TLS != nil && newObj.Spec.TLS.Enabled
