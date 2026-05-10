@@ -30,6 +30,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-cache-keiailab-io-v1alpha1-valkeybackuptarget
+  failurePolicy: Fail
+  name: mvalkeybackuptarget-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - cache.keiailab.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - valkeybackuptargets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-cache-keiailab-io-v1alpha1-valkeycluster
   failurePolicy: Fail
   name: mvalkeycluster-v1alpha1.kb.io
@@ -69,6 +89,26 @@ webhooks:
     - UPDATE
     resources:
     - valkeys
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-cache-keiailab-io-v1alpha1-valkeybackuptarget
+  failurePolicy: Fail
+  name: vvalkeybackuptarget-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - cache.keiailab.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - valkeybackuptargets
   sideEffects: None
 - admissionReviewVersions:
   - v1
