@@ -19,10 +19,13 @@ import (
 )
 
 // 본 unit 은 isMultiPodTarget 의 fake-client driven 분기 가 아닌, handlePending 진입
-// 직전 단계 의 *Source.VolumeSnapshot + multi-pod target* 조합 reject path 만 검증.
+// 직전 단계 의 *Source.VolumeSnapshot + multi-pod target* 조합 분기 검증.
+//
+// PR #67 후: Replication mode 는 phase 1.5 통과 (handleMounting 에서 N PVC 생성),
+// ValkeyCluster (sharded) 는 여전히 reject.
 //
 // envtest 통합 회귀는 별도 (test/e2e 의 cluster_recovery_test 패턴).
-func TestHandlePending_VolumeSnapshot_with_Replication_target_rejected(t *testing.T) {
+func TestHandlePending_VolumeSnapshot_with_ValkeyCluster_target_rejected(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := corev1.AddToScheme(scheme); err != nil {
 		t.Fatalf("corev1: %v", err)
@@ -31,18 +34,19 @@ func TestHandlePending_VolumeSnapshot_with_Replication_target_rejected(t *testin
 		t.Fatalf("cachev1alpha1: %v", err)
 	}
 
-	// Replication target (replicas=3) — multi-pod.
-	target := &cachev1alpha1.Valkey{
-		ObjectMeta: metav1.ObjectMeta{Name: "vk-rep", Namespace: "ns"},
-		Spec: cachev1alpha1.ValkeySpec{
-			Mode:     cachev1alpha1.ModeReplication,
-			Replicas: 3,
+	// ValkeyCluster (sharded) — Source.VolumeSnapshot 미지원 (phase 1).
+	target := &cachev1alpha1.ValkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "vc-shard", Namespace: "ns"},
+		Spec: cachev1alpha1.ValkeyClusterSpec{
+			Shards:           3,
+			ReplicasPerShard: 1,
+			Version:          cachev1alpha1.ValkeyVersion{Version: "8.1.6"},
 		},
 	}
 	rest := &cachev1alpha1.ValkeyRestore{
-		ObjectMeta: metav1.ObjectMeta{Name: "rest-vs-rep", Namespace: "ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: "rest-vs-cluster", Namespace: "ns"},
 		Spec: cachev1alpha1.ValkeyRestoreSpec{
-			ClusterRef: cachev1alpha1.ClusterReference{Kind: "Valkey", Name: "vk-rep"},
+			ClusterRef: cachev1alpha1.ClusterReference{Kind: "ValkeyCluster", Name: "vc-shard"},
 			Source: cachev1alpha1.RestoreSource{
 				VolumeSnapshot: &cachev1alpha1.RestoreSourceVolumeSnapshot{Name: "snap"},
 			},
@@ -69,9 +73,9 @@ func TestHandlePending_VolumeSnapshot_with_Replication_target_rejected(t *testin
 	if updated.Status.Phase != cachev1alpha1.RestorePhaseFailed {
 		t.Errorf("expected Failed phase, got %q", updated.Status.Phase)
 	}
-	if !strings.Contains(updated.Status.Message, "phase 1 미지원") &&
-		!strings.Contains(updated.Status.Message, "Standalone 만 지원") {
-		t.Errorf("Status.Message should explain phase 1 limitation, got: %q",
+	if !strings.Contains(updated.Status.Message, "ValkeyCluster") &&
+		!strings.Contains(updated.Status.Message, "shard") {
+		t.Errorf("Status.Message should explain ValkeyCluster limitation, got: %q",
 			updated.Status.Message)
 	}
 }

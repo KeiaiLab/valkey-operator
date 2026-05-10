@@ -5,6 +5,8 @@ Copyright 2026 Keiailab.
 package resources
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,4 +76,52 @@ func BuildPVCFromVolumeSnapshot(restoreName, namespace, snapshotName string,
 // caller (reconciler) 가 분기에 사용.
 func IsVolumeSnapshotRestore(spec *cachev1alpha1.ValkeyRestoreSpec) bool {
 	return spec != nil && spec.Source.VolumeSnapshot != nil && spec.Source.VolumeSnapshot.Name != ""
+}
+
+// MultiPodRestoredPVCName — Replication mode 의 ordinal 별 cloned PVC 이름.
+// `<restore-name>-restored-<ordinal>` — Standalone 의 RestoredPVCName 과 구분
+// 가능 + STS data PVC 명명 (data-<cr>-<ordinal>) 와도 충돌 회피.
+func MultiPodRestoredPVCName(restoreName string, ordinal int32) string {
+	return fmt.Sprintf("%s-restored-%d", restoreName, ordinal)
+}
+
+// BuildPVCFromVolumeSnapshotForOrdinal — multi-pod 케이스의 ordinal 별 PVC 빌더.
+// Standalone 의 BuildPVCFromVolumeSnapshot 와 동일하나 *naming + label* 만 다름.
+func BuildPVCFromVolumeSnapshotForOrdinal(restoreName, namespace, snapshotName string,
+	ordinal int32,
+	storageClassName *string, size resource.Quantity) *corev1.PersistentVolumeClaim {
+
+	if size.IsZero() {
+		size = resource.MustParse("8Gi")
+	}
+
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      MultiPodRestoredPVCName(restoreName, ordinal),
+			Namespace: namespace,
+			Labels: map[string]string{
+				LabelAppName:                         "valkey",
+				LabelInstanceName:                    restoreName,
+				LabelComponent:                       "restore-pvc-multipod",
+				LabelManagedBy:                       ManagedByValue,
+				LabelPartOf:                          PartOfValue,
+				"valkey.keiailab.io/restore-ordinal": fmt.Sprintf("%d", ordinal),
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: size},
+			},
+			DataSource: &corev1.TypedLocalObjectReference{
+				APIGroup: ptr.To(SnapshotAPIGroup),
+				Kind:     "VolumeSnapshot",
+				Name:     snapshotName,
+			},
+		},
+	}
+	if storageClassName != nil && *storageClassName != "" {
+		pvc.Spec.StorageClassName = storageClassName
+	}
+	return pvc
 }
