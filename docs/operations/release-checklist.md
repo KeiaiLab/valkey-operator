@@ -68,7 +68,7 @@ push 도 동일 통과 필수.
 | 41 | `TestMetricPhaseLabelsSync` | metrics.go::allPhases ↔ api ValkeyPhase + ClusterPhase enum union (Grafana dashboard 의 phase 시계열 incomplete 차단) |
 | 42 | `TestGoVersionDockerfileVsGoMod` | Dockerfile 의 FROM golang:X.Y ↔ go.mod 의 `go X.Y` minimum directive 동기 (+ CONTRIBUTING.md Go table — cycle 96) |
 | 43 | `TestKubernetesVersionSync` | Chart.yaml kubeVersion ↔ README badge ↔ chart README Kubernetes prerequisite 3-surface 동기 |
-| 44 | `TestReleaseTargetInjectsBuildMetadataAndMultiArch` | release image 의 build metadata 주입 + linux/amd64,linux/arm64 manifest 동기 |
+| 44 | `TestReleaseTargetInjectsBuildMetadataAndAmd64Only` | release image 의 build metadata 주입 + linux/amd64 단일 platform 강제 (CLAUDE.md §2 멀티아키 금지 정합) |
 
 검증 명령: `go test ./internal/observability/`
 
