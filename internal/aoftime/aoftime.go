@@ -107,26 +107,32 @@ func HasTimestamps(aof []byte) bool {
 // TruncateAOFFile — file-level helper. srcPath 의 AOF 를 읽어 cutoff 시각까지
 // 보존한 truncated AOF 를 dstPath 에 write. PITR phase 2 reconciler 통합 진입점.
 //
-// 동작:
-//   - srcPath 읽기 → TruncateOffset(cutoff) → [:offset] write to dstPath
-//   - HasTimestamps=false 인 AOF 는 *전체 복사* + warning 반환 (PITR 효과 없음)
-//   - dstPath 디렉토리 사전 존재 가정 (caller 책임)
-//
-// 반환:
-//
-//	bytesWritten: dstPath 에 쓴 byte 수
-//	truncated: 실제로 truncate 됐는지 (false = full copy / no markers)
-//	err: 파일 IO 또는 parsing 에러
-//
-// reconciler 사용 예 (phase 2):
-//
-//	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil { ... }
-//	written, truncated, err := aoftime.TruncateAOFFile(srcPath, dstPath, cutoff)
-//	if !truncated { logger.Warn("AOF lacks timestamps — full replay") }
+// backup-aware 변형은 TruncateAOFFileWithBackup. 본 함수는 thin wrapper.
 func TruncateAOFFile(srcPath, dstPath string, cutoff time.Time) (bytesWritten int, truncated bool, err error) {
+	return TruncateAOFFileWithBackup(srcPath, dstPath, "", cutoff)
+}
+
+// TruncateAOFFileWithBackup — TruncateAOFFile 의 *rollback-aware* 버전.
+//
+// backupPath != "" 시 truncate 전 *원본* AOF 를 backupPath 에 복사. PITR
+// rollback (replay 실패 시 backup 시점 fallback) 진입점.
+//
+// 운영 시나리오:
+//   - reconciler 가 backupPath = `<dstPath>.original` 명시
+//   - init container 가 truncated AOF 로 부팅 시도
+//   - CrashLoopBackOff 감지 시 reconciler 가 RollbackFromBackup 호출
+//     (전체 AOF replay 로 fallback, PITR 효과 미달성하지만 데이터 보존)
+//
+// backupPath="" 시 동작은 TruncateAOFFile 와 동일 (backup 미생성).
+func TruncateAOFFileWithBackup(srcPath, dstPath, backupPath string, cutoff time.Time) (bytesWritten int, truncated bool, err error) {
 	src, err := os.ReadFile(srcPath)
 	if err != nil {
 		return 0, false, fmt.Errorf("read src AOF %s: %w", srcPath, err)
+	}
+	if backupPath != "" {
+		if err := os.WriteFile(backupPath, src, 0o600); err != nil {
+			return 0, false, fmt.Errorf("write backup AOF %s: %w", backupPath, err)
+		}
 	}
 	if !HasTimestamps(src) {
 		// timestamps 부재 — 전체 복사 (PITR 효과 없음, 사용자 안내).
@@ -141,4 +147,18 @@ func TruncateAOFFile(srcPath, dstPath string, cutoff time.Time) (bytesWritten in
 		return 0, true, fmt.Errorf("write truncated AOF %s: %w", dstPath, err)
 	}
 	return len(out), true, nil
+}
+
+// RollbackFromBackup — PITR replay 실패 시 backup 원본을 dstPath 로 복원.
+// 본 함수는 backup 파일 *읽기 + dst 덮어쓰기* 만 — caller 가 init container
+// 재시작 책임 (kubectl rollout restart 또는 STS pod delete).
+func RollbackFromBackup(backupPath, dstPath string) error {
+	data, err := os.ReadFile(backupPath)
+	if err != nil {
+		return fmt.Errorf("read backup AOF %s: %w", backupPath, err)
+	}
+	if err := os.WriteFile(dstPath, data, 0o600); err != nil {
+		return fmt.Errorf("rollback write %s: %w", dstPath, err)
+	}
+	return nil
 }
