@@ -12,8 +12,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"time"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/aoftime"
 	"github.com/keiailab/valkey-operator/internal/storage"
 )
 
@@ -21,6 +23,9 @@ type downloadOptions struct {
 	bucket   string
 	object   string
 	filePath string
+	// pitrCutoff — RFC3339 시각. 비어있지 않으면 download 후 AOF 를 본 시각까지
+	// truncate (in-place, dst=src). PITR phase 2 reconciler dispatch (PR #70).
+	pitrCutoff string
 }
 
 // downloader — runDownload 가 사용하는 단일 메서드.
@@ -48,10 +53,15 @@ func runDownload(ctx context.Context, args []string, stdout, stderr io.Writer) e
 	bucket := fs.String("bucket", "", "S3 bucket name (required)")
 	object := fs.String("object", "", "object key inside bucket (required)")
 	filePath := fs.String("file", "", "local file path to download to (required)")
+	pitrCutoff := fs.String("pitr-cutoff", "",
+		"optional RFC3339 timestamp. If set, download AOF then truncate to cutoff (PITR phase 2)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	opts := downloadOptions{bucket: *bucket, object: *object, filePath: *filePath}
+	opts := downloadOptions{
+		bucket: *bucket, object: *object, filePath: *filePath,
+		pitrCutoff: *pitrCutoff,
+	}
 	return runDownloadWithBuilder(ctx, opts, stdout, defaultBuildDownloader)
 }
 
@@ -81,5 +91,25 @@ func runDownloadWithBuilder(
 	}
 	_, _ = fmt.Fprintf(stdout, "downloaded %s/%s → %s\n",
 		c.EndpointHost(), opts.object, opts.filePath)
+
+	// PITR phase 2: --pitr-cutoff 명시 시 AOF in-place truncate.
+	if opts.pitrCutoff != "" {
+		cutoff, err := time.Parse(time.RFC3339, opts.pitrCutoff)
+		if err != nil {
+			return fmt.Errorf("parse --pitr-cutoff %q (RFC3339 expected): %w", opts.pitrCutoff, err)
+		}
+		written, truncated, err := aoftime.TruncateAOFFile(opts.filePath, opts.filePath, cutoff)
+		if err != nil {
+			return fmt.Errorf("PITR truncate: %w", err)
+		}
+		if !truncated {
+			_, _ = fmt.Fprintf(stdout,
+				"WARNING: AOF lacks #TS: timestamps — full file preserved (PITR ineffective). "+
+					"Set 'aof-timestamp-enabled yes' on the source Valkey for next backup.\n")
+		} else {
+			_, _ = fmt.Fprintf(stdout,
+				"PITR: truncated AOF to %s (%d bytes)\n", cutoff.UTC().Format(time.RFC3339), written)
+		}
+	}
 	return nil
 }

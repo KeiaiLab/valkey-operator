@@ -87,6 +87,11 @@ type DownloadJobParams struct {
 	CredentialsSecretName    string
 	AccessKeyIDSecretKey     string
 	SecretAccessKeySecretKey string
+
+	// PITRCutoff — RFC3339 시각. 비어있지 않으면 download Job 의 cli 가 본 시각
+	// 까지 AOF in-place truncate (PR #70 PITR phase 2 reconciler dispatch).
+	// AOF restore type 만 의미. RDB 는 무시.
+	PITRCutoff string
 }
 
 // BuildDownloadJob — operator image 의 `download` sub-command 호출.
@@ -99,6 +104,9 @@ func BuildDownloadJob(p DownloadJobParams) *batchv1.Job {
 		"--bucket=" + p.Bucket,
 		"--object=" + p.ObjectKey,
 		"--file=" + p.FilePath,
+	}
+	if p.PITRCutoff != "" {
+		args = append(args, "--pitr-cutoff="+p.PITRCutoff)
 	}
 	env := s3EnvForJob(p.Endpoint, p.Region, p.ForcePathStyle,
 		p.CredentialsSecretName, p.AccessKeyIDSecretKey, p.SecretAccessKeySecretKey)

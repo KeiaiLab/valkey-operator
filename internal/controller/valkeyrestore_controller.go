@@ -427,6 +427,12 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 	}
 
 	// 3. Download Job 보장.
+	// PITR (PR #54 + #68 + #69 + 본 PR #70): RestoreType=AOF + PointInTime 명시 시
+	// download Job 의 cli 가 다운로드 후 in-place AOF truncate.
+	pitrCutoff := ""
+	if rest.Spec.PointInTime != nil && rest.Spec.RestoreType == cachev1alpha1.RestoreTypeAOF {
+		pitrCutoff = rest.Spec.PointInTime.UTC().Format("2006-01-02T15:04:05Z")
+	}
 	downloadJob := resources.BuildDownloadJob(resources.DownloadJobParams{
 		RestoreName:              rest.Name,
 		Namespace:                rest.Namespace,
@@ -441,6 +447,7 @@ func (r *ValkeyRestoreReconciler) ensureTargetRefSource(
 		CredentialsSecretName:    tgt.Spec.S3.CredentialsSecretRef.Name,
 		AccessKeyIDSecretKey:     keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.AccessKeyIDKey, "AWS_ACCESS_KEY_ID"),
 		SecretAccessKeySecretKey: keyOrDefault(tgt.Spec.S3.CredentialsSecretRef.SecretAccessKeyKey, "AWS_SECRET_ACCESS_KEY"),
+		PITRCutoff:               pitrCutoff,
 	})
 	if err := controllerutil.SetControllerReference(rest, downloadJob, r.Scheme); err != nil {
 		res, err := r.markFailed(ctx, rest, "JobOwnerRef", err.Error())
