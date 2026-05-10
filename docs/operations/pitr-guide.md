@@ -96,12 +96,41 @@ phase 2 가 위 1-3 단계를 *operator 가 자동* 처리.
 본 가이드의 phase 2 dispatch 활성화 위해:
 
 1. ~~**AOF timestamp parse 라이브러리**~~ → ✅ **PR #68** `internal/aoftime` 패키지 GA
-   (Valkey 8.0+ `aof-timestamp-enabled yes` 의 `#TS:<unix>` marker 파싱.
-   `TruncateOffset(aof, cutoff time.Time) int` 가 truncation 위치 반환)
-2. **valkey-cli --pipe 통합** — operator 가 valkey 노드에 AOF 줄별 적용
-   (`valkey-cli -h <pod> --pipe < truncated.aof`)
-3. **PointInTime <= backup CompletedAt invariant** webhook 추가
-4. **rollback** — replay 중 실패 시 backup 시점으로 fallback
+2. ~~**File-level helper for reconciler 통합**~~ → ✅ **PR #69** `TruncateAOFFile` GA
+3. ~~**Reconciler dispatch — download Job 의 cli 가 in-place truncate**~~ → ✅ **PR #70**
+   (DownloadJobParams.PITRCutoff + cli download `--pitr-cutoff` flag.
+   reconciler 가 PointInTime + RestoreType=AOF 시 자동 dispatch)
+4. **valkey-cli --pipe 통합** — 현재는 init container 가 cluster 부팅 시 AOF 자동 load
+   (Valkey 의 default `appendonly yes` 동작). `valkey-cli --pipe` 별도 통합은
+   *streaming replay* 가 필요한 케이스 (현재 init container 방식 충분).
+5. **PointInTime ≤ backup CompletedAt invariant** webhook (후속) — backup 시점
+   초과 PointInTime 은 의미적 모순 (없는 미래 데이터 요청).
+6. **rollback** — replay 중 실패 시 backup 시점으로 fallback (후속).
+
+**현재 상태 (PR #70 후)**: AOF restore + PointInTime 명시 시 reconciler 가 자동
+download → truncate → init container 가 truncated AOF 로 cluster 부팅. *완전
+자동 PITR 동작*. 남은 작업은 webhook invariant + rollback (운영 안전성).
+
+## PR #70 사용 예 (실제 동작)
+
+```yaml
+apiVersion: cache.keiailab.io/v1alpha1
+kind: ValkeyRestore
+metadata: { name: pitr-restore }
+spec:
+  clusterRef: { kind: Valkey, name: vk-prod }
+  source:
+    targetRef: { name: s3-prod, path: backup/dump.aof }
+  restoreType: AOF
+  pointInTime: "2026-05-10T14:30:00Z"
+```
+
+내부 동작:
+1. handlePending: webhook (PR #54) 가 invariants 검증 → Mounting
+2. handleMounting: download Job 생성 with `--pitr-cutoff=2026-05-10T14:30:00Z`
+3. cli download (PR #70): S3 → /backup/dump.aof → in-place truncate to cutoff
+4. handleRestoring: 기존 init container path → cluster 부팅 시 truncated AOF replay
+5. Verifying → Completed
 
 ## PR #68 사용 예 (Go 코드 통합)
 
