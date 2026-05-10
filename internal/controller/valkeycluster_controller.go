@@ -188,6 +188,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return applyErrorCondition(ctx, r.Client, vc, "ScalePolicy", err, r.Recorder)
 	}
 	vc.Status.PendingScale = pendingScale
+	vc.Status.Capabilities = computeClusterCapabilities(vc)
 
 	stsParams := resources.STSParams{
 		CRName:         vc.Name,

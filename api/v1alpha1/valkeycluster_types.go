@@ -113,6 +113,11 @@ type ValkeyClusterStatus struct {
 	PendingScale *PendingScale `json:"pendingScale,omitempty"`
 
 	ClusterInitialized bool `json:"clusterInitialized,omitempty"`
+
+	// Capabilities — 활성 optional features. Valkey CR Status.Capabilities 와 동일 패턴.
+	// `kubectl get vc -o wide` 의 priority=1 printcolumn 으로 노출.
+	// +optional
+	Capabilities []string `json:"capabilities,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -125,6 +130,7 @@ type ValkeyClusterStatus struct {
 // +kubebuilder:printcolumn:name="Slots",type="integer",JSONPath=".status.assignedSlots"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version.version"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Capabilities",type="string",JSONPath=".status.capabilities",priority=1
 
 // ValkeyCluster is the Schema for the valkeyclusters API.
 type ValkeyCluster struct {
