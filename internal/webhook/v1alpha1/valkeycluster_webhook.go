@@ -163,20 +163,29 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 
 	// TLS.Enabled=true 면 CertManager 또는 CustomCert 중 하나는 명시.
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
-		// hasCertMgr: omitempty trap 가드 — CertManager pointer non-nil + IssuerRef.Name
-		// 비어있지 않을 때만 *유효* 로 간주 (mongodb-operator it46 와 동일 패턴).
-		hasCertMgr := vc.Spec.TLS.CertManager != nil && vc.Spec.TLS.CertManager.IssuerRef.Name != ""
+		// hasCertMgr: CertManager pointer non-nil + (IssuerRef.Name 명시 OR AutoSelfSigned=true).
+		hasCertMgr := vc.Spec.TLS.CertManager != nil &&
+			(vc.Spec.TLS.CertManager.IssuerRef.Name != "" || vc.Spec.TLS.CertManager.AutoSelfSigned)
 		hasCustom := vc.Spec.TLS.CustomCert != nil && vc.Spec.TLS.CustomCert.SecretName != ""
 		if !hasCertMgr && !hasCustom {
 			errs = append(errs, field.Required(
 				specPath.Child("tls"),
-				"TLS.Enabled=true requires either tls.certManager or tls.customCert.secretName",
+				"TLS.Enabled=true requires either tls.certManager (issuerRef or autoSelfSigned) or tls.customCert.secretName",
 			))
 		}
 		if hasCertMgr && hasCustom {
 			errs = append(errs, field.Forbidden(
 				specPath.Child("tls"),
 				"TLS.CertManager and TLS.CustomCert are mutually exclusive — choose one",
+			))
+		}
+		// AutoSelfSigned + IssuerRef.Name 동시 명시 reject — 모호.
+		if vc.Spec.TLS.CertManager != nil &&
+			vc.Spec.TLS.CertManager.AutoSelfSigned &&
+			vc.Spec.TLS.CertManager.IssuerRef.Name != "" {
+			errs = append(errs, field.Forbidden(
+				specPath.Child("tls", "certManager"),
+				"autoSelfSigned and issuerRef.name are mutually exclusive — choose one",
 			))
 		}
 	}

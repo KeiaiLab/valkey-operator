@@ -120,21 +120,31 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 		))
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
-		// hasCertMgr: omitempty trap 가드 — CertManager pointer non-nil + IssuerRef.Name
-		// 비어있지 않을 때만 *유효* 로 간주. CRD required marker 가 struct value 빈
-		// 객체 통과 허용 (cross-cut audit, mongodb-operator 와 동일 패턴).
-		hasCertMgr := v.Spec.TLS.CertManager != nil && v.Spec.TLS.CertManager.IssuerRef.Name != ""
+		// hasCertMgr: CertManager pointer non-nil + (IssuerRef.Name 명시 OR AutoSelfSigned=true).
+		// CRD required marker 가 struct value 빈 객체 통과 허용 (cross-cut audit).
+		hasCertMgr := v.Spec.TLS.CertManager != nil &&
+			(v.Spec.TLS.CertManager.IssuerRef.Name != "" || v.Spec.TLS.CertManager.AutoSelfSigned)
 		hasCustom := v.Spec.TLS.CustomCert != nil && v.Spec.TLS.CustomCert.SecretName != ""
 		if !hasCertMgr && !hasCustom {
 			errs = append(errs, field.Required(
 				p.Child("tls"),
-				"TLS.Enabled=true requires either tls.certManager or tls.customCert.secretName",
+				"TLS.Enabled=true requires either tls.certManager (issuerRef or autoSelfSigned) or tls.customCert.secretName",
 			))
 		}
 		if hasCertMgr && hasCustom {
 			errs = append(errs, field.Forbidden(
 				p.Child("tls"),
 				"TLS.CertManager and TLS.CustomCert are mutually exclusive — choose one",
+			))
+		}
+		// AutoSelfSigned + IssuerRef.Name 동시 명시 reject — namespace-scope auto issuer
+		// vs 외부 issuer 모호. 둘 중 하나만 선택.
+		if v.Spec.TLS.CertManager != nil &&
+			v.Spec.TLS.CertManager.AutoSelfSigned &&
+			v.Spec.TLS.CertManager.IssuerRef.Name != "" {
+			errs = append(errs, field.Forbidden(
+				p.Child("tls", "certManager"),
+				"autoSelfSigned and issuerRef.name are mutually exclusive — choose one",
 			))
 		}
 	}
