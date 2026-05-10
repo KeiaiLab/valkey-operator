@@ -111,6 +111,39 @@ phase 2 가 위 1-3 단계를 *operator 가 자동* 처리.
 download → truncate → init container 가 truncated AOF 로 cluster 부팅. *완전
 자동 PITR 동작*. 남은 작업은 webhook invariant + rollback (운영 안전성).
 
+## Recovery from Failed PITR (PR #72 rollback)
+
+PITR replay 실패 시 (예: AOF 가 손상됐거나 corrupt timestamp marker)
+init container CrashLoopBackOff. 운영자 수동 rollback 절차:
+
+### 사전 조건
+
+reconciler 가 download Job 호출 시 `--pitr-backup=/backup/dump.aof.original`
+명시 (PR #72) — 본 backup 파일이 staging PVC 에 존재.
+
+### 자동 rollback (운영자 1-line)
+
+```sh
+# 1. staging PVC 에 접근하는 임시 pod 띄우기
+kubectl run rollback-helper --rm -it --restart=Never \
+  --image=ghcr.io/keiailab/valkey-operator:latest \
+  --overrides='{"spec":{"containers":[{"name":"r","image":"ghcr.io/keiailab/valkey-operator:latest","command":["sh","-c","cp /backup/dump.aof.original /backup/dump.aof"],"volumeMounts":[{"name":"b","mountPath":"/backup"}]}],"volumes":[{"name":"b","persistentVolumeClaim":{"claimName":"<staging-pvc>"}}]}}'
+
+# 2. valkey STS 재시작 (init container 가 *전체* AOF replay)
+kubectl rollout restart sts/<cluster-name>
+```
+
+### 자동화 (operator 측, 별도 epic)
+
+후속 작업 — operator 가:
+1. Status.Phase=Restoring + init container CrashLoopBackOff 감지
+2. backup 파일 존재 검증
+3. Status.Phase=PITRRollbackPending 으로 전이 (사용자 명시 승인 후 자동)
+4. 위 1-line 절차를 reconciler 가 자동 수행
+
+본 자동화는 *destructive 동작 (PVC 데이터 덮어쓰기)* 이라 ADR + 사용자 명시
+승인 패턴 권장.
+
 ## PR #70 사용 예 (실제 동작)
 
 ```yaml
