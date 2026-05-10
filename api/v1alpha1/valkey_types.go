@@ -97,6 +97,11 @@ type ValkeySpec struct {
 	// 활성 시 ScalePolicy.Deliberate 무시 + Spec.Replicas 는 default 값으로만 사용.
 	// +optional
 	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
+
+	// SlowLog — Valkey SLOWLOG 임계값 + 보존 entry 수 설정.
+	// nil 이면 valkey 기본값 (10ms / 128 entries) 사용.
+	// +optional
+	SlowLog *SlowLogSpec `json:"slowLog,omitempty"`
 }
 
 // IsAutoFailoverEnabled — Spec.AutoFailover 가 nil 또는 true 면 true (default

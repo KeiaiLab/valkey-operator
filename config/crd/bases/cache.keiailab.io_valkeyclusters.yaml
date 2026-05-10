@@ -1900,12 +1900,39 @@ spec:
                 - Auto
                 - Manual
                 type: string
+              slowLog:
+                description: |-
+                  SlowLogSpec — Valkey SLOWLOG 임계값 + 보존 entry 수.
+
+                  Threshold 보다 오래 걸린 명령은 SLOWLOG 에 기록 — `valkey-cli SLOWLOG GET` 로 조회.
+                  redis_exporter sidecar 가 자동으로 redis_slowlog_length metric 으로 노출.
+                properties:
+                  maxEntries:
+                    default: 128
+                    description: 보존 entry 수 — FIFO. 초과 시 가장 오래된 entry 폐기.
+                    format: int32
+                    type: integer
+                  thresholdMicros:
+                    default: 10000
+                    description: '단위: microseconds. 0 = SLOWLOG 비활성. -1 = 모든 명령 기록
+                      (debug 만).'
+                    format: int64
+                    type: integer
+                type: object
               storage:
                 description: StorageSpec — Valkey 데이터 디렉터리(/data) 마운트용 PVC.
                 properties:
                   dataDirPath:
                     default: /data
                     type: string
+                  encryptionRequired:
+                    default: false
+                    description: |-
+                      EncryptionRequired — true 시 reconciler 가 StorageClass parameters 를
+                      검사해 encryption 표시자 (encrypted=true / type=Premium_LRS 등) 가 없으면
+                      Warning event 발행 (compliance audit). 강제 reject 는 아님 — 운영자가
+                      의도적 평문 SC 사용 시 차단되지 않도록.
+                    type: boolean
                   size:
                     anyOf:
                     - type: integer

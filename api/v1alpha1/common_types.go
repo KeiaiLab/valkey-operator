@@ -75,6 +75,30 @@ type StorageSpec struct {
 
 	// +kubebuilder:default="/data"
 	DataDirPath string `json:"dataDirPath,omitempty"`
+
+	// EncryptionRequired — true 시 reconciler 가 StorageClass parameters 를
+	// 검사해 encryption 표시자 (encrypted=true / type=Premium_LRS 등) 가 없으면
+	// Warning event 발행 (compliance audit). 강제 reject 는 아님 — 운영자가
+	// 의도적 평문 SC 사용 시 차단되지 않도록.
+	// +kubebuilder:default=false
+	// +optional
+	EncryptionRequired bool `json:"encryptionRequired,omitempty"`
+}
+
+// SlowLogSpec — Valkey SLOWLOG 임계값 + 보존 entry 수.
+//
+// Threshold 보다 오래 걸린 명령은 SLOWLOG 에 기록 — `valkey-cli SLOWLOG GET` 로 조회.
+// redis_exporter sidecar 가 자동으로 redis_slowlog_length metric 으로 노출.
+type SlowLogSpec struct {
+	// 단위: microseconds. 0 = SLOWLOG 비활성. -1 = 모든 명령 기록 (debug 만).
+	// +kubebuilder:default=10000
+	// +optional
+	ThresholdMicros int64 `json:"thresholdMicros,omitempty"`
+
+	// 보존 entry 수 — FIFO. 초과 시 가장 오래된 entry 폐기.
+	// +kubebuilder:default=128
+	// +optional
+	MaxEntries int32 `json:"maxEntries,omitempty"`
 }
 
 // ResourcesSpec — pod resource requests/limits.
