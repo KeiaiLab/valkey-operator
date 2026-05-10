@@ -32,6 +32,10 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .status.capabilities
+      name: Capabilities
+      priority: 1
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -2075,6 +2079,23 @@ spec:
           status:
             description: ValkeyStatus — observed state.
             properties:
+              capabilities:
+                description: |-
+                  Capabilities — 본 CR 에서 *활성된 optional features* 의 ordered list.
+                  `kubectl get vk -o wide` 의 printcolumn 으로 한눈에 확인 가능.
+                  reconcile 마다 갱신. 가능 값 (PR #38-#60):
+                    "TLS"             — Spec.TLS.Enabled
+                    "TLS-AutoCA"      — Spec.TLS.CertManager.AutoSelfSigned (PR #40)
+                    "Auth"            — Spec.Auth.Enabled
+                    "Autoscaling"     — Spec.Autoscaling.Enabled (PR #44)
+                    "SlowLog"         — Spec.SlowLog 명시 (PR #45)
+                    "EncryptionAudit" — Spec.Storage.EncryptionRequired (PR #45)
+                    "EncryptionEnforce" — Spec.Storage.EncryptionEnforce (PR #55)
+                    "NetworkPolicy"   — Spec.NetworkPolicy.Enabled
+                    "Monitoring"      — Spec.Monitoring.Enabled
+                items:
+                  type: string
+                type: array
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current

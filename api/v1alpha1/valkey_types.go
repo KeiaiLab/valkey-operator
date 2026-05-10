@@ -125,6 +125,21 @@ type ValkeyStatus struct {
 
 	// +optional
 	PendingScale *PendingScale `json:"pendingScale,omitempty"`
+
+	// Capabilities — 본 CR 에서 *활성된 optional features* 의 ordered list.
+	// `kubectl get vk -o wide` 의 printcolumn 으로 한눈에 확인 가능.
+	// reconcile 마다 갱신. 가능 값 (PR #38-#60):
+	//   "TLS"             — Spec.TLS.Enabled
+	//   "TLS-AutoCA"      — Spec.TLS.CertManager.AutoSelfSigned (PR #40)
+	//   "Auth"            — Spec.Auth.Enabled
+	//   "Autoscaling"     — Spec.Autoscaling.Enabled (PR #44)
+	//   "SlowLog"         — Spec.SlowLog 명시 (PR #45)
+	//   "EncryptionAudit" — Spec.Storage.EncryptionRequired (PR #45)
+	//   "EncryptionEnforce" — Spec.Storage.EncryptionEnforce (PR #55)
+	//   "NetworkPolicy"   — Spec.NetworkPolicy.Enabled
+	//   "Monitoring"      — Spec.Monitoring.Enabled
+	// +optional
+	Capabilities []string `json:"capabilities,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -136,6 +151,7 @@ type ValkeyStatus struct {
 // +kubebuilder:printcolumn:name="Ready",type="integer",JSONPath=".status.readyReplicas"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version.version"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Capabilities",type="string",JSONPath=".status.capabilities",priority=1
 
 // Valkey is the Schema for the valkeys API.
 type Valkey struct {

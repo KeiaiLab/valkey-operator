@@ -198,6 +198,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return applyErrorCondition(ctx, r.Client, v, "ScalePolicy", scaleErr, r.Recorder)
 	}
 	v.Status.PendingScale = pendingScale
+	v.Status.Capabilities = computeValkeyCapabilities(v)
 
 	// HPA 활성 시 STS.replicas 는 HPA 가 관리 — operator 가 덮어쓰면 매 reconcile
 	// 마다 HPA 결정과 충돌. ADR-0027 §Spec 의 "Spec.Replicas 는 default" 정책.
