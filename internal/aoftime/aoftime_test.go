@@ -215,3 +215,87 @@ func writeFile(path string, data []byte) error {
 var osWriteFile = func(path string, data []byte, mode os.FileMode) error {
 	return os.WriteFile(path, data, mode)
 }
+
+func TestTruncateAOFFileWithBackup_creates_backup_before_truncate(t *testing.T) {
+	dir := t.TempDir()
+	srcPath := dir + "/src.aof"
+	dstPath := dir + "/dst.aof"
+	backupPath := dir + "/dst.aof.original"
+
+	aof := makeAOF(
+		ts(1000), setCommand("a", "1"),
+		ts(2000), setCommand("b", "2"),
+		ts(3000), setCommand("c", "3"),
+	)
+	if err := osWriteFile(srcPath, []byte(aof), 0o600); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+
+	written, truncated, err := TruncateAOFFileWithBackup(srcPath, dstPath, backupPath, time.Unix(2500, 0))
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if !truncated {
+		t.Error("expected truncated=true")
+	}
+
+	// backup 은 *원본 전체*.
+	bk, err := os.ReadFile(backupPath)
+	if err != nil {
+		t.Fatalf("read backup: %v", err)
+	}
+	if string(bk) != aof {
+		t.Errorf("backup mismatch: got %d bytes, want %d (full original)", len(bk), len(aof))
+	}
+
+	// dst 는 truncated.
+	if written >= len(aof) {
+		t.Errorf("dst should be truncated (< %d), got %d", len(aof), written)
+	}
+}
+
+func TestTruncateAOFFileWithBackup_no_backup_when_path_empty(t *testing.T) {
+	dir := t.TempDir()
+	srcPath := dir + "/src.aof"
+	dstPath := dir + "/dst.aof"
+	aof := ts(1000) + setCommand("a", "1")
+	_ = osWriteFile(srcPath, []byte(aof), 0o600)
+
+	_, _, err := TruncateAOFFileWithBackup(srcPath, dstPath, "", time.Unix(500, 0))
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	// backupPath 빈 문자열 — backup 파일 미생성 확인 (.original 부재).
+	if _, err := os.Stat(srcPath + ".original"); err == nil {
+		t.Error("backup file should not exist when backupPath empty")
+	}
+}
+
+func TestRollbackFromBackup_restores_original(t *testing.T) {
+	dir := t.TempDir()
+	dstPath := dir + "/dump.aof"
+	backupPath := dir + "/dump.aof.original"
+
+	originalAOF := ts(1000) + setCommand("a", "1") + ts(2000) + setCommand("b", "2")
+	truncatedAOF := ts(1000) + setCommand("a", "1") // 시뮬레이션: PITR truncated state.
+
+	_ = osWriteFile(backupPath, []byte(originalAOF), 0o600)
+	_ = osWriteFile(dstPath, []byte(truncatedAOF), 0o600)
+
+	if err := RollbackFromBackup(backupPath, dstPath); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+
+	// dst 가 이제 *원본 전체* 와 동일해야 (rollback 성공).
+	dst, _ := os.ReadFile(dstPath)
+	if string(dst) != originalAOF {
+		t.Errorf("dst after rollback mismatch:\n got: %q\nwant: %q", dst, originalAOF)
+	}
+}
+
+func TestRollbackFromBackup_backup_not_found(t *testing.T) {
+	err := RollbackFromBackup("/nonexistent/backup.aof", "/tmp/dst.aof")
+	if err == nil {
+		t.Fatal("expected err for nonexistent backup")
+	}
+}

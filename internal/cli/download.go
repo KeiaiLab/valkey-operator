@@ -26,6 +26,10 @@ type downloadOptions struct {
 	// pitrCutoff — RFC3339 시각. 비어있지 않으면 download 후 AOF 를 본 시각까지
 	// truncate (in-place, dst=src). PITR phase 2 reconciler dispatch (PR #70).
 	pitrCutoff string
+	// pitrBackup — 비어있지 않으면 truncate 전에 *원본 AOF 를 본 경로 에 backup*
+	// (PR #72 rollback foundation). reconciler 가 init container 부팅 실패 시
+	// 본 backup 으로 복원 → 전체 AOF replay fallback.
+	pitrBackup string
 }
 
 // downloader — runDownload 가 사용하는 단일 메서드.
@@ -55,12 +59,15 @@ func runDownload(ctx context.Context, args []string, stdout, stderr io.Writer) e
 	filePath := fs.String("file", "", "local file path to download to (required)")
 	pitrCutoff := fs.String("pitr-cutoff", "",
 		"optional RFC3339 timestamp. If set, download AOF then truncate to cutoff (PITR phase 2)")
+	pitrBackup := fs.String("pitr-backup", "",
+		"optional file path. If set with --pitr-cutoff, original AOF preserved here before truncate "+
+			"(reconciler 가 replay 실패 시 본 파일로 rollback, PR #72)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	opts := downloadOptions{
 		bucket: *bucket, object: *object, filePath: *filePath,
-		pitrCutoff: *pitrCutoff,
+		pitrCutoff: *pitrCutoff, pitrBackup: *pitrBackup,
 	}
 	return runDownloadWithBuilder(ctx, opts, stdout, defaultBuildDownloader)
 }
@@ -98,9 +105,14 @@ func runDownloadWithBuilder(
 		if err != nil {
 			return fmt.Errorf("parse --pitr-cutoff %q (RFC3339 expected): %w", opts.pitrCutoff, err)
 		}
-		written, truncated, err := aoftime.TruncateAOFFile(opts.filePath, opts.filePath, cutoff)
+		written, truncated, err := aoftime.TruncateAOFFileWithBackup(
+			opts.filePath, opts.filePath, opts.pitrBackup, cutoff)
 		if err != nil {
 			return fmt.Errorf("PITR truncate: %w", err)
+		}
+		if opts.pitrBackup != "" {
+			_, _ = fmt.Fprintf(stdout,
+				"PITR rollback backup preserved at %s\n", opts.pitrBackup)
 		}
 		if !truncated {
 			_, _ = fmt.Fprintf(stdout,
