@@ -44,11 +44,15 @@ const (
 	finalizerValkeyRestore = cachev1alpha1.FinalizerValkeyRestore
 )
 
-// sourcePVCName — Source.PVC 시 그대로, Source.TargetRef 시 임시 PVC 이름.
+// sourcePVCName — Source.PVC 시 그대로, Source.TargetRef 시 임시 PVC 이름,
+// Source.VolumeSnapshot 시 cloned PVC 이름 (PR #57 의 짝).
 // Restoring phase 의 init container 가 mount 하는 PVC.
 func sourcePVCName(rest *cachev1alpha1.ValkeyRestore) string {
 	if rest.Spec.Source.PVC != nil && rest.Spec.Source.PVC.Name != "" {
 		return rest.Spec.Source.PVC.Name
+	}
+	if resources.IsVolumeSnapshotRestore(&rest.Spec) {
+		return resources.RestoredPVCName(rest.Name)
 	}
 	return resources.RestoreSourcePVCName(rest.Name)
 }
@@ -175,13 +179,24 @@ func (r *ValkeyRestoreReconciler) handlePending(
 	}
 	hasPVC := rest.Spec.Source.PVC != nil
 	hasTargetRef := rest.Spec.Source.TargetRef != nil
-	if !hasPVC && !hasTargetRef {
-		return r.markFailed(ctx, rest, "MissingSource",
-			"Source.PVC 또는 Source.TargetRef 중 하나 필요")
+	hasVolumeSnapshot := resources.IsVolumeSnapshotRestore(&rest.Spec)
+	sourceCount := 0
+	if hasPVC {
+		sourceCount++
 	}
-	if hasPVC && hasTargetRef {
+	if hasTargetRef {
+		sourceCount++
+	}
+	if hasVolumeSnapshot {
+		sourceCount++
+	}
+	if sourceCount == 0 {
+		return r.markFailed(ctx, rest, "MissingSource",
+			"Source.PVC | Source.TargetRef | Source.VolumeSnapshot 중 하나 필요")
+	}
+	if sourceCount > 1 {
 		return r.markFailed(ctx, rest, "AmbiguousSource",
-			"Source.PVC + Source.TargetRef 동시 명시 — 하나만 명시")
+			"Source 의 PVC/TargetRef/VolumeSnapshot 중 정확히 하나만 명시 (webhook PR #54 invariants)")
 	}
 	if hasPVC && rest.Spec.Source.PVC.Name == "" {
 		return r.markFailed(ctx, rest, "MissingSourcePVCName",
@@ -266,12 +281,17 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 	defer span.End()
 
 	// Source 확보.
-	if rest.Spec.Source.PVC != nil {
+	switch {
+	case rest.Spec.Source.PVC != nil:
 		if res, ok, err := r.ensurePVCSource(ctx, rest); !ok {
 			return res, err
 		}
-	} else if rest.Spec.Source.TargetRef != nil {
+	case rest.Spec.Source.TargetRef != nil:
 		if res, ok, err := r.ensureTargetRefSource(ctx, rest); !ok {
+			return res, err
+		}
+	case resources.IsVolumeSnapshotRestore(&rest.Spec):
+		if res, ok, err := r.ensureVolumeSnapshotSource(ctx, rest); !ok {
 			return res, err
 		}
 	}

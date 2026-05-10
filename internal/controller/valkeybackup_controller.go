@@ -127,6 +127,28 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{RequeueAfter: time.Second}, nil
 
 	case cachev1alpha1.BackupPhasePending:
+		// VolumeSnapshot path — k8s native snapshot, valkey-cli 미사용.
+		// CRD 미설치 시 fail-soft (markFailed). 정상 시 InProgress 진입.
+		if b.Spec.Type == cachev1alpha1.BackupTypeVolumeSnapshot {
+			if err := applyVolumeSnapshotForBackup(ctx, r.Client, b); err != nil {
+				return r.markFailed(ctx, b, "VolumeSnapshotApplyFailed", err.Error())
+			}
+			now := metav1.Now()
+			b.Status.Phase = cachev1alpha1.BackupPhaseInProgress
+			b.Status.StartedAt = &now
+			b.Status.Message = "VolumeSnapshot CR applied — polling readyToUse"
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "InProgress",
+				Message:            "VolumeSnapshot in progress",
+				ObservedGeneration: b.Generation,
+			})
+			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+				return ctrl.Result{RequeueAfter: requeueProgress}, nil
+			}
+			return ctrl.Result{RequeueAfter: requeueProgress}, nil
+		}
 		// BGSAVE / BGREWRITEAOF 발행 + LASTSAVE 기준 시각 기록 → InProgress.
 		preLastSave, err := r.triggerBackup(ctx, b)
 		if err != nil {
@@ -154,6 +176,38 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 
 	case cachev1alpha1.BackupPhaseInProgress:
+		// VolumeSnapshot path — readyToUse polling.
+		if b.Spec.Type == cachev1alpha1.BackupTypeVolumeSnapshot {
+			ready, err := pollVolumeSnapshotReady(ctx, r.Client, b)
+			if err != nil {
+				return r.markFailed(ctx, b, "VolumeSnapshotFailed", err.Error())
+			}
+			// 30분 timeout — 대용량 dataset 도 일반적으로 충분.
+			if b.Status.StartedAt != nil && time.Since(b.Status.StartedAt.Time) > 30*time.Minute {
+				return r.markFailed(ctx, b, "VolumeSnapshotTimeout",
+					"VolumeSnapshot did not reach readyToUse within 30m")
+			}
+			if !ready {
+				return ctrl.Result{RequeueAfter: requeueProgress}, nil
+			}
+			// 완료. RDB/AOF 와 달리 별도 Copy/Upload 단계 없음 (storage 가 in-cluster snapshot).
+			now := metav1.Now()
+			b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
+			b.Status.CompletedAt = &now
+			b.Status.Message = "VolumeSnapshot ready"
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionTrue,
+				Reason:             "Completed",
+				Message:            "VolumeSnapshot.status.readyToUse=true",
+				ObservedGeneration: b.Generation,
+			})
+			MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
+			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+				return ctrl.Result{RequeueAfter: requeueProgress}, nil
+			}
+			return ctrl.Result{RequeueAfter: requeueSteady}, nil
+		}
 		// LASTSAVE 가 preLastSave 보다 커지면 RDB 스냅샷 완료.
 		var preLastSaveUnix int64
 		_, _ = fmt.Sscanf(b.Status.Message, "preLastSave=%d", &preLastSaveUnix)
