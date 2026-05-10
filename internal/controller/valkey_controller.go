@@ -57,6 +57,9 @@ type ValkeyReconciler struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;patch;update
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 
 // Reconcile: 본 함수의 cyclomatic complexity 가 30을 초과하는 것은 의도적이다.
 // reconcile 흐름은 *순차 단계* (fetch → finalizer → spec normalize → resource
@@ -183,8 +186,20 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	v.Status.PendingScale = pendingScale
 
+	// HPA 활성 시 STS.replicas 는 HPA 가 관리 — operator 가 덮어쓰면 매 reconcile
+	// 마다 HPA 결정과 충돌. ADR-0027 §Spec 의 "Spec.Replicas 는 default" 정책.
+	if v.Spec.Autoscaling != nil && v.Spec.Autoscaling.Enabled {
+		preserveReplicas = true
+	}
 	if err := applyStatefulSet(ctx, r.Client, r.Scheme, v, sts, preserveReplicas); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "StatefulSet", err, r.Recorder)
+	}
+
+	// 6.4 HPA — Spec.Autoscaling.Enabled=true 시 HPA 자동 생성 (ADR-0027).
+	// 미활성 또는 toggle off 시 기존 HPA 자동 삭제 (applyHPA 가 nil 처리).
+	hpa := resources.BuildHorizontalPodAutoscaler(v)
+	if err := applyHPA(ctx, r.Client, r.Scheme, v, resources.HPAName(v.Name), v.Namespace, hpa); err != nil {
+		return applyErrorCondition(ctx, r.Client, v, "HPA", err, r.Recorder)
 	}
 
 	// 6.5 PVC online expansion — STS VCT 가 immutable 이므로 기존 PVC 직접 patch.

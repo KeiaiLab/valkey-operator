@@ -119,6 +119,26 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 			"replicas must be >= 2 when mode=Replication",
 		))
 	}
+	if v.Spec.Autoscaling != nil && v.Spec.Autoscaling.Enabled {
+		ap := p.Child("autoscaling")
+		if v.Spec.Mode != cachev1alpha1.ModeReplication {
+			errs = append(errs, field.Forbidden(
+				ap, "Autoscaling is supported only when mode=Replication (ADR-0027)",
+			))
+		}
+		if v.Spec.Autoscaling.MinReplicas < 2 {
+			errs = append(errs, field.Invalid(
+				ap.Child("minReplicas"), v.Spec.Autoscaling.MinReplicas,
+				"autoscaling.minReplicas must be >= 2 (Replication topology)",
+			))
+		}
+		if v.Spec.Autoscaling.MaxReplicas < v.Spec.Autoscaling.MinReplicas {
+			errs = append(errs, field.Invalid(
+				ap.Child("maxReplicas"), v.Spec.Autoscaling.MaxReplicas,
+				"autoscaling.maxReplicas must be >= minReplicas",
+			))
+		}
+	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		// hasCertMgr: CertManager pointer non-nil + (IssuerRef.Name 명시 OR AutoSelfSigned=true).
 		// CRD required marker 가 struct value 빈 객체 통과 허용 (cross-cut audit).

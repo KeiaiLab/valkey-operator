@@ -91,6 +91,12 @@ type ValkeySpec struct {
 	// +kubebuilder:default=true
 	// +optional
 	AutoFailover *bool `json:"autoFailover,omitempty"`
+
+	// Autoscaling — operator-managed HorizontalPodAutoscaler (HPA v2).
+	// ADR-0027 (Replication mode 만 — Cluster mode 는 slot 재분배 위험).
+	// 활성 시 ScalePolicy.Deliberate 무시 + Spec.Replicas 는 default 값으로만 사용.
+	// +optional
+	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
 }
 
 // IsAutoFailoverEnabled — Spec.AutoFailover 가 nil 또는 true 면 true (default

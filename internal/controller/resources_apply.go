@@ -14,6 +14,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -124,6 +125,31 @@ func applyServiceMonitor(ctx context.Context, c client.Client, scheme *runtime.S
 	if err != nil && (apierrors.IsNotFound(err) || meta.IsNoMatchError(err)) {
 		return nil
 	}
+	return err
+}
+
+// applyHPA — Spec.Autoscaling.Enabled=true 시 HPA CR 생성/갱신.
+// desired==nil 면 *기존 HPA 삭제* (Autoscaling toggle off 회복).
+// ADR-0027.
+func applyHPA(ctx context.Context, c client.Client, scheme *runtime.Scheme, owner client.Object, name, namespace string, desired *autoscalingv2.HorizontalPodAutoscaler) error {
+	if desired == nil {
+		// disable: 기존 HPA 삭제 (있으면).
+		existing := &autoscalingv2.HorizontalPodAutoscaler{}
+		if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, existing); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		return c.Delete(ctx, existing)
+	}
+	target := &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: desired.Name, Namespace: desired.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, c, target, func() error {
+		target.Labels = desired.Labels
+		target.Annotations = desired.Annotations
+		target.Spec = desired.Spec
+		return controllerutil.SetControllerReference(owner, target, scheme)
+	})
 	return err
 }
 

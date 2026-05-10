@@ -261,6 +261,47 @@ type PendingScale struct {
 	Reason          string `json:"reason,omitempty"`
 }
 
+// AutoscalingSpec — operator-managed HorizontalPodAutoscaler v2.
+//
+// ADR-0027 (Replication mode 만 — Cluster mode 는 slot 재분배 위험으로 미지원).
+// Enabled=true 시 operator 가 ValkeyName 기반 HPA CRD 자동 생성/갱신/삭제.
+//
+// 제약:
+//   - Mode=Replication 만 — Standalone (replicas=1) / Cluster mode 는 webhook reject.
+//   - ScalePolicy.Deliberate 는 무시 (HPA 가 즉시 scale).
+//   - Spec.Replicas 는 *default 값* — HPA 활성 시 reconciler 가 STS replicas 보존.
+//   - PodDisruptionBudget.MinAvailable 은 MinReplicas 와 일관 권장 (webhook warn 대상).
+type AutoscalingSpec struct {
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// HPA minReplicas — Replication mode 의 최소 replica 수 (primary 포함).
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=15
+	// +optional
+	MinReplicas int32 `json:"minReplicas,omitempty"`
+
+	// HPA maxReplicas — 최대 replica 수.
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=15
+	// +optional
+	MaxReplicas int32 `json:"maxReplicas,omitempty"`
+
+	// 평균 CPU 사용률 (resources.requests.cpu 대비 %).
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:default=70
+	// +optional
+	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage,omitempty"`
+
+	// 평균 메모리 사용률 (resources.requests.memory 대비 %). 0 = 미설정.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	// +optional
+	TargetMemoryUtilizationPercentage int32 `json:"targetMemoryUtilizationPercentage,omitempty"`
+}
+
 // PersistencePolicy — RDB / AOF 정책.
 type PersistencePolicy struct {
 	// +kubebuilder:validation:Enum=RDB;AOF;Both;None
