@@ -122,6 +122,19 @@ spec:
                     - name
                     - path
                     type: object
+                  volumeSnapshot:
+                    description: |-
+                      VolumeSnapshot — k8s native snapshot.storage.k8s.io/v1 VolumeSnapshot 참조.
+                      PR #51 의 BackupTypeVolumeSnapshot 결과물 또는 외부 도구가 만든 snapshot
+                      양쪽 모두 사용 가능. 채택 시 reconciler 가 PVC.spec.dataSource 로 inject 한
+                      새 PVC 생성 → STS 가 그 PVC 마운트하여 즉시 데이터 plane 사용.
+                    properties:
+                      name:
+                        description: VolumeSnapshot CR 이름 (같은 namespace).
+                        type: string
+                    required:
+                    - name
+                    type: object
                 type: object
               sourcePVCAccessMode:
                 default: ReadWriteOnce
