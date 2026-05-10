@@ -15,13 +15,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// BackupType — RDB snapshot 또는 AOF rewrite.
-// +kubebuilder:validation:Enum=RDB;AOF
+// BackupType — RDB snapshot / AOF rewrite / VolumeSnapshot (k8s native).
+// +kubebuilder:validation:Enum=RDB;AOF;VolumeSnapshot
 type BackupType string
 
 const (
 	BackupTypeRDB BackupType = "RDB"
 	BackupTypeAOF BackupType = "AOF"
+	// BackupTypeVolumeSnapshot — k8s native VolumeSnapshot
+	// (snapshot.storage.k8s.io/v1). data PVC 의 storage-level snapshot.
+	// valkey-cli BGSAVE/BGREWRITEAOF 미발행 (storage layer 가 atomic).
+	// RDB/AOF 보다 빠름 (특히 대용량 dataset). CSI driver + VolumeSnapshotClass
+	// 사전 설치 필요. Restore 는 PVC.spec.dataSource=VolumeSnapshot 으로
+	// (별도 controller — phase 2).
+	BackupTypeVolumeSnapshot BackupType = "VolumeSnapshot"
 )
 
 // BackupPhase — 라이프사이클.
@@ -119,6 +126,14 @@ type ValkeyBackupSpec struct {
 	//
 	// +optional
 	Destination *BackupDestination `json:"destination,omitempty"`
+
+	// VolumeSnapshotClassName — Type=VolumeSnapshot 시 사용할
+	// snapshot.storage.k8s.io/v1 VolumeSnapshotClass 이름.
+	// 미명시 시 cluster default 사용 (CSI driver 별 동작).
+	// Type=RDB/AOF 일 때는 무시.
+	//
+	// +optional
+	VolumeSnapshotClassName string `json:"volumeSnapshotClassName,omitempty"`
 }
 
 // DefaultBackupObjectPath — Spec.Destination.TargetRef.Path 미명시 시 자동

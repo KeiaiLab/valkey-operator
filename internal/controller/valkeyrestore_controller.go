@@ -465,10 +465,10 @@ func (r *ValkeyRestoreReconciler) pauseRestoreTarget(
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-	if annotations[PausedAnnotation] == "true" {
+	if annotations[PausedAnnotation] == pausedAnnotationTrue {
 		return nil
 	}
-	annotations[PausedAnnotation] = "true"
+	annotations[PausedAnnotation] = pausedAnnotationTrue
 	target.SetAnnotations(annotations)
 	return r.Update(ctx, target)
 }
@@ -481,7 +481,7 @@ func (r *ValkeyRestoreReconciler) unpauseRestoreTarget(
 		return err
 	}
 	annotations := target.GetAnnotations()
-	if annotations[PausedAnnotation] != "true" {
+	if annotations[PausedAnnotation] != pausedAnnotationTrue {
 		return nil
 	}
 	delete(annotations, PausedAnnotation)
