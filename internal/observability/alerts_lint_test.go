@@ -63,6 +63,7 @@ var registeredAppMetrics = map[string]bool{
 	"valkey_cluster_restore_total":          true,
 	"valkey_cluster_failover_total":         true,
 	"valkey_cluster_build_info":             true,
+	"valkey_cluster_capability_active":      true, // PR #64: Status.Capabilities 의 Prometheus 측 노출
 	// MetricReconcileLatency Histogram 의 derived 시계열 (PR #47).
 	// Prometheus client 가 Histogram 을 *_bucket / *_sum / *_count 3 series 로 전개.
 	"valkey_cluster_reconcile_duration_seconds_bucket": true,
