@@ -4,6 +4,58 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
+## 2026-05-10 v1.0.10 release + INC-0001 영구 fix 운영 배포 (요약)
+
+본 세션 (Ralph loop, 2026-05-10) 의 결정적 산출:
+
+| 영역 | PR | 결과 |
+|---|---|---|
+| PR-A2.2.5 storageversion regression fix | #19 | merged |
+| OSS hygiene (CITATION.cff) | #20 | merged |
+| OperatorHub bundle scaffold (PR-B9, ADR-0037) | #21 | merged |
+| OperatorHub alm-examples (PR-B9.2) | #22 | merged |
+| Makefile bundle target 정합 (PR-B9.4) | #23 | merged |
+| **INC-0001 postmortem (19h 운영 cluster fail)** | #24 | merged — `docs/kb/incident/INC-0001-cluster-fail-bootstrap-skip.md` |
+| **INC-0001 영구 fix — controller post-init self-heal (ADR-0039)** | #25 | merged — `internal/controller/valkeycluster_controller.go:226-251` |
+| Runbook §2.3 + §9.1 갱신 (AI-0004) | #26 | merged |
+| **release v1.0.10 prep (Chart bump + amd64-only 정합)** | #27 | merged |
+| **AI-0003 e2e regression test** | #28 | merged — `test/e2e/cluster_recovery_test.go` |
+| CSV icon 빈 블록 제거 (community-operators 정합) | #30 | merged |
+
+### v1.0.10 production 배포 (이번 세션 핵심)
+
+- GHCR image: `ghcr.io/keiailab/valkey-operator:v1.0.10` (linux/amd64)
+- Git tag v1.0.10 / GH Release v1.0.10 / Helm gh-pages publish (37db23a)
+- argos-platform-data PR #8 (umbrella chart 1.0.8 → 1.0.10) merged
+- ArgoCD sync 후 운영 cluster `valkey-operator-prod` 가 v1.0.10 image active
+- 운영 cluster `keiailab-valkey-prod` (3 shards × 2 = 6 pods) **16384 slots OK 회복**
+
+### INC-0001 시나리오 (영구 fix)
+
+운영 cluster 가 *2026-05-09 14:27 ~ 2026-05-10 09:18 = 19h cluster_state:fail* 상태
+stuck. Pod 재시작 후 nodes.conf 의 myself IP stale → cluster gossip fail. controller 의
+`status.ClusterInitialized=true` flag 가 *cluster fail 상태에서도 reset 안 됨* —
+bootstrap once-shot 가정. 자가치유 불가.
+
+**ADR-0039 영구 fix**: `if allReady && vc.Status.ClusterInitialized` 분기에서
+`pollClusterState` 호출 후 `state != "ok" || SlotsAssigned != 16384` 이면 `ensureClusterMeet`
+재호출. `ensureClusterMeet` 의 사전 가드 (`queryAnyNode → state=ok && slots=16384` 시
+skip) 가 무한 loop 방지. partial recovery 도 다음 reconcile 에 수렴.
+
+### OperatorHub.io 등록 신청 (외부)
+
+- community-operators repo PR submissions: [#8091](https://github.com/k8s-operatorhub/community-operators/pull/8091) (valkey-operator 1.0.9), [#8092](https://github.com/k8s-operatorhub/community-operators/pull/8092) (keiailab-mongodb-operator 1.4.19), [#8093](https://github.com/k8s-operatorhub/community-operators/pull/8093) (keiailab-postgres-operator 0.3.0-alpha.15).
+- 초기 `kiwi/Full operator test` fail (CSV `icon` 빈 블록 lint reject) 후 force push 로 fix. CI 재실행 진행 중.
+
+### 후속 작업 (다음 ralph-loop iteration 진입점)
+
+1. community-operators 3 PR CI 재검증 후 reviewer 응답 (multi-day async).
+2. valkey logo (svg → base64 PNG) 추가하여 CSV icon 정상 채움 — 후속 PR.
+3. PR-A2.2.6 controller v1alpha1 → v1alpha2 hub 전환 (T3 substantial, 17 파일 영향).
+4. PR-B7.2 / B8.2 controller reconcile 본체 (Password Rotation / Cluster Resharding).
+
+---
+
 ## 2026-05-10 PR-A2.2.5 storageversion regression fix (MERGED)
 
 - **PR**: [#19](https://github.com/keiailab/valkey-operator/pull/19) MERGED → main `9aaaa45` (squash)
