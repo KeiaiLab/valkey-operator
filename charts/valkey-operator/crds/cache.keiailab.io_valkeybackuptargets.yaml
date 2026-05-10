@@ -60,6 +60,67 @@ spec:
               ValkeyBackup.Spec.Destination.TargetRef + ValkeyRestore.Spec.Source.TargetRef
               가 본 CR 을 참조 (대칭성, ADR-0016).
             properties:
+              azure:
+                description: Type=Azure 시 필수.
+                properties:
+                  accountName:
+                    description: storage account 이름. e.g. "mystorageacct".
+                    type: string
+                  container:
+                    description: container 이름 (S3 의 bucket 등가). 사전 생성 필요.
+                    type: string
+                  credentialsSecretRef:
+                    description: 자격증명 Secret 참조 (account key 또는 SAS token).
+                    properties:
+                      accountKeyKey:
+                        default: AZURE_STORAGE_ACCOUNT_KEY
+                        description: account key 가 들어 있는 key 이름. 기본 "AZURE_STORAGE_ACCOUNT_KEY".
+                        type: string
+                      name:
+                        description: Secret 이름.
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  prefix:
+                    description: 'blob name prefix. 예: "cluster-A/".'
+                    type: string
+                  serviceURL:
+                    description: |-
+                      service URL override. 기본: https://<accountName>.blob.core.windows.net.
+                      Azure China / Government cloud / Azurite (test) 용.
+                    type: string
+                required:
+                - accountName
+                - container
+                - credentialsSecretRef
+                type: object
+              gcs:
+                description: Type=GCS 시 필수.
+                properties:
+                  bucket:
+                    description: 버킷 이름. 사전 생성 필요.
+                    type: string
+                  credentialsSecretRef:
+                    description: 자격증명 Secret 참조 (service account JSON).
+                    properties:
+                      name:
+                        description: Secret 이름.
+                        type: string
+                      serviceAccountJSONKey:
+                        default: key.json
+                        description: service account JSON 이 들어 있는 key 이름. 기본 "key.json".
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  prefix:
+                    description: 'object key prefix. 예: "cluster-A/".'
+                    type: string
+                required:
+                - bucket
+                - credentialsSecretRef
+                type: object
               s3:
                 description: Type=S3 시 필수.
                 properties:

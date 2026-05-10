@@ -79,6 +79,66 @@ type S3CredentialsSecretRef struct {
 	SecretAccessKeyKey string `json:"secretAccessKeyKey,omitempty"`
 }
 
+// GCSSpec — Google Cloud Storage 외부 저장 정의 (cloud.google.com/go/storage v1.62.1).
+//
+// 자격증명: service account JSON key 를 Secret 에 저장. backup Job 의 환경변수
+// GOOGLE_APPLICATION_CREDENTIALS 가 가리키는 파일에 mount.
+type GCSSpec struct {
+	// 버킷 이름. 사전 생성 필요.
+	Bucket string `json:"bucket"`
+
+	// object key prefix. 예: "cluster-A/".
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+
+	// 자격증명 Secret 참조 (service account JSON).
+	CredentialsSecretRef GCSCredentialsSecretRef `json:"credentialsSecretRef"`
+}
+
+// GCSCredentialsSecretRef — service account JSON 이 들어 있는 Secret.
+type GCSCredentialsSecretRef struct {
+	// Secret 이름.
+	Name string `json:"name"`
+
+	// service account JSON 이 들어 있는 key 이름. 기본 "key.json".
+	// +kubebuilder:default="key.json"
+	// +optional
+	ServiceAccountJSONKey string `json:"serviceAccountJSONKey,omitempty"`
+}
+
+// AzureSpec — Azure Blob Storage 외부 저장 정의
+// (github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.x).
+type AzureSpec struct {
+	// storage account 이름. e.g. "mystorageacct".
+	AccountName string `json:"accountName"`
+
+	// container 이름 (S3 의 bucket 등가). 사전 생성 필요.
+	Container string `json:"container"`
+
+	// blob name prefix. 예: "cluster-A/".
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+
+	// service URL override. 기본: https://<accountName>.blob.core.windows.net.
+	// Azure China / Government cloud / Azurite (test) 용.
+	// +optional
+	ServiceURL string `json:"serviceURL,omitempty"`
+
+	// 자격증명 Secret 참조 (account key 또는 SAS token).
+	CredentialsSecretRef AzureCredentialsSecretRef `json:"credentialsSecretRef"`
+}
+
+// AzureCredentialsSecretRef — Azure storage account key 또는 SAS.
+type AzureCredentialsSecretRef struct {
+	// Secret 이름.
+	Name string `json:"name"`
+
+	// account key 가 들어 있는 key 이름. 기본 "AZURE_STORAGE_ACCOUNT_KEY".
+	// +kubebuilder:default="AZURE_STORAGE_ACCOUNT_KEY"
+	// +optional
+	AccountKeyKey string `json:"accountKeyKey,omitempty"`
+}
+
 // ValkeyBackupTargetSpec — 외부 저장 target 정의.
 //
 // ValkeyBackup.Spec.Destination.TargetRef + ValkeyRestore.Spec.Source.TargetRef
@@ -89,9 +149,16 @@ type ValkeyBackupTargetSpec struct {
 	Type BackupTargetType `json:"type,omitempty"`
 
 	// Type=S3 시 필수.
-	//
 	// +optional
 	S3 *S3Spec `json:"s3,omitempty"`
+
+	// Type=GCS 시 필수.
+	// +optional
+	GCS *GCSSpec `json:"gcs,omitempty"`
+
+	// Type=Azure 시 필수.
+	// +optional
+	Azure *AzureSpec `json:"azure,omitempty"`
 }
 
 // BackupTargetPhase — reachability 라이프사이클.
