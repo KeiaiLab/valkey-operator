@@ -112,3 +112,21 @@ func TestReconcileErrors_byComponent(t *testing.T) {
 		t.Errorf("Service errors: got %v want 1", svc)
 	}
 }
+
+func TestReconcileLatency_observe(t *testing.T) {
+	before := testutil.CollectAndCount(MetricReconcileLatency)
+	MetricReconcileLatency.WithLabelValues("ns-lat", "vk-lat", "success").Observe(0.05)
+	MetricReconcileLatency.WithLabelValues("ns-lat", "vk-lat", "success").Observe(0.5)
+	after := testutil.CollectAndCount(MetricReconcileLatency)
+	if after <= before {
+		t.Errorf("histogram series count: before=%d after=%d", before, after)
+	}
+}
+
+func TestReconcileLatency_separate_result_labels(t *testing.T) {
+	MetricReconcileLatency.WithLabelValues("ns-r", "vk-r", "success").Observe(0.1)
+	MetricReconcileLatency.WithLabelValues("ns-r", "vk-r", "error").Observe(2.0)
+	if c := testutil.CollectAndCount(MetricReconcileLatency); c < 2 {
+		t.Errorf("expected >= 2 series after observations, got %d", c)
+	}
+}

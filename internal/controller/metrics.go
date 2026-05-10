@@ -72,6 +72,24 @@ var (
 		labelNamespaceName,
 	)
 
+	// MetricReconcileLatency — Reconcile 함수의 wall-clock 시간 (초).
+	// SLO 추적용 Histogram. p50/p95/p99 percentile 을 PromQL 의
+	// histogram_quantile 로 산출.
+	//
+	// Buckets: 5ms ~ 30s (typical reconcile + cluster API roundtrip 범위 커버).
+	// 하위는 빠른 phase=Steady reconcile, 상위는 init/scale/upgrade 등 무거운 분기.
+	MetricReconcileLatency = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Subsystem: metricSubsystem,
+			Name:      "reconcile_duration_seconds",
+			Help:      "Reconcile function wall-clock duration in seconds",
+			Buckets: []float64{
+				0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0,
+			},
+		},
+		[]string{"namespace", "name", "result"}, // result: success | error
+	)
+
 	// MetricReconcileErrors — component 별 reconcile 실패 횟수.
 	MetricReconcileErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -148,6 +166,7 @@ func init() {
 		MetricReadyReplicas,
 		MetricReconcileTotal,
 		MetricReconcileErrors,
+		MetricReconcileLatency,
 		MetricPhase,
 		MetricBackupTotal,
 		MetricRestoreTotal,

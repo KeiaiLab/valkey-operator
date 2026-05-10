@@ -30,12 +30,35 @@ Operator 가 노출하는 Prometheus metrics 의 *의미 / 타입 / 라벨 / 정
 - `valkey_cluster_assigned_slots != 16384 and on(namespace,name) valkey_cluster_phase{phase="Resharding"} == 0`
   → Resharding 진행 중이 아닌데 slot 부족 = 진짜 장애.
 
-## 3. Reconcile metrics (Counter)
+## 3. Reconcile metrics (Counter / Histogram)
 
-| Metric | 의미 | 정상 (rate 5m) | 비정상 |
-|---|---|---|---|
-| `valkey_cluster_reconcile_total{namespace,name}` | Reconcile 호출 누적. | `0.01 ~ 1 /s` (RequeueAfter 30s+ 기반) | `> 5 /s` = thrashing 의심 |
-| `valkey_cluster_reconcile_errors_total{namespace,name,component}` | reconcile 단계별 실패 카운터. component=`secret`/`sts`/`svc`/`tls`/`backup`/... | `0` | `rate > 0.1 /s` 5m → `ValkeyOperatorReconcileErrorsHigh` |
+| Metric | 타입 | 의미 | 정상 (rate 5m) | 비정상 |
+|---|---|---|---|---|
+| `valkey_cluster_reconcile_total{namespace,name}` | Counter | Reconcile 호출 누적. | `0.01 ~ 1 /s` (RequeueAfter 30s+ 기반) | `> 5 /s` = thrashing 의심 |
+| `valkey_cluster_reconcile_errors_total{namespace,name,component}` | Counter | reconcile 단계별 실패 카운터. component=`secret`/`sts`/`svc`/`tls`/`backup`/... | `0` | `rate > 0.1 /s` 5m → `ValkeyOperatorReconcileErrorsHigh` |
+| `valkey_cluster_reconcile_duration_seconds{namespace,name,result}` | Histogram | reconcile wall-clock latency. result=`success`/`error`. Buckets: 5ms~30s. | p95 `< 1s` (steady), `< 5s` (init/scale) | p95 `> 5s` 지속 = SLO 위반 |
+
+**Histogram 활용 PromQL** (SLO 추적):
+
+```promql
+# reconcile p95 (success only) — typical operation 의 SLO 측정
+histogram_quantile(0.95,
+  sum by (le, namespace, name) (
+    rate(valkey_cluster_reconcile_duration_seconds_bucket{result="success"}[5m])
+  )
+)
+
+# reconcile p99 (모든 결과) — worst-case 측정
+histogram_quantile(0.99,
+  sum by (le, namespace, name) (
+    rate(valkey_cluster_reconcile_duration_seconds_bucket[5m])
+  )
+)
+
+# reconcile 평균 latency
+rate(valkey_cluster_reconcile_duration_seconds_sum[5m])
+  / rate(valkey_cluster_reconcile_duration_seconds_count[5m])
+```
 
 **활용 패턴**:
 - Reconcile error rate 가 한 component 에 집중 = 그 component 의 의존성 검토.
