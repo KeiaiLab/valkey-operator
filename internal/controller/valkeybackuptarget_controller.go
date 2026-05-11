@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -64,7 +64,7 @@ func defaultS3ClientBuilder(s3 *cachev1alpha1.S3Spec, ak, sk string) (s3Reachabl
 type ValkeyBackupTargetReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 
 	// S3ClientBuilder — 테스트 주입. nil 시 기본 minio-go wrapper.
 	S3ClientBuilder s3ClientBuilder
@@ -170,7 +170,7 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 				break
 			}
 		}
-		r.Recorder.Event(t, eventType, reason, msg)
+		r.Recorder.Eventf(t, nil, eventType, reason, reason, "%s", msg)
 	}
 
 	// 5분마다 재검증 (Secret 회전 / endpoint 변경 감지).
@@ -285,8 +285,8 @@ func (r *ValkeyBackupTargetReconciler) verifyEndpoint(
 
 // SetupWithManager — manager 에 등록.
 func (r *ValkeyBackupTargetReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	//nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023 Phase 2 (cross-repo cross-cutting).
-	r.Recorder = mgr.GetEventRecorderFor("valkeybackuptarget-controller")
+	// events API 마이그레이션 완료 (RFC-0023 Phase 2, 2026-05-11).
+	r.Recorder = mgr.GetEventRecorder("valkeybackuptarget-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyBackupTarget{}).
 		Named("valkeybackuptarget").

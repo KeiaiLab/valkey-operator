@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -47,7 +47,7 @@ const (
 type ValkeyReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeys,verbs=get;list;watch;create;update;patch;delete
@@ -229,7 +229,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if v.Spec.Storage.EncryptionRequired {
 		encrypted, hint, err := auditEncryptionAtRest(ctx, r.Client, v.Spec.Storage.StorageClassName)
 		if err != nil {
-			r.Recorder.Eventf(v, "Warning", "EncryptionAuditFailed",
+			r.Recorder.Eventf(v, nil, "Warning", "EncryptionAuditFailed", "EncryptionAuditFailed",
 				"Failed to audit StorageClass for encryption: %v", err)
 		} else if !encrypted {
 			if v.Spec.Storage.EncryptionEnforce {
@@ -237,7 +237,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 					fmt.Errorf("StorageClass %q does not advertise encryption-at-rest: %s",
 						v.Spec.Storage.StorageClassName, hint), r.Recorder)
 			}
-			r.Recorder.Eventf(v, "Warning", "EncryptionNotVerified",
+			r.Recorder.Eventf(v, nil, "Warning", "EncryptionNotVerified", "EncryptionNotVerified",
 				"Storage.EncryptionRequired=true but StorageClass %q: %s",
 				v.Spec.Storage.StorageClassName, hint)
 		}
@@ -603,10 +603,8 @@ func (r *ValkeyReconciler) tlsConfigForValkey(ctx context.Context, v *cachev1alp
 }
 
 func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// 새 events API (mgr.GetEventRecorder) 마이그레이션은 RFC-0023 Phase 2.
-	// applyErrorCondition 헬퍼가 record.EventRecorder 시그니처를 사용하므로 helpers.go +
-	// 양 컨트롤러 동시 변경 필요 — 별도 PR 로 분리.
-	r.Recorder = mgr.GetEventRecorderFor("valkey-controller") //nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023
+	// events API 마이그레이션 완료 (RFC-0023 Phase 2, 2026-05-11) — events.EventRecorder 사용.
+	r.Recorder = mgr.GetEventRecorder("valkey-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.Valkey{}).
 		Owns((&appsv1StatefulSet{}).Inner()).

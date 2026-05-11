@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -86,7 +86,7 @@ func sourceRDBPath(rest *cachev1alpha1.ValkeyRestore) string {
 type ValkeyRestoreReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeyrestores,verbs=get;list;watch;create;update;patch;delete
@@ -840,7 +840,7 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 	// → Completed.
 	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Completed").Inc()
 	if r.Recorder != nil {
-		r.Recorder.Event(rest, "Normal", "Completed", "ValkeyRestore completed")
+		r.Recorder.Eventf(rest, nil, "Normal", "Completed", "Completed", "ValkeyRestore completed")
 	}
 	now := metav1.Now()
 	rest.Status.Phase = cachev1alpha1.RestorePhaseCompleted
@@ -907,7 +907,7 @@ func (r *ValkeyRestoreReconciler) markFailed(
 ) (ctrl.Result, error) {
 	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Failed").Inc()
 	if r.Recorder != nil {
-		r.Recorder.Event(rest, "Warning", reason, msg)
+		r.Recorder.Eventf(rest, nil, "Warning", reason, reason, "%s", msg)
 	}
 	now := metav1.Now()
 	rest.Status.Phase = cachev1alpha1.RestorePhaseFailed
@@ -928,8 +928,8 @@ func (r *ValkeyRestoreReconciler) markFailed(
 
 // SetupWithManager — manager 에 등록.
 func (r *ValkeyRestoreReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	//nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023 Phase 2 (cross-repo cross-cutting).
-	r.Recorder = mgr.GetEventRecorderFor("valkeyrestore-controller")
+	// events API 마이그레이션 완료 (RFC-0023 Phase 2, 2026-05-11).
+	r.Recorder = mgr.GetEventRecorder("valkeyrestore-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyRestore{}).
 		Owns(&appsv1.StatefulSet{}).

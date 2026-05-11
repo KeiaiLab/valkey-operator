@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -44,7 +44,7 @@ const finalizerValkeyCluster = cachev1alpha1.FinalizerValkeyCluster
 type ValkeyClusterReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeyclusters,verbs=get;list;watch;create;update;patch;delete
@@ -236,7 +236,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if vc.Spec.Storage.EncryptionRequired {
 		encrypted, hint, err := auditEncryptionAtRest(ctx, r.Client, vc.Spec.Storage.StorageClassName)
 		if err != nil {
-			r.Recorder.Eventf(vc, "Warning", "EncryptionAuditFailed",
+			r.Recorder.Eventf(vc, nil, "Warning", "EncryptionAuditFailed", "EncryptionAuditFailed",
 				"Failed to audit StorageClass for encryption: %v", err)
 		} else if !encrypted {
 			if vc.Spec.Storage.EncryptionEnforce {
@@ -244,7 +244,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 					fmt.Errorf("StorageClass %q does not advertise encryption-at-rest: %s",
 						vc.Spec.Storage.StorageClassName, hint), r.Recorder)
 			}
-			r.Recorder.Eventf(vc, "Warning", "EncryptionNotVerified",
+			r.Recorder.Eventf(vc, nil, "Warning", "EncryptionNotVerified", "EncryptionNotVerified",
 				"Storage.EncryptionRequired=true but StorageClass %q: %s",
 				vc.Spec.Storage.StorageClassName, hint)
 		}
@@ -1103,9 +1103,8 @@ func buildShardStatus(vc *cachev1alpha1.ValkeyCluster) []cachev1alpha1.ShardStat
 }
 
 func (r *ValkeyClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// 새 events API 마이그레이션은 RFC-0023 Phase 2. sibling Valkey
-	// 컨트롤러와 일관성 유지 — helpers.go:applyErrorCondition 시그니처 변경 동반 필요.
-	r.Recorder = mgr.GetEventRecorderFor("valkeycluster-controller") //nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023
+	// events API 마이그레이션 완료 (RFC-0023 Phase 2, 2026-05-11).
+	r.Recorder = mgr.GetEventRecorder("valkeycluster-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyCluster{}).
 		Owns(&appsv1.StatefulSet{}).
