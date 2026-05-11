@@ -223,6 +223,9 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 		)...)
 	}
 
+	// pod.{securityContext,containerSecurityContext} PSA restricted 가드.
+	errs = append(errs, validatePodSecurityRestricted(specPath.Child("pod"), vc.Spec.Pod)...)
+
 	return errs
 }
 
@@ -277,6 +280,70 @@ func validateStorageClassName(path *field.Path, name string) field.ErrorList {
 		)}
 	}
 	return nil
+}
+
+// validatePodSecurityRestricted — spec.pod.{securityContext,containerSecurityContext}
+// 의 사용자 명시값이 PSA "restricted" profile 을 위반하지 않는지 검증.
+//
+// Why: operator 의 resources/statefulset.go 는 default 로 restricted 호환 값을
+// 주입한다. 그러나 사용자가 spec.pod 에 SecurityContext / ContainerSecurityContext
+// 를 *명시* 하면 그 값이 override 되어 PSA enforce restricted namespace 에서
+// admission webhook (K8s 자체) 에 reject 된다. operator webhook 이 사전 reject
+// 하여 즉시 사용자 피드백.
+//
+// 정책 (restricted profile 핵심 항목):
+//   - PodSecurityContext.RunAsNonRoot == false → reject
+//   - ContainerSecurityContext.RunAsNonRoot == false → reject
+//   - ContainerSecurityContext.Privileged == true → reject
+//   - ContainerSecurityContext.AllowPrivilegeEscalation == true → reject
+//   - ContainerSecurityContext.RunAsUser == 0 → reject (root user)
+//
+// nil 또는 미지정 (omitempty) 은 operator default 가 채우므로 통과.
+func validatePodSecurityRestricted(path *field.Path, pod *cachev1alpha1.PodSpec) field.ErrorList {
+	if pod == nil {
+		return nil
+	}
+	var errs field.ErrorList
+	if pod.SecurityContext != nil && pod.SecurityContext.RunAsNonRoot != nil && !*pod.SecurityContext.RunAsNonRoot {
+		errs = append(errs, field.Forbidden(
+			path.Child("securityContext", "runAsNonRoot"),
+			"runAsNonRoot=false violates PodSecurity restricted profile",
+		))
+	}
+	if pod.SecurityContext != nil && pod.SecurityContext.RunAsUser != nil && *pod.SecurityContext.RunAsUser == 0 {
+		errs = append(errs, field.Forbidden(
+			path.Child("securityContext", "runAsUser"),
+			"runAsUser=0 (root) violates PodSecurity restricted profile",
+		))
+	}
+	c := pod.ContainerSecurityContext
+	if c != nil {
+		if c.RunAsNonRoot != nil && !*c.RunAsNonRoot {
+			errs = append(errs, field.Forbidden(
+				path.Child("containerSecurityContext", "runAsNonRoot"),
+				"runAsNonRoot=false violates PodSecurity restricted profile",
+			))
+		}
+		if c.RunAsUser != nil && *c.RunAsUser == 0 {
+			errs = append(errs, field.Forbidden(
+				path.Child("containerSecurityContext", "runAsUser"),
+				"runAsUser=0 (root) violates PodSecurity restricted profile",
+			))
+		}
+		if c.Privileged != nil && *c.Privileged {
+			errs = append(errs, field.Forbidden(
+				path.Child("containerSecurityContext", "privileged"),
+				"privileged=true violates PodSecurity restricted profile",
+			))
+		}
+		if c.AllowPrivilegeEscalation != nil && *c.AllowPrivilegeEscalation {
+			errs = append(errs, field.Forbidden(
+				path.Child("containerSecurityContext", "allowPrivilegeEscalation"),
+				"allowPrivilegeEscalation=true violates PodSecurity restricted profile",
+			))
+		}
+	}
+	return errs
 }
 
 // validateTopologySpread — spec.pod.topologySpreadConstraints 일관성 검증.
