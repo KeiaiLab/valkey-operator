@@ -14,7 +14,7 @@
 ### 일상 변경 (Lazy Consensus)
 - 버그 픽스, 문서 개선, 테스트 추가, 의존성 minor/patch 업그레이드, 리팩터링(공개 API 무변경)
 - 절차: PR → 1명 이상 메인테이너 LGTM → 머지
-- 시한: 별도 코멘트 윈도우 없음 (CI 그린이면 즉시 머지 가능)
+- 시한: 별도 코멘트 윈도우 없음 (로컬 게이트 통과 시 즉시 머지 가능 — RFC-0002 에 따라 GitHub Actions 미사용, pre-commit/pre-push hook + Makefile 로 검증)
 
 ### 중간 변경 (Explicit Consensus)
 - 새 CRD 필드 추가, 새 reconciler, 의존성 major 업그레이드, 공개 API 변경
