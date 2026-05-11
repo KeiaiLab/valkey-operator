@@ -189,6 +189,9 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 		)...)
 	}
 
+	// pod.{securityContext,containerSecurityContext} PSA restricted 가드.
+	errs = append(errs, validatePodSecurityRestricted(p.Child("pod"), v.Spec.Pod)...)
+
 	if len(v.Spec.Auth.Users) > 0 && !v.Spec.Auth.Enabled {
 		errs = append(errs, field.Forbidden(
 			p.Child("auth"),

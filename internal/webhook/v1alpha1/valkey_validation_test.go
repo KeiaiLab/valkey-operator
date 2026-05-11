@@ -598,6 +598,96 @@ func TestValidateValkeySpec_TopologySpread(t *testing.T) {
 	}
 }
 
+// TestValidatePodSecurityRestricted — ROADMAP PSA restricted webhook 가드.
+// 사용자 명시 SecurityContext / ContainerSecurityContext 가 restricted 위반 시 reject.
+func TestValidatePodSecurityRestricted(t *testing.T) {
+	t.Parallel()
+	bp := func(b bool) *bool { return &b }
+	ip := func(i int64) *int64 { return &i }
+
+	cases := []struct {
+		name    string
+		pod     *cachev1alpha1.PodSpec
+		wantErr bool
+		errSub  string
+	}{
+		{"nil pod → ok", nil, false, ""},
+		{"empty pod → ok", &cachev1alpha1.PodSpec{}, false, ""},
+		{
+			"runAsNonRoot=true → ok",
+			&cachev1alpha1.PodSpec{
+				SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: bp(true)},
+			},
+			false, "",
+		},
+		{
+			"runAsNonRoot=false → reject",
+			&cachev1alpha1.PodSpec{
+				SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: bp(false)},
+			},
+			true, "runAsNonRoot=false",
+		},
+		{
+			"runAsUser=0 (root) → reject",
+			&cachev1alpha1.PodSpec{
+				SecurityContext: &corev1.PodSecurityContext{RunAsUser: ip(0)},
+			},
+			true, "runAsUser=0",
+		},
+		{
+			"runAsUser=1000 → ok",
+			&cachev1alpha1.PodSpec{
+				SecurityContext: &corev1.PodSecurityContext{RunAsUser: ip(1000)},
+			},
+			false, "",
+		},
+		{
+			"container privileged=true → reject",
+			&cachev1alpha1.PodSpec{
+				ContainerSecurityContext: &corev1.SecurityContext{Privileged: bp(true)},
+			},
+			true, "privileged=true",
+		},
+		{
+			"allowPrivilegeEscalation=true → reject",
+			&cachev1alpha1.PodSpec{
+				ContainerSecurityContext: &corev1.SecurityContext{AllowPrivilegeEscalation: bp(true)},
+			},
+			true, "allowPrivilegeEscalation=true",
+		},
+		{
+			"container runAsNonRoot=false → reject",
+			&cachev1alpha1.PodSpec{
+				ContainerSecurityContext: &corev1.SecurityContext{RunAsNonRoot: bp(false)},
+			},
+			true, "runAsNonRoot=false",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			errs := validatePodSecurityRestricted(nil, tc.pod)
+			if tc.wantErr && len(errs) == 0 {
+				t.Fatalf("expected error containing %q, got nil", tc.errSub)
+			}
+			if !tc.wantErr && len(errs) > 0 {
+				t.Fatalf("expected no error, got %v", errs)
+			}
+			if tc.wantErr {
+				var found bool
+				for _, e := range errs {
+					if strings.Contains(e.Error(), tc.errSub) {
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("expected %q in errors, got %v", tc.errSub, errs)
+				}
+			}
+		})
+	}
+}
+
 // validateClusterSpec 통합 — StorageClassName invalid 이름이 CR 단위 reject 까지 전파되는지.
 func TestValidateClusterSpec_StorageClassName(t *testing.T) {
 	t.Parallel()

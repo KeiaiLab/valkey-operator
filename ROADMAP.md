@@ -19,7 +19,7 @@
 - [x] **PodSecurity restricted compliance**
   - [x] 4 곳 SecurityContext helper 통일 — `internal/resources/security.go`
   - [x] restricted PSA 회귀 가드 (resources 빌더)
-  - [ ] controller / webhook 측 podSpec 변환 경로 전수 가드 — `internal/webhook/v1alpha{1,2}/*.go`
+  - [x] controller / webhook 측 podSpec 변환 경로 전수 가드 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validatePodSecurityRestricted` (6 항목 — runAsNonRoot/runAsUser/privileged/allowPrivilegeEscalation, 9 단위 테스트, PR #78)
   - Verify: `kubectl label ns <ns> pod-security.kubernetes.io/enforce=restricted` 후 pod ready
 
 - [x] **Cluster mode (5 shard × replica=2)**
