@@ -8,9 +8,62 @@
 
 ## [Unreleased]
 
+## [1.0.10] - 2026-05-10
+
+### Added
+
+- OperatorHub.io bundle scaffold + ADR-0037 (PR-B9 first cut, #21).
+- `alm-examples` 5 sample inline JSON 추가 (PR-B9.2, #22).
+- CITATION.cff 추가 (OSS 메타데이터, #20).
+
+### Changed
+
+- Chart bump v1.0.10 + amd64-only build (CLAUDE.md §2 정합, #27).
+- `v1alpha2 zz_generated.deepcopy.go` regenerate (controller-gen 동기, cfd0398).
+- bundle: `generate-kustomize-manifests` 단계 제거 (PR-B9.4, mongodb ADR-0023 정합, #23).
+
 ### Fixed
 
-- `monitoring.exporter.resources` 가 metrics sidecar 까지 reconcile 안 됨 (cycle 21 stop hook 15차, argos 통합):
+- `ValkeyCluster` post-init self-heal (INC-0001 영구 fix, ADR-0039, #25).
+- v1alpha1 `storageversion` 마커 추가 + controller-gen regenerate (PR-A2.2.5, #19).
+- `ReadOnlyRootFilesystem=true` 활성 (modern security baseline 마지막 layer, 3aa5480).
+
+### Docs
+
+- INC-0001 ValkeyCluster bootstrap skip — production 운영 cluster 19h fail recovery (#24).
+- INC-0001 cluster_state=fail 회복 runbook + ADR-0039 self-heal 명시 (AI-0004, #26).
+- ADR-0026 부분 회복 진행 명시 (PR-A2.2.* 누적, #18).
+- HANDOFF PR-A2.2.5 머지 결과 + 다음 진입점 갱신 (1818031).
+
+## [1.0.9] - 2026-05-10
+
+### Added
+
+- v1alpha2 type definition module + `AuthSpec.Required` toggle (PR-A2.1, #6).
+- v1alpha2 Hub marker 5 type 추가 (PR-A2.2.1, #15).
+- v1alpha1 `ConvertTo`/`ConvertFrom` 5 type 본문 (PR-A2.2.2, #16).
+- `cmd`: v1alpha2 SchemeBuilder 등록 (PR-A2.2.3.a, #17).
+- Valkey Custom Modules type 추가 (v1alpha2, PR-C6.1, ADR-0032, #14).
+- `AuthSpec.RotationPolicy` enum 추가 (v1alpha2, PR-B7.1, ADR-0031, #12).
+- `PodSecurity` Restricted optional toggle (v1alpha2, PR-A3.2, ADR-0036, #10).
+- `NetworkPolicy.AutoCreate` optional toggle (v1alpha2, PR-A3.1, ADR-0035, #9).
+- RFC-0018 `pkg/finalizer` migration (controller, PR-A6 first cut, ADR-0038, #8).
+- release: cosign sign + SLSA L2 in-toto attestation + ADR-0033 (PR-A4, #5).
+
+### Changed
+
+- operator-commons v0.5.0 → v0.6.0 (RFC-0018 `SetAvailable` + `SetReadyFalse` 사용 가능, #7).
+
+### Docs
+
+- ADR-0018 정식 작성 — Cluster Auto-Resharding (PR-B8.1, #13).
+- Sentinel migration runbook (PR-C7, ADR-0017 거절 보강, #11).
+
+## [1.0.8] - 2026-05-09
+
+### Fixed
+
+- `monitoring.exporter.resources` 가 metrics sidecar 까지 reconcile 안 됨 (cycle 21 stop hook 15차, argos 통합, 1eb6faf):
   - `STSParams.ExporterResources corev1.ResourceRequirements` 신규 필드 (internal/resources/statefulset.go).
   - `BuildStatefulSet` 의 metrics container 가 `p.ExporterResources` 적용.
   - Valkey + ValkeyCluster controller 가 `exporterResources(spec.Monitoring)` helper 로 전달.
@@ -18,11 +71,33 @@
 
 ### Changed
 
-- audit (4-repo cross-cut, 2026-05-09): RFC-0017 채택 — `.golangci.yml` + `.custom-gcl.yml` 신규 (postgres 표준 cp + depguard 정리), Makefile `validate` 타겟 추가 (kustomize + helm lint + helm template). ADR-0030 등재. 본 repo `.lefthook.yml` 은 RFC-0017 §3.1 표준 원본으로 승격됨 (변경 없음).
+- Chart bump to 1.0.7 (8408005).
+
+## [1.0.7] - 2026-05-09
+
+### Changed
+
+- audit (4-repo cross-cut, 2026-05-09): RFC-0017 채택 — `.golangci.yml` + `.custom-gcl.yml` 신규 (postgres 표준 cp + depguard 정리), Makefile `validate` 타겟 추가 (kustomize + helm lint + helm template). ADR-0030 등재. 본 repo `.lefthook.yml` 은 RFC-0017 §3.1 표준 원본으로 승격됨 (변경 없음, 0aea740).
+- operator-commons v0.4.0 → v0.5.0 (4833f13).
+- `.codecov.yml` 신규 (4-repo target 70% 절대 floor 통일, d381587).
 
 ### Fixed
 
-- `.golangci.yml` depguard 비활성 (golangci-lint v2.8 schema 가 빈 deny list 거부) — valkey internal boundary 도입 후 ADR 와 함께 재활성. 17 linter 활성 (logcheck plugin 포함).
+- `.golangci.yml` depguard 비활성 (golangci-lint v2.8 schema 가 빈 deny list 거부) — valkey internal boundary 도입 후 ADR 와 함께 재활성. 17 linter 활성 (logcheck plugin 포함, 9dae535).
+- lint: valkey 잔여 37 lint 0 issues 달성 (goconst 17 + unparam 17 + gocyclo 3, 8ba60a7).
+- lint: lll/prealloc/revive 5건 fix (안전 cleanup, 5d16c94).
+- lint: modernize 20 + copyloopvar 2 자동 fix (slices.Contains 등, 8820460).
+
+### Docs
+
+- CHANGELOG entry + deps log (audit 마무리, bd667ad).
+
+## [1.0.6] - 2026-05-08
+
+### Added
+
+- TLS `clientAuth` field — required/optional/disabled mTLS toggle (0c804c9).
+- renovate: auto-update PR 진입점 (Go modules + image tag, ba3c9af).
 
 ## [1.0.5] - 2026-05-08
 
