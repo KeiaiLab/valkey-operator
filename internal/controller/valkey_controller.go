@@ -603,10 +603,10 @@ func (r *ValkeyReconciler) tlsConfigForValkey(ctx context.Context, v *cachev1alp
 }
 
 func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// nolint:staticcheck // 새 events API (mgr.GetEventRecorder) 마이그레이션은 ADR-0002 (예정).
+	// 새 events API (mgr.GetEventRecorder) 마이그레이션은 RFC-0023 Phase 2.
 	// applyErrorCondition 헬퍼가 record.EventRecorder 시그니처를 사용하므로 helpers.go +
 	// 양 컨트롤러 동시 변경 필요 — 별도 PR 로 분리.
-	r.Recorder = mgr.GetEventRecorderFor("valkey-controller")
+	r.Recorder = mgr.GetEventRecorderFor("valkey-controller") //nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.Valkey{}).
 		Owns((&appsv1StatefulSet{}).Inner()).

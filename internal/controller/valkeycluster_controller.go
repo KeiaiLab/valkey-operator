@@ -1103,9 +1103,9 @@ func buildShardStatus(vc *cachev1alpha1.ValkeyCluster) []cachev1alpha1.ShardStat
 }
 
 func (r *ValkeyClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// nolint:staticcheck // 새 events API 마이그레이션은 ADR-0002 (예정). sibling Valkey
+	// 새 events API 마이그레이션은 RFC-0023 Phase 2. sibling Valkey
 	// 컨트롤러와 일관성 유지 — helpers.go:applyErrorCondition 시그니처 변경 동반 필요.
-	r.Recorder = mgr.GetEventRecorderFor("valkeycluster-controller")
+	r.Recorder = mgr.GetEventRecorderFor("valkeycluster-controller") //nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyCluster{}).
 		Owns(&appsv1.StatefulSet{}).
