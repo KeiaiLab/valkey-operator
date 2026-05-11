@@ -22,7 +22,9 @@ package v1alpha1
 
 import (
 	"context"
+	"strconv"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -213,6 +215,14 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	// auth.users[].passwordSecretRef cross-cut (Valkey single-CR webhook 와 동일).
 	errs = append(errs, validateUsersSecretRefs(specPath.Child("auth", "users"), vc.Spec.Auth.Users)...)
 
+	// pod.topologySpreadConstraints 일관성 검증 (ROADMAP topology spread).
+	if vc.Spec.Pod != nil {
+		errs = append(errs, validateTopologySpread(
+			specPath.Child("pod", "topologySpreadConstraints"),
+			vc.Spec.Pod.TopologySpreadConstraints,
+		)...)
+	}
+
 	return errs
 }
 
@@ -267,6 +277,63 @@ func validateStorageClassName(path *field.Path, name string) field.ErrorList {
 		)}
 	}
 	return nil
+}
+
+// validateTopologySpread — spec.pod.topologySpreadConstraints 일관성 검증.
+//
+// Why: corev1.TopologySpreadConstraint 는 K8s API server 가 *create* 시점에 일부
+// 검증하지만 (MaxSkew>0, WhenUnsatisfiable enum), CR spec 안에 *복사된 값* 은
+// API server 의 PodSpec validation 을 거치지 않고 STS 가 생성된 *이후에야* kubelet
+// 단계에서 실패한다. 그 결과 admission 통과 → STS 생성 → pod 스케줄 영구 Pending
+// 으로 이어진다. webhook 에서 사전 reject 하여 즉시 사용자 피드백.
+//
+// 정책:
+//   - MaxSkew >= 1 (K8s 요구사항 동등)
+//   - TopologyKey non-empty
+//   - WhenUnsatisfiable ∈ {DoNotSchedule, ScheduleAnyway}
+//   - 같은 TopologyKey 중복 reject — 모순된 분포 정책 사전 차단
+func validateTopologySpread(path *field.Path, tscs []corev1.TopologySpreadConstraint) field.ErrorList {
+	var errs field.ErrorList
+	seenKeys := make(map[string]int, len(tscs))
+	for i, c := range tscs {
+		ip := path.Index(i)
+		if c.MaxSkew < 1 {
+			errs = append(errs, field.Invalid(
+				ip.Child("maxSkew"), c.MaxSkew,
+				"maxSkew must be >= 1",
+			))
+		}
+		if c.TopologyKey == "" {
+			errs = append(errs, field.Required(
+				ip.Child("topologyKey"),
+				"topologyKey must be non-empty (e.g. topology.kubernetes.io/zone)",
+			))
+		}
+		switch c.WhenUnsatisfiable {
+		case corev1.DoNotSchedule, corev1.ScheduleAnyway:
+		case "":
+			errs = append(errs, field.Required(
+				ip.Child("whenUnsatisfiable"),
+				"whenUnsatisfiable must be DoNotSchedule or ScheduleAnyway",
+			))
+		default:
+			errs = append(errs, field.NotSupported(
+				ip.Child("whenUnsatisfiable"), string(c.WhenUnsatisfiable),
+				[]string{string(corev1.DoNotSchedule), string(corev1.ScheduleAnyway)},
+			))
+		}
+		if c.TopologyKey != "" {
+			if prev, ok := seenKeys[c.TopologyKey]; ok {
+				errs = append(errs, field.Duplicate(
+					ip.Child("topologyKey"),
+					"topologyKey "+c.TopologyKey+" already specified at index "+strconv.Itoa(prev),
+				))
+			} else {
+				seenKeys[c.TopologyKey] = i
+			}
+		}
+	}
+	return errs
 }
 
 // validateStorageSizeMin — storage.size 하한 1Gi 검증. mongodb-operator it46

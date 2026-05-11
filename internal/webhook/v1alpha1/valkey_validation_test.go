@@ -479,6 +479,125 @@ func TestValidateStorageClassName(t *testing.T) {
 	}
 }
 
+// TestValidateTopologySpread — ROADMAP "topology spread 일관성 검증".
+// MaxSkew / TopologyKey / WhenUnsatisfiable / 중복 key reject 패턴.
+func TestValidateTopologySpread(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		tscs    []corev1.TopologySpreadConstraint
+		wantErr bool
+		errSub  string
+	}{
+		{"empty list → ok", nil, false, ""},
+		{
+			"valid single TSC → ok",
+			[]corev1.TopologySpreadConstraint{{
+				MaxSkew: 1, TopologyKey: "topology.kubernetes.io/zone",
+				WhenUnsatisfiable: corev1.ScheduleAnyway,
+			}},
+			false, "",
+		},
+		{
+			"MaxSkew=0 → reject",
+			[]corev1.TopologySpreadConstraint{{
+				MaxSkew: 0, TopologyKey: "kubernetes.io/hostname",
+				WhenUnsatisfiable: corev1.DoNotSchedule,
+			}},
+			true, "maxSkew",
+		},
+		{
+			"empty TopologyKey → reject",
+			[]corev1.TopologySpreadConstraint{{
+				MaxSkew: 1, TopologyKey: "",
+				WhenUnsatisfiable: corev1.ScheduleAnyway,
+			}},
+			true, "topologyKey",
+		},
+		{
+			"empty WhenUnsatisfiable → reject",
+			[]corev1.TopologySpreadConstraint{{
+				MaxSkew: 1, TopologyKey: "kubernetes.io/hostname",
+			}},
+			true, "whenUnsatisfiable",
+		},
+		{
+			"invalid WhenUnsatisfiable → reject",
+			[]corev1.TopologySpreadConstraint{{
+				MaxSkew: 1, TopologyKey: "kubernetes.io/hostname",
+				WhenUnsatisfiable: corev1.UnsatisfiableConstraintAction("Maybe"),
+			}},
+			true, "whenUnsatisfiable",
+		},
+		{
+			"duplicate TopologyKey → reject",
+			[]corev1.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "kubernetes.io/hostname", WhenUnsatisfiable: corev1.ScheduleAnyway},
+				{MaxSkew: 2, TopologyKey: "kubernetes.io/hostname", WhenUnsatisfiable: corev1.DoNotSchedule},
+			},
+			true, "already specified",
+		},
+		{
+			"zone + hostname → ok (default-equivalent)",
+			[]corev1.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "topology.kubernetes.io/zone", WhenUnsatisfiable: corev1.ScheduleAnyway},
+				{MaxSkew: 1, TopologyKey: "kubernetes.io/hostname", WhenUnsatisfiable: corev1.ScheduleAnyway},
+			},
+			false, "",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			errs := validateTopologySpread(nil, tc.tscs)
+			if tc.wantErr && len(errs) == 0 {
+				t.Fatalf("expected error containing %q, got nil", tc.errSub)
+			}
+			if !tc.wantErr && len(errs) > 0 {
+				t.Fatalf("expected no error, got %v", errs)
+			}
+			if tc.wantErr {
+				var found bool
+				for _, e := range errs {
+					if strings.Contains(e.Error(), tc.errSub) {
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("expected error containing %q, got %v", tc.errSub, errs)
+				}
+			}
+		})
+	}
+}
+
+// TestValidateValkeySpec_TopologySpread — Valkey CR 단위 통합. invalid TSC 가
+// 전파되는지 검증.
+func TestValidateValkeySpec_TopologySpread(t *testing.T) {
+	t.Parallel()
+	v := &cachev1alpha1.Valkey{}
+	v.Spec.Mode = cachev1alpha1.ModeReplication
+	v.Spec.Replicas = 2
+	v.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
+	v.Spec.Storage.Size = resource.MustParse("2Gi")
+	v.Spec.Pod = &cachev1alpha1.PodSpec{
+		TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+			MaxSkew: 0, TopologyKey: "kubernetes.io/hostname",
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+		}},
+	}
+	errs := validateValkeySpec(v)
+	var found bool
+	for _, e := range errs {
+		if strings.Contains(e.Error(), "maxSkew") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("invalid TSC MaxSkew=0 → expected maxSkew error, got %v", errs)
+	}
+}
+
 // validateClusterSpec 통합 — StorageClassName invalid 이름이 CR 단위 reject 까지 전파되는지.
 func TestValidateClusterSpec_StorageClassName(t *testing.T) {
 	t.Parallel()

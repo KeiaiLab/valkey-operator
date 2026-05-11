@@ -180,6 +180,15 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 	// PasswordSecretRef nil 만 random 자동 생성 — ADR-0014 intentional design).
 	errs = append(errs, validateUsersSecretRefs(p.Child("auth", "users"), v.Spec.Auth.Users)...)
 
+	// pod.topologySpreadConstraints 일관성 검증 (ROADMAP topology spread). Pod nil
+	// 이면 default TSC 가 controller 가 주입 — 사용자 명시 시만 검증.
+	if v.Spec.Pod != nil {
+		errs = append(errs, validateTopologySpread(
+			p.Child("pod", "topologySpreadConstraints"),
+			v.Spec.Pod.TopologySpreadConstraints,
+		)...)
+	}
+
 	if len(v.Spec.Auth.Users) > 0 && !v.Spec.Auth.Enabled {
 		errs = append(errs, field.Forbidden(
 			p.Child("auth"),
