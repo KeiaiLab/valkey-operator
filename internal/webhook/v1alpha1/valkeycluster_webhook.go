@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -205,6 +206,10 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	// commit 8b2414f 와 동일 invariant). RDB snapshot + AOF 합산 floor 보장.
 	errs = append(errs, validateStorageSizeMin(specPath.Child("storage", "size"), vc.Spec.Storage.Size)...)
 
+	// storage.storageClassName DNS-1123 subdomain 검증 (ROADMAP RBD storageClass
+	// 기본 검증 — ceph-rbd 등 RBD 계열 이름 사전 reject 패턴).
+	errs = append(errs, validateStorageClassName(specPath.Child("storage", "storageClassName"), vc.Spec.Storage.StorageClassName)...)
+
 	// auth.users[].passwordSecretRef cross-cut (Valkey single-CR webhook 와 동일).
 	errs = append(errs, validateUsersSecretRefs(specPath.Child("auth", "users"), vc.Spec.Auth.Users)...)
 
@@ -238,6 +243,30 @@ func validateUsersSecretRefs(path *field.Path, users []cachev1alpha1.ValkeyUser)
 		}
 	}
 	return errs
+}
+
+// validateStorageClassName — storage.storageClassName 의 기본 형식 검증.
+//
+// Why: 사용자가 명시한 StorageClassName 은 K8s 가 *동일 이름의 StorageClass*
+// 리소스를 lookup 한다. 잘못된 이름 (대문자 / 언더스코어 / 길이 초과 등) 은
+// 즉시 PVC binding 실패로 이어져 STS pod 가 Pending 영구 정지된다. argos
+// 클러스터의 default class `ceph-rbd` 처럼 RBD 계열 이름은 모두 DNS-1123
+// subdomain 규칙을 따른다 — webhook 에서 사전 reject 하면 PVC 단계까지 가지
+// 않고 즉시 사용자 피드백 가능.
+//
+// 정책: zero (unset) → cluster default class 사용 → 통과. non-empty →
+// DNS-1123 subdomain (lowercase alphanumeric / '-' / '.', 253자 이하) 검증.
+func validateStorageClassName(path *field.Path, name string) field.ErrorList {
+	if name == "" {
+		return nil
+	}
+	if msgs := validation.IsDNS1123Subdomain(name); len(msgs) > 0 {
+		return field.ErrorList{field.Invalid(
+			path, name,
+			"storage.storageClassName must be a DNS-1123 subdomain: "+msgs[0],
+		)}
+	}
+	return nil
 }
 
 // validateStorageSizeMin — storage.size 하한 1Gi 검증. mongodb-operator it46

@@ -67,7 +67,7 @@
 - [x] **PVC online resize** — `internal/controller/pvc_resize.go`
 
 - [x] **Webhook admission validation (5 CRD 대상)** — `internal/webhook/v1alpha2/`
-  - [ ] RBD storageClass 기본 검증
+  - [x] RBD storageClass 기본 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateStorageClassName` (DNS-1123 subdomain)
   - [ ] topology spread 일관성 검증
   - [ ] replicaCount lower bound 검증 통합
   - Verify: invalid spec 적용 시 webhook reject
@@ -144,5 +144,6 @@
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-05-11 | webhook `validateStorageClassName` 추가 — RBD storageClass 기본 검증 (DNS-1123 subdomain) `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 전면 재작성 — 사실 정정 (ServiceMonitor 등) + sub-task 체크리스트 입자도 + 신규 항목 (VolumeSnapshot multipod / conversion webhook) 노출 | parallel-leaping-seal plan |
 | 2026-05-07 | 본 문서 신설 — 3-repo governance 자산 정합 | INC-2026-05-07 |
