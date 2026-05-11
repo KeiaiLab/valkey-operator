@@ -96,10 +96,10 @@ commit-msg:
           exit 1
         fi
     dco-signoff:
-      # A-P0-5: DCO Signed-off-by warn (DCO_STRICT=1 시 enforce).
+      # A-P0-5: DCO Signed-off-by enforce by default (2026-05-11). DCO_STRICT=0 으로 일시 우회.
       run: |
         if ! grep -qE '^Signed-off-by: .+ <.+@.+>' "{1}"; then
-          if [ "${DCO_STRICT:-0}" = "1" ]; then
+          if [ "${DCO_STRICT:-1}" = "1" ]; then
             echo "❌ DCO Signed-off-by trailer missing — use git commit -s"
             exit 1
           else
