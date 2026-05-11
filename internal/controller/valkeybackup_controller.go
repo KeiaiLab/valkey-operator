@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -60,7 +60,7 @@ const (
 type ValkeyBackupReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeybackups,verbs=get;list;watch;create;update;patch;delete
@@ -294,7 +294,7 @@ func (r *ValkeyBackupReconciler) validateClusterRef(ctx context.Context, b *cach
 func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha1.ValkeyBackup, reason, msg string) (ctrl.Result, error) {
 	MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Failed").Inc()
 	if r.Recorder != nil {
-		r.Recorder.Event(b, "Warning", reason, msg)
+		r.Recorder.Eventf(b, nil, "Warning", reason, reason, "%s", msg)
 	}
 	b.Status.Phase = cachev1alpha1.BackupPhaseFailed
 	b.Status.Message = msg
@@ -460,7 +460,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 
 		MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
 		if r.Recorder != nil {
-			r.Recorder.Event(b, "Normal", "Completed", "ValkeyBackup completed")
+			r.Recorder.Eventf(b, nil, "Normal", "Completed", "Completed", "ValkeyBackup completed")
 		}
 		now := metav1.Now()
 		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
@@ -580,7 +580,7 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 	if existing.Status.Succeeded > 0 {
 		MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
 		if r.Recorder != nil {
-			r.Recorder.Event(b, "Normal", "Completed", "ValkeyBackup completed")
+			r.Recorder.Eventf(b, nil, "Normal", "Completed", "Completed", "ValkeyBackup completed")
 		}
 		now := metav1.Now()
 		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
@@ -786,8 +786,8 @@ func backupTargetTLSSecret(t *cachev1alpha1.TLSSpec, crName string) string {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ValkeyBackupReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	//nolint:staticcheck // SA1019: events API 마이그레이션 RFC-0023 Phase 2 (cross-repo cross-cutting).
-	r.Recorder = mgr.GetEventRecorderFor("valkeybackup-controller")
+	// events API 마이그레이션 완료 (RFC-0023 Phase 2, 2026-05-11).
+	r.Recorder = mgr.GetEventRecorder("valkeybackup-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.ValkeyBackup{}).
 		Owns(&batchv1.Job{}).

@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -61,7 +61,7 @@ func TestHandlePending_VolumeSnapshot_with_ValkeyCluster_target_rejected(t *test
 	r := &ValkeyRestoreReconciler{
 		Client:   c,
 		Scheme:   scheme,
-		Recorder: record.NewFakeRecorder(10),
+		Recorder: events.NewFakeRecorder(10),
 	}
 	_, _ = r.handlePending(testCtx(), rest)
 
@@ -114,7 +114,7 @@ func TestHandlePending_VolumeSnapshot_with_Standalone_target_passes(t *testing.T
 	r := &ValkeyRestoreReconciler{
 		Client:   c,
 		Scheme:   scheme,
-		Recorder: record.NewFakeRecorder(10),
+		Recorder: events.NewFakeRecorder(10),
 	}
 	_, _ = r.handlePending(testCtx(), rest)
 

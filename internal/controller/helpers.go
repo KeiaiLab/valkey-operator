@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -93,13 +93,13 @@ func applyErrorCondition(
 	obj Statusable,
 	component string,
 	reconcileErr error,
-	rec record.EventRecorder,
+	rec events.EventRecorder,
 ) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.Error(reconcileErr, "Failed to reconcile component", "component", component)
 	MetricReconcileErrors.WithLabelValues(obj.GetNamespace(), obj.GetName(), component).Inc()
 	if rec != nil {
-		rec.Eventf(obj, corev1.EventTypeWarning, "ReconcileError",
+		rec.Eventf(obj, nil, corev1.EventTypeWarning, "ReconcileError", "ReconcileError",
 			"Failed to reconcile %s: %v", component, reconcileErr)
 	}
 	obj.SetPhase("Failed")
