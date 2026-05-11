@@ -68,7 +68,7 @@
 
 - [x] **Webhook admission validation (5 CRD 대상)** — `internal/webhook/v1alpha2/`
   - [x] RBD storageClass 기본 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateStorageClassName` (DNS-1123 subdomain)
-  - [ ] topology spread 일관성 검증
+  - [x] topology spread 일관성 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateTopologySpread` (MaxSkew / TopologyKey / WhenUnsatisfiable / 중복 key, PR #77)
   - [ ] replicaCount lower bound 검증 통합
   - Verify: invalid spec 적용 시 webhook reject
 
