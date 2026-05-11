@@ -446,3 +446,57 @@ func TestValidateUsersSecretRefs_OmitEmptyTrap(t *testing.T) {
 		}
 	})
 }
+
+// TestValidateStorageClassName — ROADMAP "RBD storageClass 기본 검증".
+// DNS-1123 subdomain 위반 이름 reject + 정상 이름 / unset 통과.
+func TestValidateStorageClassName(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"empty → ok (cluster default)", "", false},
+		{"ceph-rbd → ok", "ceph-rbd", false},
+		{"fast-ssd → ok", "fast-ssd", false},
+		{"rook-ceph-block → ok", "rook-ceph-block", false},
+		{"uppercase → reject", "Ceph-RBD", true},
+		{"underscore → reject", "ceph_rbd", true},
+		{"leading dash → reject", "-ceph", true},
+		{"empty segment → reject", "ceph..rbd", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			errs := validateStorageClassName(nil, tc.input)
+			if tc.wantErr && len(errs) == 0 {
+				t.Errorf("input %q → expected error, got nil", tc.input)
+			}
+			if !tc.wantErr && len(errs) > 0 {
+				t.Errorf("input %q → expected no error, got %v", tc.input, errs)
+			}
+		})
+	}
+}
+
+// validateClusterSpec 통합 — StorageClassName invalid 이름이 CR 단위 reject 까지 전파되는지.
+func TestValidateClusterSpec_StorageClassName(t *testing.T) {
+	t.Parallel()
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.Storage.Size = resource.MustParse("2Gi")
+	vc.Spec.Storage.StorageClassName = "Bad_Name"
+	errs := validateClusterSpec(vc)
+	var found bool
+	for _, e := range errs {
+		if strings.Contains(e.Error(), "storageClassName") &&
+			strings.Contains(e.Error(), "DNS-1123") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("invalid storageClassName → expected DNS-1123 error, got %v", errs)
+	}
+}
