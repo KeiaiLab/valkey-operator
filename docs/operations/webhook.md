@@ -1,13 +1,17 @@
 # Admission Webhook — valkey-operator
 
-Validating + mutating admission webhook. *opt-in default* (helm 의
-`webhook.enabled=false` 가 기본). 활성화 시 cert-manager 클러스터 사전
-설치 필수.
+> 한국어 버전: [webhook.ko.md](webhook.ko.md)
 
-> mongodb-operator 의 [동일 패턴](https://github.com/keiailab/mongodb-operator/blob/main/docs/advanced/webhook.md) — 3 operator
-> cross-cut audit (ADR-0016) 으로 invariant + UX 일관.
+Validating + mutating admission webhook. **Opt-in by default**
+(`webhook.enabled=false` in the Helm chart). Requires cert-manager
+on the cluster before you flip it on.
 
-## Quick Start
+> Same pattern as
+> [mongodb-operator's webhook doc](https://github.com/keiailab/mongodb-operator/blob/main/docs/advanced/webhook.md)
+> — 3-operator cross-cut audit (ADR-0016) keeps the invariants and
+> UX consistent.
+
+## Quick start
 
 ### Prerequisites
 
@@ -15,64 +19,68 @@ Validating + mutating admission webhook. *opt-in default* (helm 의
 kubectl get crd certificates.cert-manager.io
 ```
 
-미설치 시 [cert-manager docs](https://cert-manager.io/docs/installation/) 참조.
+If absent, install
+[cert-manager](https://cert-manager.io/docs/installation/) first.
 
-### 활성화
+### Enable
 
 ```bash
 helm upgrade --reuse-values valkey-operator keiailab/valkey-operator \
   --set webhook.enabled=true
 ```
 
-자동 생성 리소스: `Issuer`, `Certificate`, `Service`,
+Resources auto-created: `Issuer`, `Certificate`, `Service`,
 `MutatingWebhookConfiguration`, `ValidatingWebhookConfiguration`.
 
-검증:
+Verify:
+
 ```bash
 kubectl get validatingwebhookconfiguration <release>-valkey-operator-validating
 kubectl get mutatingwebhookconfiguration <release>-valkey-operator-mutating
 ```
 
-## Validation Invariants
+## Validation invariants
 
-### Valkey CR (single-instance / replication)
-
-| Field | Rule |
-|---|---|
-| `spec.version.version` | 화이트리스트 (8.x / 9.0.x) |
-| `spec.mode` + `spec.replicas` | Standalone↔1 / Replication↔>=2 |
-| `spec.tls.{certManager,customCert}` | TLS Enabled 시 둘 중 *하나만* (mutual exclusive) |
-| `spec.tls.certManager.issuerRef.name` | non-empty (omitempty trap) |
-| `spec.tls.customCert.secretName` | non-empty (omitempty trap) |
-| `spec.storage.size` | >= 1Gi (RDB+AOF floor) |
-| `spec.auth.users[].name` | non-empty |
-| `spec.auth.users[].passwordSecretRef.name` | non-empty (no auto-gen for additional users) |
-| `spec.auth.users[].passwordSecretRef.key` | non-empty |
-| `spec.auth.users` 사용 시 | `spec.auth.enabled=true` 필수 |
-
-### ValkeyCluster CR (sharded cluster)
-
-위 invariants 외 추가:
+### `Valkey` CR (single-instance / replication)
 
 | Field | Rule |
 |---|---|
-| `spec.shards * (1 + replicasPerShard)` | <= 100 (operational total nodes) |
-| `spec.autoFailover` + `spec.replicasPerShard` | autoFailover=true 시 replicasPerShard >= 1 (조건부 — ADR-0017 Type A') |
-| `spec.{storage.{storageClassName,size,dataDirPath},tls.enabled}` | immutable (변경 시 데이터 손실 / cluster 깨짐) |
+| `spec.version.version` | Whitelist (8.x / 9.0.x) |
+| `spec.mode` + `spec.replicas` | Standalone ↔ 1 / Replication ↔ ≥ 2 |
+| `spec.tls.{certManager,customCert}` | When TLS is enabled, exactly one is set (mutually exclusive) |
+| `spec.tls.certManager.issuerRef.name` | Non-empty (`omitempty` trap) |
+| `spec.tls.customCert.secretName` | Non-empty (`omitempty` trap) |
+| `spec.storage.size` | ≥ 1 Gi (RDB + AOF floor) |
+| `spec.auth.users[].name` | Non-empty |
+| `spec.auth.users[].passwordSecretRef.name` | Non-empty (no auto-gen for extra users) |
+| `spec.auth.users[].passwordSecretRef.key` | Non-empty |
+| `spec.auth.users` set | `spec.auth.enabled=true` required |
+
+### `ValkeyCluster` CR (sharded cluster)
+
+In addition to the above:
+
+| Field | Rule |
+|---|---|
+| `spec.shards * (1 + replicasPerShard)` | ≤ 100 (operational total node cap) |
+| `spec.autoFailover` + `spec.replicasPerShard` | When `autoFailover=true`, `replicasPerShard ≥ 1` (conditional — ADR-0017 Type A') |
+| `spec.{storage.{storageClassName,size,dataDirPath},tls.enabled}` | Immutable (changes would corrupt data or break the cluster) |
 
 ### Defaulting (mutating)
 
-CRD marker 가 표현 못 하는 *조건부 default*:
+Conditional defaults that CRD markers cannot express:
+
 - `spec.shards` 0 → 3 (Cluster).
-- `spec.replicasPerShard` 0 → 1 (Cluster, ADR-0017 Type A' 의 *omitempty 부재
-  보강*).
-- `spec.version.version` 빈 → `DefaultValkeyVersion`.
-- `spec.slotMigration` 빈 → `Auto`.
+- `spec.replicasPerShard` 0 → 1 (Cluster, ADR-0017 Type A' —
+  reinforcing the missing `omitempty`).
+- `spec.version.version` empty → `DefaultValkeyVersion`.
+- `spec.slotMigration` empty → `Auto`.
 
-## Admission Denial 메시지
+## Admission denial message
 
-K8s `apierrors.NewInvalid` accumulate-errors 형식 — 복수 invariant 위반 시
-*모두* 한 번에 보고:
+Built with K8s `apierrors.NewInvalid` accumulate-errors form —
+multiple invariant violations are surfaced **together** in one
+response:
 
 ```
 Error from server (Invalid): admission webhook "vvalkeycluster-v1alpha1.kb.io"
@@ -81,44 +89,57 @@ denied the request: ValkeyCluster.cache.keiailab.io "argos-valkey" is invalid:
 spec.storage.size: storage.size must be >= 1Gi — RDB snapshot + AOF data dir floor]
 ```
 
-## failurePolicy=Fail 영향
+## `failurePolicy=Fail` impact
 
-webhook server pod down 시 모든 valkey CR CRUD 차단. mongodb-operator
-[ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md) 참조 (3 operator 동일 정책).
+When the webhook server pod is down, every `valkey` CR CRUD is
+blocked. See mongodb-operator
+[ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md)
+(same policy in all 3 operators).
 
-HA 권장: production 환경 `replicaCount: 2` + PDB.
+HA recommendation: production runs `replicaCount: 2` + PDB.
 
 ## Troubleshooting
 
-### `kubectl apply` 가 webhook 도달 못 함
+### `kubectl apply` never reaches the webhook
 
 ```
 Error from server (InternalError): failed calling webhook "..."
 ```
 
-원인:
-1. webhook pod down — `kubectl get pods -l app.kubernetes.io/name=valkey-operator`
-2. CABundle 미주입 — `kubectl get validatingwebhookconfiguration ... -o
-   jsonpath='{.webhooks[0].clientConfig.caBundle}'`. 비어있으면 cert-manager
-   미설치 또는 ca-injector 비활성.
+Root causes:
 
-### autoFailover invariant 가 admission 도달 안 함
+1. Webhook pod down —
+   `kubectl get pods -l app.kubernetes.io/name=valkey-operator`.
+2. `CABundle` not injected —
+   `kubectl get validatingwebhookconfiguration ... -o jsonpath='{.webhooks[0].clientConfig.caBundle}'`.
+   Empty means cert-manager is missing or its `ca-injector` is off.
 
-`webhook.enabled=true` 환경에서 mutating defaulter 가 `replicasPerShard=0→1`
-보강 → invariant 도달 0. 이는 *의도된 design* (ADR-0017 Type A' 조건부
-unreachable). `webhook.enabled=false` 환경에서는 도달 가능.
+### `autoFailover` invariant never reaches admission
 
-## 비활성화
+With `webhook.enabled=true`, the mutating defaulter fills
+`replicasPerShard=0→1` before the invariant is checked — the
+violation can never be observed. This is **intentional design**
+(ADR-0017 Type A' "conditional unreachable"). With
+`webhook.enabled=false`, it becomes reachable again.
+
+## Disable
 
 ```bash
 helm upgrade --reuse-values valkey-operator keiailab/valkey-operator \
   --set webhook.enabled=false
 ```
 
-cert-manager 리소스 / Webhook Configuration 자동 제거. 기존 valkey CR 영향 0.
+Removes the cert-manager resources and the Webhook Configurations
+automatically. No impact on existing `valkey` CRs.
 
-## 관련 문서
+## Related
 
-- mongodb-operator [ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md) — failurePolicy=Fail.
-- mongodb-operator [ADR-0016](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0016-cross-cut-audit-pattern.md) — Cross-cut audit pattern.
-- mongodb-operator [ADR-0017](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0017-crd-default-vs-webhook-invariant.md) — CRD default vs webhook invariant (Type A' Errata).
+- mongodb-operator
+  [ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md)
+  — `failurePolicy=Fail`.
+- mongodb-operator
+  [ADR-0016](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0016-cross-cut-audit-pattern.md)
+  — cross-cut audit pattern.
+- mongodb-operator
+  [ADR-0017](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0017-crd-default-vs-webhook-invariant.md)
+  — CRD default vs webhook invariant (Type A' errata).
