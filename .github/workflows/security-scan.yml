@@ -31,7 +31,9 @@ jobs:
       # dependabot-triggered PRs (read-only token), failing #146 etc.
       # Binary mode is hermetic and dependabot-context safe.
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        # Pinned to a specific minor for Scorecard `Pinned-Dependencies`.
+        # Bump deliberately as new govulncheck DB releases land.
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Run govulncheck
         run: govulncheck ./...
 
