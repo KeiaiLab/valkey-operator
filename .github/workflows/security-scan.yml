@@ -25,6 +25,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          check-latest: true
       # Install + run binary directly instead of golang/govulncheck-action@v1.
       # The action performs internal `git` operations that hit HTTP 400 on
       # dependabot-triggered PRs (read-only token), failing #146 etc.
