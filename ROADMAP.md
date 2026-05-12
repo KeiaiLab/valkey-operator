@@ -1,149 +1,215 @@
 # ROADMAP — valkey-operator
 
-본 ROADMAP 은 *날짜 약속이 아니라* 검증 가능한 기능 체크리스트로 진행을 추적한다. 시간 기반 deadline 은 의도적으로 회피하며 (글로벌 `standards/workflow.md` "시간 기반 로드맵 금지"), 기능 단위로 진행을 추적한다.
+> 한국어 버전: [ROADMAP.ko.md](ROADMAP.ko.md)
 
-## 체크박스 의미
+This roadmap tracks progress as a **verifiable feature checklist**,
+not a calendar of deadlines. Time-based deadlines are intentionally
+avoided per the project's
+[`standards/workflow.md`](https://github.com/keiailab/valkey-operator/blob/main/docs/kb/adr/INDEX.md)
+("no time-based roadmap" rule); progress is measured by feature
+completion.
 
-| 마커 | 의미 |
+## Checkbox semantics
+
+| Marker | Meaning |
 |---|---|
-| `[x]` | 코드 + 테스트 양쪽 존재. e2e 또는 unit test 로 회귀 가드 확보 |
-| `[~]` | 부분 구현 (필드만 존재, helper 미통합, 또는 잔여 검증 항목 있음) |
-| `[ ]` | 미시작 (설계 또는 PoC 단계) |
+| `[x]` | Code and tests both exist; regression covered by an e2e or unit test |
+| `[~]` | Partial — fields are defined but a helper is not yet wired in, or a verification item is still open |
+| `[ ]` | Not started (design or PoC) |
 
-각 sub-task 우측 *Verify* 는 검증 명령 또는 e2e 파일을 인용한다.
+The *Verify* line on each sub-task cites the exact command or e2e
+file used to confirm the checkbox.
 
-## 현재 (1.x 라인 — Active)
+## Current (1.x line — Active)
 
-### 안정성 / 성숙도
+### Stability and maturity
 
 - [x] **PodSecurity restricted compliance**
-  - [x] 4 곳 SecurityContext helper 통일 — `internal/resources/security.go`
-  - [x] restricted PSA 회귀 가드 (resources 빌더)
-  - [x] controller / webhook 측 podSpec 변환 경로 전수 가드 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validatePodSecurityRestricted` (6 항목 — runAsNonRoot/runAsUser/privileged/allowPrivilegeEscalation, 9 단위 테스트, PR #78)
-  - Verify: `kubectl label ns <ns> pod-security.kubernetes.io/enforce=restricted` 후 pod ready
+  - [x] 4 SecurityContext helpers unified — `internal/resources/security.go`
+  - [x] Regression guard for restricted PSA in resource builders
+  - [x] Controller and webhook podSpec conversion paths fully guarded
+    — `internal/webhook/v1alpha1/valkeycluster_webhook.go`
+    `validatePodSecurityRestricted` (6 items —
+    runAsNonRoot/runAsUser/privileged/allowPrivilegeEscalation, 9 unit
+    tests, #78)
+  - Verify: label the namespace
+    `pod-security.kubernetes.io/enforce=restricted`, then pod Ready
 
-- [x] **Cluster mode (5 shard × replica=2)**
-  - [x] Ordinal 기반 restore init container — `internal/controller/valkeycluster_controller.go`
-  - [x] 16384 slots 자동 분배
-  - [x] 자동 failover (chaos 검증) — `test/e2e/cluster_recovery_test.go`, `failover.go`
-  - [x] Primary kill → master 재선출 — `test/e2e/failover_test.go`
-  - Verify: `test/e2e/cluster_recovery_test.go` PASS, slot 16384 유지, 데이터 잔존
+- [x] **Cluster mode (5 shards × replica=2)**
+  - [x] Ordinal-based restore Init Container —
+    `internal/controller/valkeycluster_controller.go`
+  - [x] Automatic 16384-slot distribution
+  - [x] Automatic failover (chaos-tested) —
+    `test/e2e/cluster_recovery_test.go`, `failover.go`
+  - [x] Primary kill → master re-election —
+    `test/e2e/failover_test.go`
+  - Verify: `test/e2e/cluster_recovery_test.go` PASS, all 16384 slots
+    intact, data preserved
 
-- [x] **HPA / PDB / NetworkPolicy 자동화 (opt-in)**
-  - [x] HPA (ADR-0027, Replication mode) — chart `autoscaling.enabled`
-  - [x] PDB 자동 — `internal/controller/pdb_default.go`
-  - [x] NetworkPolicy default-deny + 명시 규칙 — chart `networkPolicy.enabled`
-  - Verify: `pdb_default_test.go` PASS, `kubectl get pdb/networkpolicy` 출력 확인
+- [x] **HPA / PDB / NetworkPolicy automation (opt-in)**
+  - [x] HPA (ADR-0027, Replication mode) — chart
+    `autoscaling.enabled`
+  - [x] PDB default — `internal/controller/pdb_default.go`
+  - [x] NetworkPolicy default-deny + explicit allow — chart
+    `networkPolicy.enabled`
+  - Verify: `pdb_default_test.go` PASS,
+    `kubectl get pdb/networkpolicy`
 
 - [x] **Backup / Restore — S3 + PVC ROX + VolumeSnapshot**
-  - [x] S3 (minio-go) backup — `internal/controller/valkeybackup_controller.go`
-  - [x] PVC ROX 다중 마운트 restore — `internal/controller/valkeyrestore_controller.go`
-  - [x] VolumeSnapshot lifecycle — `internal/controller/backup_volumesnapshot.go`
-  - [x] Multipod snapshot replication restore — `multipod_volumesnapshot_replication_test.go`
-  - [x] `ValkeyBackupTarget` CRD (외부 backup destination) — `api/v1alpha2/valkeybackuptarget_types.go`
+  - [x] S3 (minio-go) backup —
+    `internal/controller/valkeybackup_controller.go`
+  - [x] PVC ROX multi-mount restore —
+    `internal/controller/valkeyrestore_controller.go`
+  - [x] VolumeSnapshot lifecycle —
+    `internal/controller/backup_volumesnapshot.go`
+  - [x] Multipod snapshot replication restore —
+    `multipod_volumesnapshot_replication_test.go`
+  - [x] `ValkeyBackupTarget` CRD (external backup destination) —
+    `api/v1alpha2/valkeybackuptarget_types.go`
   - Verify: `test/e2e/backup_restore_test.go` PASS
 
-- [x] **chart RBAC conditional 결함 fix** (2026-05-07 commit 06237be)
-  - [x] `features.{cluster,backup}.enabled=false` 시 informer startup 실패 차단
-  - Verify: chart `--set features.cluster.enabled=false` 설치 후 operator pod Ready
+- [x] **chart RBAC conditional fix** (2026-05-07, commit `06237be`)
+  - [x] Prevent informer startup failure when
+    `features.{cluster,backup}.enabled=false`
+  - Verify: chart install with
+    `--set features.cluster.enabled=false` and the operator pod
+    becomes Ready
 
-- [x] **Version upgrade reconcile 결함**
-  - [x] Fresh scenario 정상 (iteration 7 진단)
-  - [x] Restore → patch chain 회귀 가드 (iteration 18 V2) — `test/e2e/backup_restore_test.go` "Restored 인스턴스의 8.1.6 → 9.0.4 version patch chain (V2)"
-  - [x] RDB v80 호환성 (foo=bar1 보존)
-  - Verify: 본 e2e PASS = 차단요인 2 narrow scope 영구 해소
+- [x] **Version-upgrade reconcile fix**
+  - [x] Fresh-scenario path correct (iteration 7 diagnosis)
+  - [x] Restore → patch chain regression guard (iteration 18 V2) —
+    `test/e2e/backup_restore_test.go` "Restored instance 8.1.6 → 9.0.4
+    version patch chain (V2)"
+  - [x] RDB v80 compatibility (`foo=bar1` retained)
+  - Verify: the e2e above PASS = the two narrow blockers are
+    permanently resolved
 
-- [x] **Valkey 9.x 지원 (기본값 9.0.4)**
-  - [x] Chart `image.tag: 9.0.4` 기본값 — `charts/valkey-operator/values.yaml`
-  - [x] RDB format v80 호환 검증
-  - Verify: 신규 인스턴스 기동 후 `valkey-cli INFO server | grep redis_version`
+- [x] **Valkey 9.x support (default 9.0.4)**
+  - [x] Chart `image.tag: 9.0.4` default —
+    `charts/valkey-operator/values.yaml`
+  - [x] RDB-format v80 compatibility verified
+  - Verify: boot a new instance and run
+    `valkey-cli INFO server | grep redis_version`
 
-- [x] **API 버전 진화**
-  - [x] v1alpha2 활성 — `api/v1alpha2/`
-  - [x] v1alpha1 → v1alpha2 conversion webhook — `api/v1alpha2/conversion.go`
-  - [x] 5 CRD (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore, ValkeyBackupTarget)
-  - Verify: `kubectl apply -f <v1alpha1.yaml>` 후 v1alpha2 객체로 변환 확인
+- [x] **API version evolution**
+  - [x] v1alpha2 active — `api/v1alpha2/`
+  - [x] v1alpha1 → v1alpha2 conversion webhook —
+    `api/v1alpha2/conversion.go`
+  - [x] 5 CRDs (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore,
+    ValkeyBackupTarget)
+  - Verify: `kubectl apply -f <v1alpha1.yaml>` and check it is stored
+    as a v1alpha2 object
 
-- [x] **PVC online resize** — `internal/controller/pvc_resize.go`
+- [x] **Online PVC resize** —
+  `internal/controller/pvc_resize.go`
 
-- [x] **Webhook admission validation (5 CRD 대상)** — `internal/webhook/v1alpha2/`
-  - [x] RBD storageClass 기본 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateStorageClassName` (DNS-1123 subdomain)
-  - [x] topology spread 일관성 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateTopologySpread` (MaxSkew / TopologyKey / WhenUnsatisfiable / 중복 key, PR #77)
-  - [ ] replicaCount lower bound 검증 통합
-  - Verify: invalid spec 적용 시 webhook reject
+- [x] **Webhook admission validation (5 CRDs)** —
+  `internal/webhook/v1alpha2/`
+  - [x] RBD storageClass baseline validation —
+    `internal/webhook/v1alpha1/valkeycluster_webhook.go`
+    `validateStorageClassName` (DNS-1123 subdomain)
+  - [x] Topology-spread consistency validation —
+    `internal/webhook/v1alpha1/valkeycluster_webhook.go`
+    `validateTopologySpread` (MaxSkew / TopologyKey /
+    WhenUnsatisfiable / duplicate key, #77)
+  - [ ] Wire the replicaCount lower-bound check into the webhook
+  - Verify: invalid specs rejected by the webhook
 
-- [x] **Encryption audit (TLS/암호화 감시)** — `internal/controller/encryption_audit.go`, `encryption_enforce_test.go`
+- [x] **Encryption audit (TLS / encryption surveillance)** —
+  `internal/controller/encryption_audit.go`,
+  `encryption_enforce_test.go`
 
-### 운영 / 배포
+### Operations and delivery
 
-- [x] Helm chart publish — `keiailab.github.io/valkey-operator`
-- [x] 3-repo (mongodb/postgres/valkey) governance 자산 정합 (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
-- [ ] **argos 클러스터 deploy**
-  - [ ] CRD 설치 manifest
-  - [ ] ArgoCD application 등록
-  - [ ] 현재 `argos-platform-data/valkey` 가 plain StatefulSet — operator 적용 마이그레이션
-  - Verify: ArgoCD Synced/Healthy + `kubectl get valkey/valkeycluster -A`
+- [x] Helm chart published — `keiailab.github.io/valkey-operator`
+- [x] 3-repo (mongodb / postgres / valkey) governance asset
+  alignment (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
+- [x] **GitHub Actions release pipeline restored** (ADR-0045) —
+  scoped deviation from RFC-0002 for externally-facing OSS repos;
+  see [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md)
+- [x] **SLSA-3 provenance + cosign keyless signing** for the image,
+  Helm chart, and SBOM (ADR-0046) — verification commands in
+  [SECURITY.md](SECURITY.md). Active from v1.0.13.
+- [ ] **argos cluster deploy**
+  - [ ] CRD-install manifest
+  - [ ] ArgoCD application registration
+  - [ ] Migrate `argos-platform-data/valkey` from a plain
+    StatefulSet to the operator
+  - Verify: ArgoCD Synced/Healthy and
+    `kubectl get valkey/valkeycluster -A`
 - [ ] **Migration runbook** — plain StatefulSet → ValkeyCluster CR
-  - [ ] Zero-downtime 절차 문서화
-  - [ ] secondary-promote 기반 cutover
-  - [ ] 롤백 절차
-  - Verify: 스테이징 환경 dry-run + RTO/RPO 측정 기록
-- [ ] **release-smoke-test.sh** — mongodb-operator 패턴 적용
-  - [ ] image / sbom / trivy / chart index / smoke 5단계
+  - [ ] Document the zero-downtime procedure
+  - [ ] Secondary-promote-based cutover
+  - [ ] Rollback procedure
+  - Verify: staging dry-run with RTO / RPO measurements recorded
+- [ ] **release-smoke-test.sh** — port the mongodb-operator pattern
+  - [ ] Five stages: image / SBOM / trivy / chart index / smoke
   - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
 
-### 관측 / 보안
+### Observability and security
 
-- [x] **Prometheus ServiceMonitor 자동** — `internal/resources/servicemonitor.go`, `servicemonitor_test.go`, chart `metrics.serviceMonitor.enabled=true`
-- [ ] Grafana 대시보드 (cluster shard 분포 / replication lag / memory pressure)
-  - [ ] 4개 패널 (cluster overview / replication / memory / latency)
-  - [ ] Helm chart ConfigMap 통합
+- [x] **Prometheus ServiceMonitor automatic** —
+  `internal/resources/servicemonitor.go`,
+  `servicemonitor_test.go`, chart
+  `metrics.serviceMonitor.enabled=true`
+- [x] **OpenSSF Scorecard + dependency-review + CodeQL SAST + DCO
+  workflows** — see `.github/workflows/`
+- [ ] Grafana dashboards (cluster shard distribution / replication
+  lag / memory pressure)
+  - [ ] 4 panels: cluster overview, replication, memory, latency
+  - [ ] Helm-chart ConfigMap integration
 - [ ] OpenTelemetry trace propagation
-  - [ ] Controller reconcile span 계측
-  - [ ] OTLP exporter 통합
-- [ ] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only 스캔
-  - [ ] 3-repo 표준 스크립트 도입
-  - [ ] Release 시점 자동 첨부
+  - [ ] Instrument the controller reconcile span
+  - [ ] Wire up the OTLP exporter
+- [ ] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only scan
+  - [ ] Adopt the shared 3-repo script
+  - [ ] Auto-attach at release time
 
-## 다음 (2.x 라인 — Planning)
+## Next (2.x line — Planning)
 
-### 기능
+### Features
 
-- [ ] **Valkey 9.x 신규 기능 활용** — flag / cluster mode 변경분 follow-up
+- [ ] **Valkey 9.x feature follow-up** — flags / cluster-mode
+  changes
 - [ ] **Multi-cluster federation**
-  - [ ] ClusterRole 분리
-  - [ ] 토폴로지 인식 라우팅
-  - [ ] 신규 CRD `ValkeyFederation`
+  - [ ] Separate ClusterRoles
+  - [ ] Topology-aware routing
+  - [ ] New CRD `ValkeyFederation`
 - [ ] **Cross-region backup replication**
-  - [ ] S3 SSE-KMS 키 관리
-  - [ ] Lifecycle policy 자동
+  - [ ] S3 SSE-KMS key management
+  - [ ] Automatic lifecycle policies
 - [ ] **Online schema-less migration**
-  - [ ] RDB diff 도구
+  - [ ] RDB diff tool
   - [ ] LWW conflict resolution
-- [ ] **Read replicas 가중치 라우팅** (latency-aware)
+- [ ] **Weighted read-replica routing** (latency-aware)
 
-### 아키텍처
+### Architecture
 
 - [ ] **Controller v2**
-  - [ ] workqueue rate limiter 튜닝
-  - [ ] reconcile fan-out 최적화
-- [ ] **CRD v1 졸업**
-  - [ ] schema 안정화
+  - [ ] workqueue rate-limiter tuning
+  - [ ] reconcile fan-out optimization
+- [ ] **CRD v1 graduation**
+  - [ ] Schema stabilization
   - [ ] v1alpha2 → v1 conversion webhook
-  - Verify: 6개월 BREAKING CHANGE 0건 + 3 repo 호환
+  - Verify: six months with zero BREAKING CHANGEs and 3-repo
+    compatibility
 
-## Non-Goals (의식적 비대상)
+## Non-Goals (deliberate non-scope)
 
-- ❌ **Multi-tenancy 격리** — namespace 단위만. 더 강한 격리는 별도 클러스터로 위임.
-- ❌ **자체 시크릿 회전 로직** — ESO (External Secrets Operator) + OpenBao 위임.
-- ❌ **Sentinel mode** — Redis Sentinel 호환 미지원. Cluster mode 우선.
-- ❌ **GitHub Actions** — RFC 0002 글로벌 영구 금지. 모든 게이트는 로컬 4 계층.
-- ❌ **시간 기반 로드맵 deadline** — 글로벌 §workflow.md.
+- ❌ **Multi-tenancy isolation** — namespace-level only. Stronger
+  isolation belongs to a separate cluster.
+- ❌ **In-house secret rotation logic** — delegated to ESO
+  (External Secrets Operator) + OpenBao.
+- ❌ **Sentinel mode** — Redis-Sentinel compatibility is not
+  supported. Cluster mode is the path forward.
+- ❌ **Calendar-based roadmap deadlines** — see
+  `standards/workflow.md`.
 
-## 변경 이력
+## Change log
 
 | Date | Change | Refs |
 |---|---|---|
-| 2026-05-11 | webhook `validateStorageClassName` 추가 — RBD storageClass 기본 검증 (DNS-1123 subdomain) `[x]` | ralph-loop iter#2 |
-| 2026-05-11 | 전면 재작성 — 사실 정정 (ServiceMonitor 등) + sub-task 체크리스트 입자도 + 신규 항목 (VolumeSnapshot multipod / conversion webhook) 노출 | parallel-leaping-seal plan |
-| 2026-05-07 | 본 문서 신설 — 3-repo governance 자산 정합 | INC-2026-05-07 |
+| 2026-05-12 | English becomes canonical; Korean preserved as `ROADMAP.ko.md`; ADR-0045 (GH Actions restoration) + ADR-0046 (SLSA-3 + cosign) noted in Operations and Security sections | i18n initiative |
+| 2026-05-11 | Added webhook `validateStorageClassName` — RBD storageClass DNS-1123 baseline validation `[x]` | ralph-loop iter#2 |
+| 2026-05-11 | Full rewrite — factual corrections (ServiceMonitor etc.), finer sub-task granularity, new items exposed (VolumeSnapshot multipod, conversion webhook) | parallel-leaping-seal plan |
+| 2026-05-07 | Document created — 3-repo governance asset alignment | INC-2026-05-07 |
