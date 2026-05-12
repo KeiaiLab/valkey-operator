@@ -25,6 +25,10 @@ linters:
     - unparam
     - unused
     - logcheck
+    # goheader enforces the Apache-2.0 boilerplate on every Go file
+    # (PRs #117 + #119 backfilled all 177 files). Stops the header
+    # from rotting on any future addition.
+    - goheader
   settings:
     custom:
       logcheck:
@@ -37,6 +41,28 @@ linters:
     modernize:
       disable:
         - omitzero
+    goheader:
+      # Single source of truth for the boilerplate text lives in
+      # hack/boilerplate.go.txt (year token replaced by controller-gen).
+      # For golangci-lint we encode the same body with a YEAR-flexible
+      # regex so 2025 / 2026 / 2027 files all pass without modification.
+      template: |-
+        Copyright {{ YEAR }} Keiailab.
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+      values:
+        regexp:
+          YEAR: "20\\d\\d"
     # depguard 는 비활성 — valkey internal boundary 도입 시 (ADR 후) 활성화 +
     # deny list 정의. 빈 deny list 는 golangci-lint v2.8 schema 거부.
   exclusions:
