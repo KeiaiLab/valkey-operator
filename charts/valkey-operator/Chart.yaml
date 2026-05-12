@@ -32,11 +32,11 @@ annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/category: database
   # operatorCapabilities — OperatorHub Phase IV "Deep Insights" (under-claim
-  # 정정, C-P0-8). 사용자 지원 기능: Standalone+Replication+Cluster install
-  # (Basic) + version upgrade (Seamless) + ValkeyBackup/Restore + ValkeyCluster
-  # automated bootstrap (Full Lifecycle) + ServiceMonitor+PrometheusRule+
-  # alert-rules.yaml (Deep Insights). Phase V "Auto Pilot" 는 HPA Replication
-  # GA + auto-resharding 후 격상 가능 (ADR-0027 deferred).
+  # correction, C-P0-8). User-facing capabilities: Standalone, Replication, and
+  # Cluster install (Basic), version upgrade (Seamless), ValkeyBackup/Restore,
+  # ValkeyCluster automated bootstrap (Full Lifecycle), and ServiceMonitor,
+  # PrometheusRule, and alert-rules.yaml (Deep Insights). Phase V "Auto Pilot"
+  # can be claimed only after HPA Replication GA and auto-resharding.
   artifacthub.io/operatorCapabilities: Deep Insights
   artifacthub.io/maturity: stable
   artifacthub.io/links: |
@@ -122,7 +122,7 @@ annotations:
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
     - kind: fixed
-      description: Artifact Hub icon URL 을 현재 Valkey 사이트의 200 응답 로고 경로로 교체.
+      description: Refresh Artifact Hub metadata with the Alpine 3.23 Valkey runtime image and chart release 1.0.11.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager

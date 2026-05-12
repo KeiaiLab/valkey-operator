@@ -8,6 +8,20 @@
 
 ## [Unreleased]
 
+## [1.0.11] - 2026-05-12
+
+### Changed
+
+- Refresh Artifact Hub chart metadata so the published package advertises the
+  Alpine 3.23 Valkey runtime image.
+- Publish chart/app version `1.0.11` for the current release surface.
+- Keep Artifact Hub trust-badge documentation in English.
+
+### Fixed
+
+- Correct the stale Helm repository package that still advertised
+  `docker.io/valkey/valkey:9.0.4`.
+
 ## [1.0.10] - 2026-05-10
 
 ### Added

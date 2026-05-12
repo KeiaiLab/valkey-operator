@@ -17,14 +17,14 @@ A Kubernetes Operator for deploying and managing Valkey instances and Clusters
 - **TopologySpreadConstraints**: HA default — multi-AZ + multi-node spread when replicas≥2 (PR #48)
 - **Encryption-at-rest**: StorageClass audit + enforce mode for compliance (PR #45 + #55)
 - **Slow-log**: configurable threshold + max entries (PR #45)
-- **PVC auto-resize**: Spec.Storage.Size 변경 시 자동 expansion (PR #39)
+- **PVC auto-resize**: automatic expansion when `spec.storage.size` changes (PR #39)
 - **Chaos engineering**: chaos-mesh foundation (PR #41, ADR-0041)
 - **PITR foundation**: Source.VolumeSnapshot + PointInTime API (PR #51-#58 + #54)
-- **Status.Capabilities**: kubectl get -o wide 한눈에 활성 features (PR #62)
+- **Status.Capabilities**: active features visible at a glance with `kubectl get -o wide` (PR #62)
 - **CloudPirates valkey compatibility**: image digest, storage/service/pod knobs,
   external replica, revision history, dual-stack Service, chart extraObjects (ADR-0043)
 
-자세한 평가: `docs/operations/commercial-parity-status.md` (Redis Enterprise ~94% parity).
+Detailed assessment: `docs/operations/commercial-parity-status.md` (approximately 94% Redis Enterprise parity).
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ helm install valkey-operator valkey-operator/valkey-operator \
   --create-namespace \
   --set features.cluster.enabled=true \
   --set features.backup.enabled=true
-  # features.autoscaling.enabled — ADR-0027 deferred (RBAC 만 부여, 실제 HPA 미구현)
+  # features.autoscaling.enabled — ADR-0027 deferred (RBAC only, HPA controller not implemented yet)
 ```
 
 ## Usage
@@ -157,7 +157,7 @@ kubectl delete crd valkeyrestores.cache.keiailab.io
 
 ## Production Features (cycles 65-74)
 
-본 chart 는 *production-grade 운영* 을 위한 5 항목 opt-in:
+This chart provides five opt-in controls for production-grade operations:
 
 ### 1. Admission Webhooks
 
@@ -165,9 +165,10 @@ kubectl delete crd valkeyrestores.cache.keiailab.io
 helm upgrade valkey-operator . --set webhook.enabled=true
 ```
 
-cert-manager 사전 설치 필수. Validating + Mutating WebhookConfiguration +
-selfSigned Issuer + Certificate + webhook Service 자동 생성. invalid CR
-admission 차단.
+cert-manager must be installed before enabling this option. The chart creates
+Validating and Mutating WebhookConfiguration resources, a SelfSigned Issuer,
+a Certificate, and the webhook Service. Invalid custom resources are rejected
+at admission time.
 
 ### 2. NetworkPolicy
 
@@ -175,8 +176,9 @@ admission 차단.
 helm upgrade valkey-operator . --set networkPolicy.enabled=true
 ```
 
-operator pod default-deny + 명시 ingress (Prometheus 8443) + egress (K8s API
-443, DNS 53, Valkey 6379/6380/16379).
+The operator pod uses default-deny networking with explicit ingress for
+Prometheus on 8443 and egress for the Kubernetes API on 443, DNS on 53, and
+Valkey on 6379/6380/16379.
 
 ### 3. OpenTelemetry Tracing (ADR-0025)
 
@@ -185,8 +187,8 @@ helm upgrade valkey-operator . \
   --set tracing.endpoint=tempo.observability.svc:4317
 ```
 
-OTLP gRPC exporter 활성. 22 trace spans 발행. endpoint 비어있으면 no-op
-tracer (성능 영향 0).
+Enables the OTLP gRPC exporter and emits 22 trace spans. When the endpoint is
+empty, the operator uses a no-op tracer with no runtime overhead.
 
 ### 4. Namespace-Scoped Watch
 
@@ -194,22 +196,23 @@ tracer (성능 영향 0).
 helm upgrade valkey-operator . --set 'watch.namespaces={valkey-prod,valkey-stage}'
 ```
 
-multi-tenant 환경에서 reconcile 표면 제한 (cluster-wide ClusterRole 와는
-별개 — 사용자 자체 namespaced RBAC 권장).
+Limits the reconciliation surface in multi-tenant environments. This is
+separate from the cluster-wide ClusterRole; namespaced RBAC should be supplied
+by the platform operator when required.
 
 ### 5. Version Identification
 
 ```bash
-# CLI 시점 검증:
+# CLI verification:
 kubectl exec -n valkey-operator-system \
   -l app.kubernetes.io/name=valkey-operator -- /manager --version
-# → "valkey-operator vX.Y.Z (commit abc1234, built YYYY-MM-DD)"
+# -> "valkey-operator vX.Y.Z (commit abc1234, built YYYY-MM-DD)"
 
 # Prometheus dashboard:
 sum by (version) (valkey_cluster_build_info)
 ```
 
-운영 시점 release tag 식별 + version skew 감지.
+Use this to identify the running release tag and detect version skew.
 
 ## Troubleshooting
 
@@ -232,4 +235,4 @@ kubectl describe valkey my-valkey -n cache
 
 ## Values
 
-<!-- helm-docs 가 본 section 을 자동 갱신: `make helm-docs` 또는 `helm-docs --chart-search-root charts/valkey-operator`. values.yaml 의 `# --` 주석을 추출. -->
+<!-- helm-docs automatically updates this section via `make helm-docs` or `helm-docs --chart-search-root charts/valkey-operator`. It extracts the `# --` comments from values.yaml. -->
