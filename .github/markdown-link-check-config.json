@@ -1,0 +1,38 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^http://localhost"
+    },
+    {
+      "pattern": "^https://localhost"
+    },
+    {
+      "pattern": "^https://github\\.com/keiailab/valkey-operator/pull/"
+    },
+    {
+      "pattern": "^https://github\\.com/keiailab/valkey-operator/issues/"
+    },
+    {
+      "pattern": "^https?://example\\."
+    }
+  ],
+  "replacementPatterns": [
+    {
+      "pattern": "^/",
+      "replacement": "{{BASEURL}}/"
+    }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com/", "https://api.github.com/"],
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml,application/xml"
+      }
+    }
+  ],
+  "timeout": "15s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206, 429]
+}
