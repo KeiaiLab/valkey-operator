@@ -2,6 +2,8 @@ module github.com/keiailab/valkey-operator
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require (
 	cloud.google.com/go/storage v1.62.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1

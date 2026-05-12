@@ -66,6 +66,62 @@ valkey-operator 운영 시:
 
 Dependabot / Renovate 자동 업데이트 PR 은 우선 review.
 
+## Verifying release artifacts (signed releases — v1.0.13+)
+
+Starting with **v1.0.13**, every published container image, Helm chart,
+and SPDX SBOM is signed via **Sigstore cosign** keyless OIDC and
+attached with a **SLSA-3 provenance attestation** (ADR-0045, ADR-0046).
+Releases prior to v1.0.13 are unsigned; verification commands below
+will fail against them as expected.
+
+### Verify the container image
+
+```bash
+COSIGN_EXPERIMENTAL=1 cosign verify \
+  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/keiailab/valkey-operator:<version>
+```
+
+### Verify SLSA-3 provenance for the image
+
+```bash
+slsa-verifier verify-image \
+  --source-uri github.com/keiailab/valkey-operator \
+  --source-tag v<version> \
+  ghcr.io/keiailab/valkey-operator:<version>
+```
+
+### Verify the Helm chart
+
+Download `valkey-operator-<version>.tgz`, `.tgz.sig`, and `.tgz.pem`
+from the GitHub Release page, then:
+
+```bash
+cosign verify-blob \
+  --certificate   valkey-operator-<version>.tgz.pem \
+  --signature     valkey-operator-<version>.tgz.sig \
+  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  valkey-operator-<version>.tgz
+```
+
+### Verify the SBOM
+
+Same `cosign verify-blob` pattern with the `.spdx.json` / `.sig` /
+`.pem` triple. The SBOM signature pins the bill-of-materials to the
+exact build that produced the image.
+
+### What a successful verification means
+
+- The artifact was produced by a GitHub Actions workflow in this
+  repository (the certificate identity proves the OIDC subject).
+- The artifact has not been modified since signing (the Sigstore Rekor
+  transparency log entry is tamper-evident).
+- For the container image, the SLSA-3 attestation additionally proves
+  the build ran in an isolated, hosted GitHub runner with the documented
+  `release.yml` workflow.
+
 ## 알려진 한계 (현재 버전)
 
 `README.md` 의 "잠재적 운영 이슈" 섹션 + GitHub Issues label `security` 참조.
