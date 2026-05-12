@@ -78,7 +78,7 @@ will fail against them as expected.
 
 ```bash
 COSIGN_EXPERIMENTAL=1 cosign verify \
-  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/' \
+  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ghcr.io/keiailab/valkey-operator:<version>
 ```
@@ -101,7 +101,7 @@ from the GitHub Release page, then:
 cosign verify-blob \
   --certificate   valkey-operator-<version>.tgz.pem \
   --signature     valkey-operator-<version>.tgz.sig \
-  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/' \
+  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   valkey-operator-<version>.tgz
 ```

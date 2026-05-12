@@ -137,6 +137,8 @@ jobs:
     needs: [preflight, image]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      packages: read      # syft reads the GHCR image manifest
       id-token: write     # cosign keyless sign-blob
     steps:
       - uses: anchore/sbom-action@v0

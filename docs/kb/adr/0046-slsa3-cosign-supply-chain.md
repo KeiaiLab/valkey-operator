@@ -94,7 +94,7 @@ the chart. Adopters verify with:
 cosign verify-blob \
   --certificate valkey-operator-X.Y.Z.tgz.pem \
   --signature   valkey-operator-X.Y.Z.tgz.sig  \
-  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/' \
+  --certificate-identity-regexp '^https://github\.com/keiailab/valkey-operator/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   valkey-operator-X.Y.Z.tgz
 ```
