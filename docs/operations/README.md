@@ -1,37 +1,44 @@
 # Operations docs index
 
-This directory holds operational procedures for `valkey-operator`.
-Most documents have an English canonical version and a Korean
-sibling (`<name>.ko.md`); some are still Korean-only and are being
-translated in follow-up PRs.
+> 한국어 사용자: 모든 문서가 `<name>.ko.md` 한국어 사본을 함께 보관합니다.
 
-## Canonical English (read this first)
+This directory holds operational procedures for `valkey-operator`.
+**Every document is canonical English** with a Korean sibling at
+`<name>.ko.md` (a single artifacthub-trust.md was already English
+and has no Korean copy).
+
+## Day-to-day operations
 
 | Document | Purpose |
 |---|---|
 | [runbook.md](runbook.md) | Incident response and daily operations. SSOT for every Prometheus alert's `runbook_url` annotation. |
-| [release-checklist.md](release-checklist.md) | Pre-release gate inventory: build, SSOT gates, supply chain, docs, operations. Run before pushing any release tag. |
 | [troubleshooting.md](troubleshooting.md) | Symptom → cause → diagnostic → remediation flowchart for issues that fire no alert (or fire before one exists). |
+| [metrics-glossary.md](metrics-glossary.md) | Every `valkey_cluster_*` metric, its label cardinality, where it is emitted, and which alerts consume it. |
+| [capacity-planning.md](capacity-planning.md) | Sizing guide — memory, replication factor, shard count, p95/p99 latency targets per topology. |
+| [webhook.md](webhook.md) | Admission-webhook architecture, cert-manager certificate path, debugging webhook denials. |
 
-## Korean-only (English translation pending — tracked by ROADMAP)
+## Backup, restore, recovery
 
-These deep-dive documents are still Korean canonical. External
-operators who need them in English should open an issue requesting
-the specific page; translations land as the underlying topic ships
-its next user-facing change.
+| Document | Purpose |
+|---|---|
+| [pitr-guide.md](pitr-guide.md) | Point-in-time recovery: phase-1 API + webhook, phase-2 reconciler dispatch, manual workaround, rollback. |
+| [chaos-testing.md](chaos-testing.md) | chaos-mesh 4-scenario e2e procedure: pod-kill, network partition, IO ENOSPC, IO latency. |
 
-| Document | Topic | Lines |
-|---|---|---|
-| [artifacthub-trust.md](artifacthub-trust.md) | Artifact Hub trust badges (Verified Publisher, Signed, Official) and the keys/owners contract that produces them. | 95 |
-| [capacity-planning.md](capacity-planning.md) | Sizing guide — memory, replication factor, shard count, p95/p99 latency targets per topology. | 160 |
-| [chaos-testing.md](chaos-testing.md) | chaos-mesh scenarios exercised in CI and how to reproduce them locally on a kind cluster. | 92 |
-| [cloudpirates-valkey-compatibility.md](cloudpirates-valkey-compatibility.md) | Compatibility matrix vs. CloudPirates' Valkey distribution: which data-plane knobs are safe, which are out of scope. | 119 |
-| [commercial-parity-status.md](commercial-parity-status.md) | Feature-by-feature parity with Redis Enterprise: what's at parity, what's deliberately skipped, what's planned. | 178 |
-| [metrics-glossary.md](metrics-glossary.md) | Every `valkey_cluster_*` metric, its label cardinality, where it is emitted, and which alerts consume it. | 136 |
-| [pitr-guide.md](pitr-guide.md) | Point-in-time recovery: AOF retention sizing, restore boundaries, RPO/RTO measurement procedure. | 195 |
-| [post-merge-cleanup.md](post-merge-cleanup.md) | After a release: GH Pages cache flush, Artifact Hub propagation wait, Helm repository index refresh. | 120 |
-| [sentinel-migration.md](sentinel-migration.md) | Migrating from Redis Sentinel topologies to a Valkey Cluster. Why Sentinel mode is a Non-Goal (ROADMAP §Non-Goals). | 196 |
-| [webhook.md](webhook.md) | Admission-webhook architecture, cert-manager certificate path, debugging webhook denials. | 124 |
+## Release & supply chain
+
+| Document | Purpose |
+|---|---|
+| [release-checklist.md](release-checklist.md) | Pre-release gate inventory: build, 47 SSOT gates, supply chain (SLSA + cosign), docs, operations. |
+| [post-merge-cleanup.md](post-merge-cleanup.md) | Local-branch hygiene after squash-merge. |
+| [artifacthub-trust.md](artifacthub-trust.md) | Artifact Hub `Signed` and `Official` trust badge operational procedure. |
+
+## Migration & comparison
+
+| Document | Purpose |
+|---|---|
+| [cloudpirates-valkey-compatibility.md](cloudpirates-valkey-compatibility.md) | CloudPirates valkey `0.20.2` chart `values` → valkey-operator CRD mapping. |
+| [commercial-parity-status.md](commercial-parity-status.md) | ADR-0040 commercial-parity status: core HA, observability, security, ops, tests, gaps. |
+| [sentinel-migration.md](sentinel-migration.md) | Sentinel → valkey-operator Replication-mode migration runbook (ADR-0017 backstop). |
 
 ## Cross-cutting references
 
@@ -42,8 +49,9 @@ its next user-facing change.
 
 ## i18n status
 
-The i18n initiative landed in PRs #93 / #97 / #98 / #103–#107.
-Canonical-English coverage as of 2026-05-12: README, CONTRIBUTING,
-SECURITY, GOVERNANCE, MAINTAINERS, ADOPTERS, ROADMAP, runbook,
-troubleshooting, release-checklist. The remaining 10 deep-dive
-documents above ship Korean-only until their next functional update.
+Every operational document under `docs/operations/` is now
+**canonical English**. The i18n initiative landed across PRs
+#93 / #97 / #98 / #103 / #104 / #105 / #106 / #107 / #108 / #109 /
+#110 / #111. Korean originals are preserved verbatim as
+`<name>.ko.md` siblings (except artifacthub-trust.md, which was
+authored in English from the start).
