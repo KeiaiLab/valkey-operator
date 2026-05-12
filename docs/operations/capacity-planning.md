@@ -1,160 +1,173 @@
-# Capacity Planning — valkey-operator
+# Capacity planning — valkey-operator
 
-ValkeyCluster / Valkey CR 을 *어떤 spec 으로 시작할 것인가* 의 산정 가이드.
-production 운영 전 본 문서의 §3 워크로드 패턴 매트릭스로 1차 sizing → §4 감시
-지표로 *주 단위 재산정*.
+> 한국어 버전: [capacity-planning.ko.md](capacity-planning.ko.md)
 
-본 문서는 *완벽한 capacity model* 이 아닌 *실용적 시작점* 제공. 정확한 값은 운영
-중 metric 으로 보정.
+How to choose the initial spec for a `ValkeyCluster` or `Valkey`
+CR. Use §3 (workload-pattern matrix) for the first sizing, then
+§4 (operational signals) to re-tune weekly.
 
-## 1. 산정 4 차원
+This is a **practical starting point**, not a complete capacity
+model. Precise numbers come from the running metrics.
 
-모든 sizing 은 다음 4 차원의 곱:
+## 1. The four sizing dimensions
+
+Every size is the product of:
 
 ```
-필요 자원 = (워크로드 패턴) × (데이터 양) × (QPS) × (가용성 요구)
+Required resources = (workload pattern) × (data volume) × (QPS) × (availability requirement)
 ```
 
-| 차원 | 측정 단위 | 영향 자원 |
+| Dimension | Unit | Resources it drives |
 |---|---|---|
-| 워크로드 패턴 | cache / session / queue / pub-sub / leaderboard | memory model, persistence, eviction |
-| 데이터 양 | 활성 keyspace MB | memory request, PVC size |
-| QPS | read / write / batch 분리 | CPU request, replica 수 |
-| 가용성 요구 | RPO / RTO 분 단위 | replicas, shards, backup 주기, target 수 |
+| Workload pattern | cache / session / queue / pub-sub / leaderboard | memory model, persistence, eviction |
+| Data volume | active keyspace MB | memory request, PVC size |
+| QPS | read / write / batch separately | CPU request, replica count |
+| Availability requirement | RPO / RTO (minutes) | replicas, shards, backup cadence, target count |
 
-## 2. 토폴로지 선택
+## 2. Topology choice
 
 ```
-                ┌─ 단일 인스턴스 + 영속 불필요 → kind: Valkey, mode: Standalone
+                ┌─ Single instance, no persistence required → kind: Valkey, mode: Standalone
                 │
-워크로드 ───────┼─ 1 primary + N read replica + RPO≈0 → kind: Valkey, mode: Replication
+Workload ───────┼─ 1 primary + N read replicas, RPO ≈ 0    → kind: Valkey, mode: Replication
                 │
-                └─ 분산 (>50GB 또는 >100K QPS write) → kind: ValkeyCluster (sharded)
+                └─ Distributed (>50 GB or >100 K write QPS) → kind: ValkeyCluster (sharded)
 ```
 
-**전환 임계 (경험치)**:
-- Standalone → Replication: 데이터 손실 1초도 불가 시점 (자동 failover 필요).
-- Replication → Cluster: 단일 primary memory 가 *physical RAM × 0.5* 초과 또는
-  단일 primary CPU 가 1 core 80%+ 지속.
-- Cluster shard 추가: 단일 shard 의 95th percentile latency 가 SLO 초과.
+**Transition thresholds (rules of thumb)**:
 
-## 3. 워크로드 패턴별 권장 시작점
+- Standalone → Replication: any moment a 1-second data loss is
+  unacceptable (automatic failover required).
+- Replication → Cluster: when a single primary's memory exceeds
+  **physical RAM × 0.5** or a single primary's CPU sits at 1 core
+  80 %+ continuously.
+- Add a Cluster shard: when a single shard's p95 latency exceeds
+  the SLO.
+
+## 3. Recommended starting points per workload pattern
 
 ### 3.1 Cache (read-heavy, eviction allowed)
 
-| 항목 | 권장 |
+| Field | Recommendation |
 |---|---|
-| memory | 데이터셋 × 1.3 (fragmentation 30% 여유) |
-| persistence | RDB (없어도 OK), AOF off |
-| eviction | `allkeys-lru` 또는 `allkeys-lfu` |
+| memory | data set × 1.3 (30 % fragmentation headroom) |
+| persistence | RDB (or off), AOF off |
+| eviction | `allkeys-lru` or `allkeys-lfu` |
 | replicas | 2 (read scaling) |
-| backup | 불필요 또는 1일 1회 |
-| spec 예시 | replicas=2, requests.memory=4Gi, persistence.size=8Gi |
+| backup | none or daily |
+| Example spec | `replicas=2, requests.memory=4Gi, persistence.size=8Gi` |
 
-### 3.2 Session store (read+write balanced, no loss)
+### 3.2 Session store (balanced read/write, no loss)
 
-| 항목 | 권장 |
+| Field | Recommendation |
 |---|---|
-| memory | 동시 세션 수 × 평균 session 크기 × 1.5 |
+| memory | concurrent sessions × avg session size × 1.5 |
 | persistence | AOF `everysec` |
-| eviction | `noeviction` (TTL 기반 자연 만료) |
+| eviction | `noeviction` (TTL-driven natural expiry) |
 | replicas | 2 (HA + read scaling) |
-| backup | 6시간 1회 |
-| spec 예시 | replicas=2, requests.memory=8Gi, persistence.size=20Gi |
+| backup | every 6 hours |
+| Example spec | `replicas=2, requests.memory=8Gi, persistence.size=20Gi` |
 
 ### 3.3 Queue (write-heavy, FIFO)
 
-| 항목 | 권장 |
+| Field | Recommendation |
 |---|---|
-| memory | 평균 queue depth × message 크기 × 1.5 |
-| persistence | AOF `always` (loss 0 요구 시) 또는 `everysec` |
-| eviction | `noeviction` (queue overflow = consumer 부재 의미) |
+| memory | avg queue depth × message size × 1.5 |
+| persistence | AOF `always` (zero-loss) or `everysec` |
+| eviction | `noeviction` (queue overflow = absent consumer) |
 | replicas | 2 (failover) |
-| backup | 1시간 1회 (point-in-time 부재 — interval 짧게) |
-| spec 예시 | replicas=2, requests.cpu=1000m, requests.memory=4Gi |
+| backup | hourly (no PITR — keep intervals short) |
+| Example spec | `replicas=2, requests.cpu=1000m, requests.memory=4Gi` |
 
 ### 3.4 Pub-Sub (transient, no persistence)
 
-| 항목 | 권장 |
+| Field | Recommendation |
 |---|---|
-| memory | 256MB ~ 1GB (메시지 자체 미저장) |
+| memory | 256 MB ~ 1 GB (messages are not stored) |
 | persistence | off |
-| replicas | 0~1 (subscriber 가 reconnect 가능 시 단일 OK) |
-| spec 예시 | replicas=1, requests.memory=512Mi, persistence.enabled=false |
+| replicas | 0–1 (a single instance is fine if subscribers can reconnect) |
+| Example spec | `replicas=1, requests.memory=512Mi, persistence.enabled=false` |
 
 ### 3.5 Leaderboard / sorted set (heavy compute, large dataset)
 
-| 항목 | 권장 |
+| Field | Recommendation |
 |---|---|
-| memory | (active leaderboards × top-N × 평균 score+member 크기) × 2 |
-| persistence | RDB 1시간 + AOF `everysec` |
-| replicas | 3 (read replica 2 — ZRANGE 부하 분산) |
-| topology | ValkeyCluster 권장 (leaderboard 분할 가능 시) |
-| spec 예시 | shards=3, replicas=2, requests.memory=8Gi/shard |
+| memory | (active leaderboards × top-N × avg(score+member size)) × 2 |
+| persistence | RDB hourly + AOF `everysec` |
+| replicas | 3 (2 read replicas distribute `ZRANGE` load) |
+| topology | ValkeyCluster (when the leaderboard can be partitioned) |
+| Example spec | `shards=3, replicas=2, requests.memory=8Gi/shard` |
 
-## 4. 산정 검증 — 운영 첫 1주의 metric 체크
+## 4. Operational validation — first week metric checks
 
-배포 후 7일간 다음을 매일 1회 확인 후 spec 보정:
+For the first 7 days after deployment, review these once per day
+and re-tune the spec:
 
-| 지표 | PromQL | 임계 (보정 트리거) |
+| Signal | PromQL | Threshold (re-tune trigger) |
 |---|---|---|
-| memory 사용률 | (sidecar exporter) `redis_memory_used_bytes / redis_memory_max_bytes` | `> 0.7` 5일 연속 = memory 증액 |
-| QPS | `rate(redis_commands_total[5m])` | `> capacity × 0.7` = CPU 증액 또는 shard 추가 |
-| reconcile error rate | `rate(valkey_cluster_reconcile_errors_total[1h])` | `> 0` = 운영 안정성 검토 |
-| failover 빈도 | `increase(valkey_cluster_failover_total[7d])` | `> 1` = 인프라 점검 (네트워크 / 노드) |
-| backup 성공률 | `1 - rate(valkey_cluster_backup_total{phase="Failed"}[7d]) / rate(valkey_cluster_backup_total[7d])` | `< 0.99` = backup 인프라 점검 |
+| Memory usage | (sidecar exporter) `redis_memory_used_bytes / redis_memory_max_bytes` | `> 0.7` for 5 consecutive days → raise memory |
+| QPS | `rate(redis_commands_total[5m])` | `> capacity × 0.7` → raise CPU or add a shard |
+| Reconcile error rate | `rate(valkey_cluster_reconcile_errors_total[1h])` | `> 0` → investigate operational stability |
+| Failover frequency | `increase(valkey_cluster_failover_total[7d])` | `> 1` → check infrastructure (network, nodes) |
+| Backup success rate | `1 - rate(valkey_cluster_backup_total{phase="Failed"}[7d]) / rate(valkey_cluster_backup_total[7d])` | `< 0.99` → check backup infrastructure |
 
-## 5. resource request / limit 시작값
+## 5. Starting `resources.requests` / `limits`
 
 ```yaml
-# Valkey CR (Replication mode 권장값)
+# Valkey CR (recommended for Replication mode)
 spec:
   resources:
     requests:
-      cpu: 500m       # 평균 5K QPS 기준
-      memory: 2Gi     # 1.6GB working set + 400MB overhead
+      cpu: 500m       # ~5 K QPS baseline
+      memory: 2Gi     # 1.6 GB working set + 400 MB overhead
     limits:
-      cpu: 2000m      # burst 4x
-      memory: 2Gi     # request == limit (OOM 예방, swap 회피)
+      cpu: 2000m      # 4× burst
+      memory: 2Gi     # request == limit (avoid OOM, no swap)
   storage:
-    size: 10Gi        # data + AOF rewrite 임시 공간 = data × 2
-    storageClass: gp3 # IOPS 보장 storage 권장
+    size: 10Gi        # data + AOF rewrite scratch = data × 2
+    storageClass: gp3 # IOPS-guaranteed storage class
 ```
 
-**memory request == limit 권장 이유**: K8s scheduler 가 노드의 *available
-memory* 만 보고 schedule. limit 만 크면 노드 over-commit 위험. valkey 는 OOM
-시 데이터 손실이 critical.
+**Why `memory request == limit`**: the K8s scheduler only looks at
+**available memory** per node when scheduling. Large limits without
+matching requests risk node over-commit. Valkey treats OOM as
+critical data loss.
 
-**CPU limit 의 burst 허용 이유**: AOF rewrite, RDB save, BGSAVE 같은 background
-job 이 일시적으로 CPU 2~4x burst. limit 너무 낮으면 throttle → latency 폭증.
+**Why we allow CPU burst**: AOF rewrite, RDB save, and BGSAVE are
+short background jobs that temporarily burst 2–4× CPU. Setting a
+low CPU limit causes throttling → latency blow-up.
 
-## 6. 가용성 요구별 replica / shard 매트릭스
+## 6. Availability matrix (replica / shard)
 
-| RPO / RTO | 권장 |
+| RPO / RTO | Recommendation |
 |---|---|
-| RPO=0, RTO<10s | Replication 3 replica + AOF `always` + automatic failover |
-| RPO<1s, RTO<30s | Replication 2 replica + AOF `everysec` (default) |
-| RPO<1h, RTO<5min | Replication 1 replica + RDB hourly + backup S3 |
-| RPO<1d, RTO<1h | Standalone + RDB daily + backup PVC |
+| RPO=0, RTO<10s | Replication 3 replicas + AOF `always` + auto failover |
+| RPO<1s, RTO<30s | Replication 2 replicas + AOF `everysec` (default) |
+| RPO<1h, RTO<5min | Replication 1 replica + RDB hourly + S3 backup |
+| RPO<1d, RTO<1h | Standalone + RDB daily + PVC backup |
 
-**Cluster mode 의 가용성**: 각 shard 는 *replication mode 의 가용성과 동일* —
-shard 별 replica 수 = `Spec.Shards[].Replicas`. shard 자체의 quorum 은 majority
-of primaries (e.g. 3 shard cluster 는 2 shard 동작 시 partial cluster 운영 가능
-— 단, 해당 slot 의 데이터만 영향).
+**Cluster-mode availability**: each shard inherits replication-mode
+availability — shard replica count is
+`Spec.Shards[].Replicas`. Shard-level quorum is a majority of
+primaries (e.g. a 3-shard cluster keeps partial operation when 2
+shards run — only the missing slot's data is impacted).
 
-## 7. 한계 / scope 외
+## 7. Out of scope
 
-본 가이드는 다음을 *가정 / 제외*:
+This guide assumes / excludes:
 
-- 노드 인프라 (CPU 종류, NIC bandwidth, disk IOPS) 가 *충분* 가정. EBS gp2 등
-  IOPS 제한 storage 는 별도 산정.
-- 멀티 region active-active 는 본 operator scope 밖 (별도 ADR / 도구 필요).
-- Hot-key 시나리오 (단일 key QPS 가 cluster 총 QPS 의 50%+) 는 cluster 로 해소
-  불가 — application 분할 또는 caching 계층 추가.
+- Node infrastructure (CPU class, NIC bandwidth, disk IOPS) is
+  **sufficient**. EBS gp2 and similar IOPS-capped volumes require
+  separate sizing.
+- Multi-region active-active is **outside** this operator's scope
+  (needs a separate ADR / tooling).
+- Hot-key scenarios (a single key carries 50 %+ of cluster QPS)
+  are not solved by sharding — split at the application layer or
+  add a caching layer.
 
-## 8. 참조
+## 8. References
 
-- ADR-0017: Replication failover 정책
-- ADR-0027: HPA 미지원 사유 (수동 spec 변경 권장)
-- runbook.md §4: scale up/down 절차
-- metrics-glossary.md: 본 문서의 PromQL 사용 metric 의미
+- ADR-0017 — Replication failover policy.
+- ADR-0027 — Why HPA is deferred (recommend manual spec change).
+- runbook.md §4 — Scale up/down procedure.
+- metrics-glossary.md — Semantics of the PromQL metrics used here.
