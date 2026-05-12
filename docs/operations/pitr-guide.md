@@ -1,22 +1,26 @@
-# Point-In-Time Recovery (PITR) — 운영 가이드
+# Point-In-Time Recovery (PITR) — operator guide
 
-ADR-0040 commercial parity 의 *최대 단일 차이* 였던 PITR 의 phase 1 (API +
-webhook) 가이드 + phase 2 (reconciler 통합) 진입 절차.
+> 한국어 버전: [pitr-guide.ko.md](pitr-guide.ko.md)
 
-## 현재 상태 (2026-05-10)
+PITR was the single largest gap on the ADR-0040 commercial-parity
+checklist. This document covers the **phase 1** guide (API +
+webhook) plus the entry path to **phase 2** (reconciler dispatch).
 
-| 영역 | 상태 |
+## Current status (as of 2026-05-10)
+
+| Area | Status |
 |---|---|
-| AOF backup (생성) | ✅ GA (BgRewriteAOF, ADR-0016 + minio-go/GCS/Azure) |
-| RDB backup (생성) | ✅ GA |
-| ValkeyRestore.Spec.PointInTime API | ✅ GA (PR #54) |
-| Webhook validation (Source 3-type + PointInTime+RDB reject) | ✅ GA (PR #54) |
+| AOF backup (produce) | ✅ GA (BgRewriteAOF, ADR-0016 + minio-go / GCS / Azure) |
+| RDB backup (produce) | ✅ GA |
+| `ValkeyRestore.Spec.PointInTime` API | ✅ GA (#54) |
+| Webhook validation (Source 3-type + PointInTime+RDB reject) | ✅ GA (#54) |
 | **AOF replay-to-timestamp reconciler dispatch** | ❌ phase 2 |
-| 수동 PITR (operator 외부 도구 사용) | ✅ 가능 |
+| Manual PITR (operator-external tooling) | ✅ available |
 
-## Phase 1 사용법 — 전체 AOF replay (PointInTime nil)
+## Phase 1 usage — full AOF replay (`PointInTime` nil)
 
-가장 일반적인 backup 시점 전체 복원. PR #54 이전과 동일 동작:
+The most common case: restore everything in the backup. Behaviour
+matches pre-#54:
 
 ```yaml
 apiVersion: cache.keiailab.io/v1alpha1
@@ -30,16 +34,18 @@ spec:
     targetRef:
       name: s3-prod
       path: vk-prod/2026-05-10T00:00:00Z/dump.aof
-  restoreType: AOF   # backup 도 AOF 로 만든 경우
+  restoreType: AOF   # when the backup was also AOF
 ```
 
-reconciler 가 AOF 를 다운로드 → init container 가 valkey 데이터 디렉토리에
-배치 → STS 재시작 → valkey 가 AOF 전체 replay (booting 시 자동).
+The reconciler downloads the AOF → the init container places it
+into the Valkey data directory → the STS restarts → Valkey replays
+the full AOF on boot.
 
-## Phase 1 사용법 — PITR API (PointInTime 명시, dispatch 미구현)
+## Phase 1 usage — PITR API (PointInTime present, dispatch unimplemented)
 
-webhook 통과 + status 보존 만 GA. reconciler 가 *전체 AOF replay 와 동일 동작*
-(PointInTime 무시) — phase 2 까지 *fail-safe* 동작:
+The webhook accepts the spec and `status` is preserved. The
+reconciler currently behaves identically to "full AOF replay"
+(PointInTime ignored) — **fail-safe** behaviour until phase 2:
 
 ```yaml
 spec:
@@ -49,37 +55,37 @@ spec:
       name: s3-prod
       path: vk-prod/2026-05-10T00:00:00Z/dump.aof
   restoreType: AOF
-  pointInTime: "2026-05-10T14:30:00Z"   # 원하는 복원 시각
+  pointInTime: "2026-05-10T14:30:00Z"   # target recovery time
 ```
 
-**현재 동작**: webhook 가 invariants 검증 (RDB 면 reject). reconciler 는
-PointInTime 무시하고 전체 replay → AOF 의 더 이전 시점을 원하면 backup AOF 의
-*더 짧은* 버전을 사용. **phase 2 (별도 epic)** 가 본 시각까지만 replay 하는 dispatch 추가.
+**Today**: the webhook validates the invariants (rejects RDB + PointInTime). The reconciler ignores `PointInTime` and replays the whole AOF — for an earlier cut-off, supply a **shorter** AOF. **Phase 2 (separate epic)** adds the dispatch that truncates at this exact timestamp.
 
-## 수동 PITR (phase 2 대안)
+## Manual PITR (phase 2 workaround)
 
-phase 2 까지의 임시 운영 절차 — operator 외부 도구 사용:
+Operational procedure until phase 2 lands, using tools outside the
+operator:
 
-1. **AOF 다운로드**:
+1. **Download the AOF**:
    ```sh
    aws s3 cp s3://vk-prod-backups/2026-05-10T00:00:00Z/dump.aof ./dump.aof
    ```
 
-2. **AOF truncate** — 본 시각까지만 남기기 (Valkey AOF 형식 직접 truncate):
+2. **Truncate the AOF** to keep entries up to the target time
+   (direct edit of the Valkey AOF format):
    ```sh
-   # AOF entries 의 timestamp 추출 (TIMESTAMP-aware AOF 만 가능 — Valkey 8.0+
-   # `set aof-timestamp-enabled yes`).
+   # Extracts timestamps from AOF entries (works for TIMESTAMP-aware AOF
+   # only — Valkey 8.0+ with `set aof-timestamp-enabled yes`).
    valkey-aof-trim --until "2026-05-10T14:30:00Z" dump.aof > dump-truncated.aof
    ```
-   *주의*: `valkey-aof-trim` 은 외부 도구 또는 사용자 작성 스크립트. Valkey 공식
-   유틸은 9.x 에서 추가 예정.
+   **Note**: `valkey-aof-trim` is an external / user-written tool.
+   An official Valkey utility is planned for 9.x.
 
-3. **truncated AOF 업로드**:
+3. **Upload the truncated AOF**:
    ```sh
    aws s3 cp dump-truncated.aof s3://vk-prod-backups/pitr-2026-05-10T14:30:00Z/dump.aof
    ```
 
-4. **truncated AOF 로 ValkeyRestore**:
+4. **Restore with the truncated AOF**:
    ```yaml
    spec:
      source:
@@ -89,62 +95,63 @@ phase 2 까지의 임시 운영 절차 — operator 외부 도구 사용:
      restoreType: AOF
    ```
 
-phase 2 가 위 1-3 단계를 *operator 가 자동* 처리.
+Phase 2 makes steps 1–3 **automatic** inside the operator.
 
-## Phase 2 진입 조건 (별도 epic 후보)
+## Phase 2 entry conditions (separate epic candidate)
 
-본 가이드의 phase 2 dispatch 활성화 위해:
+To activate the dispatch in this guide:
 
-1. ~~**AOF timestamp parse 라이브러리**~~ → ✅ **PR #68** `internal/aoftime` 패키지 GA
-2. ~~**File-level helper for reconciler 통합**~~ → ✅ **PR #69** `TruncateAOFFile` GA
-3. ~~**Reconciler dispatch — download Job 의 cli 가 in-place truncate**~~ → ✅ **PR #70**
-   (DownloadJobParams.PITRCutoff + cli download `--pitr-cutoff` flag.
-   reconciler 가 PointInTime + RestoreType=AOF 시 자동 dispatch)
-4. **valkey-cli --pipe 통합** — 현재는 init container 가 cluster 부팅 시 AOF 자동 load
-   (Valkey 의 default `appendonly yes` 동작). `valkey-cli --pipe` 별도 통합은
-   *streaming replay* 가 필요한 케이스 (현재 init container 방식 충분).
-5. **PointInTime ≤ backup CompletedAt invariant** webhook (후속) — backup 시점
-   초과 PointInTime 은 의미적 모순 (없는 미래 데이터 요청).
-6. **rollback** — replay 중 실패 시 backup 시점으로 fallback (후속).
+1. ~~**AOF-timestamp parsing library**~~ → ✅ **#68** `internal/aoftime` package GA.
+2. ~~**File-level helper for reconciler integration**~~ → ✅ **#69** `TruncateAOFFile` GA.
+3. ~~**Reconciler dispatch — the cli in the download Job truncates in place**~~ → ✅ **#70** (`DownloadJobParams.PITRCutoff` + `cli download --pitr-cutoff`; the reconciler dispatches automatically when `PointInTime` is set and `RestoreType=AOF`).
+4. **`valkey-cli --pipe` integration** — today the init container loads the AOF at boot (Valkey's default `appendonly yes`). Separate `valkey-cli --pipe` integration is needed only for **streaming replay** scenarios; the init-container path is currently sufficient.
+5. **`PointInTime ≤ backup CompletedAt` webhook invariant** (follow-up) — a `PointInTime` after the backup completed is a semantic contradiction (asking for data that does not exist yet).
+6. **Rollback** (follow-up) — fall back to the backup point if the replay fails.
 
-**현재 상태 (PR #70 후)**: AOF restore + PointInTime 명시 시 reconciler 가 자동
-download → truncate → init container 가 truncated AOF 로 cluster 부팅. *완전
-자동 PITR 동작*. 남은 작업은 webhook invariant + rollback (운영 안전성).
+**Current status (after #70)**: with `restoreType: AOF` +
+`PointInTime`, the reconciler automatically downloads → truncates →
+the init container boots from the truncated AOF. **Fully automatic
+PITR** is operational. The remaining work is the webhook invariant
+and rollback (operational safety).
 
-## Recovery from Failed PITR (PR #72 rollback)
+## Recovery from a failed PITR (#72 rollback)
 
-PITR replay 실패 시 (예: AOF 가 손상됐거나 corrupt timestamp marker)
-init container CrashLoopBackOff. 운영자 수동 rollback 절차:
+A failed PITR replay (corrupted AOF, bad timestamp marker, …)
+leaves the init container in CrashLoopBackOff. Manual rollback:
 
-### 사전 조건
+### Precondition
 
-reconciler 가 download Job 호출 시 `--pitr-backup=/backup/dump.aof.original`
-명시 (PR #72) — 본 backup 파일이 staging PVC 에 존재.
+The reconciler invokes the download Job with
+`--pitr-backup=/backup/dump.aof.original` (#72). The backup file
+must be present on the staging PVC.
 
-### 자동 rollback (운영자 1-line)
+### Automatic rollback (one-line for the operator)
 
 ```sh
-# 1. staging PVC 에 접근하는 임시 pod 띄우기
+# 1. Bring up a helper pod with access to the staging PVC.
 kubectl run rollback-helper --rm -it --restart=Never \
   --image=ghcr.io/keiailab/valkey-operator:latest \
   --overrides='{"spec":{"containers":[{"name":"r","image":"ghcr.io/keiailab/valkey-operator:latest","command":["sh","-c","cp /backup/dump.aof.original /backup/dump.aof"],"volumeMounts":[{"name":"b","mountPath":"/backup"}]}],"volumes":[{"name":"b","persistentVolumeClaim":{"claimName":"<staging-pvc>"}}]}}'
 
-# 2. valkey STS 재시작 (init container 가 *전체* AOF replay)
+# 2. Restart the Valkey STS (the init container performs a full
+#    AOF replay).
 kubectl rollout restart sts/<cluster-name>
 ```
 
-### 자동화 (operator 측, 별도 epic)
+### Automation (operator side, separate epic)
 
-후속 작업 — operator 가:
-1. Status.Phase=Restoring + init container CrashLoopBackOff 감지
-2. backup 파일 존재 검증
-3. Status.Phase=PITRRollbackPending 으로 전이 (사용자 명시 승인 후 자동)
-4. 위 1-line 절차를 reconciler 가 자동 수행
+Follow-up — the operator will:
 
-본 자동화는 *destructive 동작 (PVC 데이터 덮어쓰기)* 이라 ADR + 사용자 명시
-승인 패턴 권장.
+1. Detect `Status.Phase=Restoring` + init-container CrashLoopBackOff.
+2. Verify the backup file exists.
+3. Transition to `Status.Phase=PITRRollbackPending` (automatic after
+   explicit user approval).
+4. Run the one-liner above from the reconciler.
 
-## PR #70 사용 예 (실제 동작)
+This automation is **destructive** (overwrites PVC data) and so
+requires an ADR plus explicit user approval.
+
+## #70 usage example (live behaviour)
 
 ```yaml
 apiVersion: cache.keiailab.io/v1alpha1
@@ -158,38 +165,43 @@ spec:
   pointInTime: "2026-05-10T14:30:00Z"
 ```
 
-내부 동작:
-1. handlePending: webhook (PR #54) 가 invariants 검증 → Mounting
-2. handleMounting: download Job 생성 with `--pitr-cutoff=2026-05-10T14:30:00Z`
-3. cli download (PR #70): S3 → /backup/dump.aof → in-place truncate to cutoff
-4. handleRestoring: 기존 init container path → cluster 부팅 시 truncated AOF replay
-5. Verifying → Completed
+Internal flow:
 
-## PR #68 사용 예 (Go 코드 통합)
+1. `handlePending`: webhook (#54) validates invariants → Mounting.
+2. `handleMounting`: create the download Job with
+   `--pitr-cutoff=2026-05-10T14:30:00Z`.
+3. `cli download` (#70): S3 → `/backup/dump.aof` → in-place
+   truncate to the cut-off.
+4. `handleRestoring`: existing init-container path → cluster boots
+   off the truncated AOF.
+5. Verifying → Completed.
+
+## #68 usage example (Go integration)
 
 ```go
 import "github.com/keiailab/valkey-operator/internal/aoftime"
 
 aofBytes, _ := os.ReadFile("dump.aof")
 if !aoftime.HasTimestamps(aofBytes) {
-    // PITR 불가 — 전체 replay 만 가능
+    // PITR not possible — only a full replay is supported.
     return errors.New("AOF lacks timestamps (set aof-timestamp-enabled yes for PITR)")
 }
 cutoff := time.Date(2026, 5, 10, 14, 30, 0, 0, time.UTC)
 offset := aoftime.TruncateOffset(aofBytes, cutoff)
 truncated := aofBytes[:offset]
-// truncated 를 valkey-cli --pipe 에 stream → cutoff 시각까지의 데이터만 복원
+// Stream `truncated` to `valkey-cli --pipe` → only entries up to
+// the cut-off are restored.
 ```
 
-## 후속 가이드
+## Related
 
-- runbook §3.3 Restore (재해 복구)
-- ADR-0015 (ValkeyRestore init container 패턴)
-- ADR-0016 (ValkeyBackupTarget 외부 저장)
-- PR #54 (PointInTime API + webhook)
+- runbook §3.3 — Restore (disaster recovery).
+- ADR-0015 — `ValkeyRestore` init-container pattern.
+- ADR-0016 — `ValkeyBackupTarget` external storage.
+- #54 — `PointInTime` API + webhook.
 
-## 참조
+## References
 
-- Valkey AOF spec: https://valkey.io/topics/persistence/
-- AOF timestamp-enabled (8.0+): `aof-timestamp-enabled` directive
-- 외부 도구: `redis-cli --pipe` (Valkey 호환)
+- Valkey AOF spec: <https://valkey.io/topics/persistence/>
+- AOF timestamp-enabled (8.0+): `aof-timestamp-enabled` directive.
+- External tooling: `redis-cli --pipe` (Valkey-compatible).

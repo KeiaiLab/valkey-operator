@@ -1,120 +1,133 @@
-# Post-Merge Cleanup — 운영자 가이드
+# Post-merge cleanup — operator guide
 
-PR squash-merge 후 *local branch + 머지 흔적* 정리 절차. PR #38-#64 시리즈
-운영 중 누적된 25 stale local branch 사례 발견 후 추가.
+> 한국어 버전: [post-merge-cleanup.ko.md](post-merge-cleanup.ko.md)
 
-## 문제
+How to clean up **local branches and merge residue** after a
+squash-merge. Added after the PR #38–#64 series accumulated 25
+stale local branches in our day-to-day.
 
-`gh pr merge --delete-branch` 는 **remote branch 만 삭제**. local branch 는
-*그대로 남아 누적*:
+## The problem
+
+`gh pr merge --delete-branch` **only deletes the remote branch**.
+Local branches stay behind and accumulate:
 
 ```sh
 $ git branch | wc -l
-27   # main + 26 stale (squash-merged 후 잔존)
+27   # main + 26 stale (squash-merged but still present)
 ```
 
-이는 다음 부작용:
-- `git branch` 출력 noise
-- IDE 의 branch picker 에 stale 항목
-- 동일 이름 재사용 시 confusion
+Side effects:
 
-## 자동 cleanup (권장)
+- Noisy `git branch` output.
+- Stale items in the IDE branch picker.
+- Confusion if the same branch name gets reused later.
 
-squash-merge 는 *new commit* 으로 main 에 통합하므로 `git branch --merged main`
-이 식별 못함. *origin 에 없는 local branch* 식별이 정확.
+## Automatic cleanup (recommended)
+
+Squash-merge produces a **new commit** on `main`, so
+`git branch --merged main` cannot identify the original feature
+branch. The correct heuristic is "**local branches with no remote
+counterpart**":
 
 ```fish
-# fish 사용 시:
+# fish
 git fetch -p
 git branch -r | sed 's|origin/||' | sort > /tmp/remote_branches.txt
 git branch | grep -v '^\*' | tr -d ' ' | sort > /tmp/local_branches.txt
-comm -23 /tmp/local_branches.txt /tmp/remote_branches.txt | grep -v '^main$' | xargs -r git branch -D
+comm -23 /tmp/local_branches.txt /tmp/remote_branches.txt \
+  | grep -v '^main$' | xargs -r git branch -D
 ```
 
 ```bash
-# bash 동일.
+# bash — identical
 ```
 
-## 통합 helper (commit-commands)
+## Bundled helper (commit-commands)
 
-`commit-commands:clean_gone` skill 이 이를 자동화:
+The `commit-commands:clean_gone` skill automates the above:
 
 ```sh
-# claude-code skill (project root 에서):
+# claude-code skill (run at the project root):
 /clean_gone
 ```
 
-`gh pr merge --delete-branch` 와 함께 사용 권장 흐름:
+Recommended workflow alongside `gh pr merge --delete-branch`:
 
-1. `git push` → PR 생성
-2. PR review + approve
-3. `gh pr merge --squash --delete-branch <PR#>` (remote cleanup)
-4. `git checkout main && git pull` (main 동기)
-5. `/clean_gone` 또는 위 fish snippet (local cleanup)
+1. `git push` → open the PR.
+2. PR review + approve.
+3. `gh pr merge --squash --delete-branch <PR#>` (remote cleanup).
+4. `git checkout main && git pull` (sync `main`).
+5. `/clean_gone` or the fish snippet above (local cleanup).
 
-## CI 에러 메일 troubleshooting
+## CI-failure-email troubleshooting
 
-### 증상
+### Symptom
 
-GitHub 에서 *동일 워크플로우 실패 메일이 반복적으로* 도착.
+Repeated GitHub **workflow-failure emails** for the same workflow.
 
-### 진단
+### Diagnosis
 
 ```sh
-# 모든 keiailab repo 의 최근 7일 failed runs
+# Recent 7-day failed runs across every keiailab repo
 for repo in valkey-operator mongodb-operator postgres-operator operator-commons; do
   echo "--- $repo ---"
   gh run list --status failure --created ">=$(date -d '-7 days' +%Y-%m-%d)" --limit 5 -R keiailab/$repo
 done
 ```
 
-빈 결과 = 신규 실패 부재 (=> 메일은 historical retry).
+Empty results = no new failures (the emails are historical retry).
 
-### Workflow 자체 부재 확인 (RFC-0002 정합)
+### Confirm workflow absence (RFC-0002 historical context)
 
 ```sh
 gh api repos/keiailab/<repo>/contents/.github/workflows
-# 404 = 정합 OK (workflow 부재)
+# 404 == no workflows
 ```
 
-본 4 repo 모두 RFC-0002 (GitHub Actions 영구 금지) 적용 완료 — workflow 부재.
-신규 실패 발생 부재. 메일은 GitHub notification system 의 retry 로 추정.
+> **Note (2026-05-12)**: this repo's workflows were temporarily
+> removed under RFC-0002, then **restored** under
+> [ADR-0045](../kb/adr/0045-restore-github-actions-for-oss-ci.md)
+> for OSS CI parity. Failure emails after that date are real
+> signals and should be investigated, not silenced.
 
-### Notification 정리
+### Quieting notifications
 
 GitHub web UI:
-- Profile → Settings → Notifications → Actions
-- "Send notifications for failed workflows only" 비활성 또는
-- repository 별 Watch 설정 변경
 
-## Local cleanup 예방
+- Profile → Settings → Notifications → Actions.
+- Turn on "Send notifications for failed workflows only", or
+- Adjust the per-repository Watch setting.
 
-매 PR cycle 마다:
+## Prevent local stragglers
+
+Every PR cycle:
 
 ```fish
-# PR merge 직후
+# Right after the PR is merged
 git checkout main
 git pull
-git branch -d <feature-branch-name>   # local cleanup 즉시
+git branch -d <feature-branch-name>   # immediate local cleanup
 ```
 
-또는 자동화 hook (lefthook):
+Or wire it up via a lefthook `post-merge` hook:
 
 ```yaml
-# lefthook.yml 의 post-merge hook
+# lefthook.yml
 post-merge:
   commands:
     cleanup_gone_branches:
       run: git fetch -p && git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -D
 ```
 
-## 본 가이드 작성 배경
+## Why this guide exists
 
-PR #65 (closure) 시점 25 개 stale local branch 식별 후 *재발 방지* 위해 작성.
-ADR-0042 commercial parity series 종료와 함께 *운영 hygiene* 측 closure.
+We identified 25 stale local branches at PR #65 closure and wrote
+this guide to **prevent recurrence**. The closure of ADR-0042
+(commercial parity series) is when we tightened operational hygiene
+as well.
 
-## 참조
+## References
 
-- RFC-0002: GitHub Actions 영구 금지 (글로벌 standards)
-- commit-commands:clean_gone skill
-- `~/.claude/CLAUDE.md` §2 (Non-Negotiables)
+- ADR-0045: GH Actions restoration (`docs/kb/adr/0045-restore-github-actions-for-oss-ci.md`)
+- `commit-commands:clean_gone` skill
+- Global standards: `~/.claude/CLAUDE.md` §2 (Non-Negotiables)
