@@ -1,37 +1,50 @@
 # Adopters of valkey-operator
 
-본 문서는 `keiailab/valkey-operator` 를 운영 환경 또는 평가 환경에서 사용하는 조직/프로젝트의 *공개* 목록입니다. 자가 등록을 환영합니다 — PR 로 row 를 추가해주세요.
+> 한국어 버전: [ADOPTERS.ko.md](ADOPTERS.ko.md)
 
-## Production Users
+This document is the **public** list of organizations and projects
+that run or evaluate `keiailab/valkey-operator`. Self-registration is
+welcome — open a PR adding a row.
 
-운영 환경에서 valkey-operator 를 *production-grade SLA* 로 사용하는 사용자.
+## Production users
 
-| 사용자 | 컴포넌트 | 사용 패턴 | 시작 버전 | 현재 버전 | 등재 일자 |
+Organizations running `valkey-operator` in production with a
+production-grade SLA.
+
+| User | Component | Usage pattern | First version | Current version | Listed |
 |---|---|---|---|---|---|
-| **argos-platform-data** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + Cluster sharded 3×1) | argos 의 캐시 / pub-sub 레이어. ValkeyCluster 6 pod, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted. | v1.0.0 | v1.0.3 | 2026-05-07 |
+| **argos-platform-data** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | Cache and pub/sub layer for argos. 6-pod ValkeyCluster, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted. | v1.0.0 | v1.0.3 | 2026-05-07 |
 
 ## Evaluators
 
-POC / 평가 / Bitnami redis-cluster 마이그레이션 검토 사용자.
+Proof-of-concept, evaluation, and Bitnami-redis-cluster migration
+candidates.
 
-| 사용자 | 단계 | 비고 |
+| User | Stage | Notes |
 |---|---|---|
-| _자가 등록 환영_ | — | PR 로 row 추가. Redis 8.2 → Valkey 9.0 RDB 호환성 제약 (ValkeyRestore docs 참조) |
+| _Self-registration welcome_ | — | Open a PR to add a row. Note the Redis 8.2 → Valkey 9.0 RDB compatibility limit described in the ValkeyRestore docs. |
 
 ## How to add yourself
 
-PR 을 열어 위 표에 한 row 추가:
+Open a PR that appends a row to one of the tables above:
 
 ```markdown
-| **<조직 / 프로젝트>** ([profile](<URL>)) | <컴포넌트 + 토폴로지> | <사용 패턴> | <시작 버전> | <현재 버전> | <등재 일자 YYYY-MM-DD> |
+| **<organization or project>** ([profile](<URL>)) | <component + topology> | <usage pattern> | <first version> | <current version> | <YYYY-MM-DD> |
 ```
 
-비공개 또는 익명 등재를 원하시면 SECURITY.md 의 보안 채널로 알려주시면 maintainer 가 *organization-anonymized* row 로 등재합니다.
+If you would rather be listed anonymously, reach out via the security
+contact in [SECURITY.md](SECURITY.md) and a maintainer will register
+an organization-anonymized row on your behalf.
 
-## CNCF Sandbox Reference
+## CNCF Sandbox reference
 
-본 ADOPTERS 목록은 CNCF graduation criteria 의 "≥1 public adopter" 요구사항을 충족하기 위한 공개 reference 로도 활용됩니다.
+This list also serves as the public reference for the CNCF graduation
+criterion "≥ 1 public adopter."
 
-## Bitnami redis-cluster Migration
+## Migrating from Bitnami redis-cluster
 
-Bitnami redis-cluster (Redis 7.x/8.x) 사용자가 Valkey 로 migration 검토 시 ROADMAP.md 의 *Phase B (RDB 호환성 / 대안 마이그레이션 경로)* 섹션 참조. 일부 Redis 8.2.x RDB 는 Valkey 9.0.4 직접 restore 불가 — `ValkeyRestore` 가 fail-fast 처리하므로 운영자가 무한 대기하지 않음.
+If you operate Bitnami `redis-cluster` (Redis 7.x / 8.x) and are
+evaluating Valkey, see `ROADMAP.md` → **Phase B (RDB compatibility
+and alternative migration paths)**. Some Redis 8.2.x RDB files cannot
+be restored directly into Valkey 9.0.4; `ValkeyRestore` fails fast in
+that case so operators never wait indefinitely on a silent error.

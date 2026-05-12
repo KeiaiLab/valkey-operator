@@ -1,38 +1,51 @@
 # Maintainers
 
-본 문서는 keiailab/valkey-operator의 의사결정 권한을 가진 메인테이너 명단을 관리합니다.
+> 한국어 버전: [MAINTAINERS.ko.md](MAINTAINERS.ko.md)
 
-## 현재 메인테이너
+This document tracks the maintainers who hold decision-making
+authority over `keiailab/valkey-operator`.
 
-| 이름/팀 | GitHub | 역할 | 담당 영역 |
+## Current maintainers
+
+| Name / team | GitHub | Role | Area |
 |---|---|---|---|
-| keiailab maintainers | [@keiailab/maintainers](https://github.com/orgs/keiailab/teams/maintainers) | Lead | 전체 |
+| keiailab maintainers | [@keiailab/maintainers](https://github.com/orgs/keiailab/teams/maintainers) | Lead | Everything |
 
-GitHub team `@keiailab/maintainers`이 본 프로젝트의 모든 영역에 대한 머지/승인 권한을 보유합니다. 개인 메인테이너 추가는 아래 절차에 따라 이뤄집니다.
+The GitHub team `@keiailab/maintainers` carries merge and approval
+authority for every area of the project. Adding an individual
+maintainer follows the procedure below.
 
-## 메인테이너 자격
+## Eligibility
 
-다음 조건을 6개월 이상 만족한 contributor를 메인테이너로 추천할 수 있습니다:
+A contributor may be nominated as a maintainer after sustaining the
+following for at least six months:
 
-- 머지된 PR ≥ 20건 (의미 있는 코드/문서 기여)
-- 리뷰한 PR ≥ 30건 (건설적 피드백 동반)
-- 본 프로젝트의 [GOVERNANCE.md](GOVERNANCE.md)와 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) 준수
-- 한 개 이상의 핵심 영역(controller, resource builder, restore/backup, cluster sharding, observability 등)에 깊은 이해
+- 20+ merged PRs of meaningful code or documentation
+- 30+ PR reviews with constructive feedback
+- Demonstrated compliance with [GOVERNANCE.md](GOVERNANCE.md) and
+  [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Deep understanding of at least one core area — controller, resource
+  builders, restore / backup, cluster sharding, observability, etc.
 
-## 추가 절차
+## Adding a maintainer
 
-1. 기존 메인테이너 또는 candidate 본인이 issue 또는 ADR 로 제안
-2. `@keiailab/maintainers` 팀의 lazy consensus (7일 코멘트 윈도우)
-3. 반대 없으면 GitHub team에 추가, MAINTAINERS.md 갱신 PR
+1. An existing maintainer (or the candidate themselves) opens an
+   issue or ADR proposing the addition.
+2. Lazy consensus from `@keiailab/maintainers` over a 7-day comment
+   window.
+3. If no objection, the contributor is added to the GitHub team and
+   `MAINTAINERS.md` is updated by a follow-up PR.
 
-## 비활성 메인테이너
+## Inactive maintainers
 
-연속 6개월간 활동이 없는 메인테이너는 emeritus로 이동합니다 (권한 회수, 명예 명단 유지). 복귀는 신규 추가 절차와 동일.
+A maintainer with no activity for six consecutive months is moved to
+emeritus status (permissions revoked, honorary listing retained). The
+return path is identical to the new-maintainer procedure.
 
-## 영역별 담당 (CODEOWNERS와 동기화)
+## Area coverage (synced with CODEOWNERS)
 
-`.github/CODEOWNERS`(있는 경우)를 참조하세요. 디렉토리별 자동 리뷰어가 할당됩니다.
+See `.github/CODEOWNERS` for the per-directory reviewer routing.
 
 ## Emeritus
 
-(아직 없음)
+_(none yet)_
