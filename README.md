@@ -152,7 +152,10 @@ commercial product:
 - **Reusable conventions** are shared across the sibling operators
   `mongodb-operator`, `postgres-operator`, and `operator-commons`.
 
-## Roadmap (qualitative, no calendar commitments)
+## Roadmap
+
+The roadmap below is qualitative — no calendar commitments. Progress
+is tracked by feature completion, not by quarter.
 
 Already shipped (alpha):
 
