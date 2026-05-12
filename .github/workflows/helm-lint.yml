@@ -1,0 +1,40 @@
+name: Helm chart lint
+
+on:
+  pull_request:
+    paths:
+      - 'charts/**'
+      - '.github/workflows/helm-lint.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v5
+        with:
+          version: latest
+      - uses: helm/chart-testing-action@v2.8.0
+      - name: Run ct lint
+        run: ct lint --target-branch=main --charts charts/valkey-operator
+      - name: Helm template smoke
+        # render INSIDE GITHUB_WORKSPACE so the kubeconform docker action (which
+        # only mounts GITHUB_WORKSPACE) can read the file.
+        run: helm template test charts/valkey-operator --debug > render.yaml
+      - name: kubeconform validate
+        # invoked via `run` rather than `uses: docker://…` because the action's
+        # `args:` input mishandles single-quoted URL templates — the quotes get
+        # baked into the path string ("first path segment cannot contain colon").
+        # bash quoting via `run:` resolves the escaping cleanly.
+        run: |
+          docker run --rm -v "$PWD":/workdir -w /workdir \
+            ghcr.io/yannh/kubeconform:latest \
+            -strict -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            render.yaml

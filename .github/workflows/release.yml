@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (must already exist, e.g. v1.4.21)"
+        required: true
+
+permissions:
+  contents: write       # gh release create
+  packages: write       # ghcr.io push
+  id-token: write       # cosign keyless (future)
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/keiailab/valkey-operator
+
+jobs:
+  preflight:
+    name: Chart.yaml ↔ tag parity
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.derive.outputs.version }}
+      tag: ${{ steps.derive.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - id: derive
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          TAG="${DISPATCH_TAG:-$REF_NAME}"
+          VERSION="${TAG#v}"
+          CHART_VER=$(grep '^version:' charts/valkey-operator/Chart.yaml | awk '{print $2}' | tr -d '"')
+          APP_VER=$(grep '^appVersion:' charts/valkey-operator/Chart.yaml | awk '{print $2}' | tr -d '"')
+          if [ "$CHART_VER" != "$VERSION" ]; then
+            echo "::error::Chart.yaml version=$CHART_VER does not match tag=$VERSION"; exit 1
+          fi
+          if [ "$APP_VER" != "$VERSION" ]; then
+            echo "::error::Chart.yaml appVersion=$APP_VER does not match tag=$VERSION"; exit 1
+          fi
+          echo "tag=$TAG"           >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "✓ tag=$TAG / version=$VERSION / appVersion=$APP_VER all aligned"
+
+  image:
+    name: Build & push multi-arch image
+    needs: preflight
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=${{ needs.preflight.outputs.version }}
+            type=raw,value=${{ needs.preflight.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}}
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  sbom:
+    name: SBOM (syft)
+    needs: [preflight, image]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}:${{ needs.preflight.outputs.version }}
+          format: spdx-json
+          output-file: valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+
+  notes:
+    name: Release notes (git-cliff)
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --strip all --tag ${{ needs.preflight.outputs.tag }} --unreleased
+        env:
+          OUTPUT: CHANGES.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: CHANGES.md
+
+  chart-tgz:
+    name: Package helm chart
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: azure/setup-helm@v5
+        with: { version: latest }
+      - run: |
+          mkdir -p out
+          helm package charts/valkey-operator -d out/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-tgz
+          path: out/valkey-operator-*.tgz
+
+  github-release:
+    name: Create GitHub Release
+    needs: [preflight, image, sbom, notes, chart-tgz]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: sbom,           path: assets }
+      - uses: actions/download-artifact@v8
+        with: { name: release-notes,  path: assets }
+      - uses: actions/download-artifact@v8
+        with: { name: chart-tgz,      path: assets }
+      - name: Determine prerelease flag
+        id: pre
+        env:
+          TAG: ${{ needs.preflight.outputs.tag }}
+        run: |
+          case "$TAG" in
+            *beta*|*rc*|*alpha*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)                   echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          name: ${{ needs.preflight.outputs.tag }}
+          body_path: assets/CHANGES.md
+          prerelease: ${{ steps.pre.outputs.prerelease == 'true' }}
+          files: |
+            assets/valkey-operator-${{ needs.preflight.outputs.version }}.tgz
+            assets/valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
