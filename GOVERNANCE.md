@@ -1,44 +1,70 @@
 # Governance
 
-본 문서는 keiailab/valkey-operator 프로젝트의 의사결정 절차를 정의합니다.
+> 한국어 버전: [GOVERNANCE.ko.md](GOVERNANCE.ko.md)
 
-## 원칙
+This document defines how decisions are made in
+`keiailab/valkey-operator`.
 
-1. **개방성**: 모든 의사결정은 공개 채널(GitHub issue/PR/RFC)에서 이뤄집니다.
-2. **최소 합의(Lazy Consensus)**: 일상적 변경은 반대 없으면 진행됩니다.
-3. **명시적 합의(Explicit Consensus)**: 아키텍처 변경, CRD 변경, 보안 모델 변경, 라이선스 변경은 RFC 후 메인테이너 **2/3 supermajority** 승인. 일반 RFC (단일 컴포넌트 / 도구 채택 / 정책 보강) 는 **simple majority (>50%)**. GOVERNANCE 자체 변경 (§ "본 문서 변경") 은 항상 2/3 supermajority.
-4. **공동 책임**: 메인테이너는 코드 품질, 사용자 안전, 커뮤니티 건강에 대해 공동 책임을 집니다.
+## Principles
 
-## 의사결정 분류
+1. **Openness.** All decisions happen on public channels — GitHub
+   issues, pull requests, and RFCs.
+2. **Lazy consensus.** Day-to-day changes ship when no one objects.
+3. **Explicit consensus.** Architecture changes, CRD changes,
+   security-model changes, and license changes require an RFC followed
+   by a **2/3 supermajority** of maintainers. Ordinary RFCs (single
+   component, tool adoption, policy reinforcement) require a **simple
+   majority** (>50%). Changes to this `GOVERNANCE.md` always require a
+   2/3 supermajority.
+4. **Shared responsibility.** Maintainers are jointly responsible for
+   code quality, user safety, and community health.
 
-### 일상 변경 (Lazy Consensus)
-- 버그 픽스, 문서 개선, 테스트 추가, 의존성 minor/patch 업그레이드, 리팩터링(공개 API 무변경)
-- 절차: PR → 1명 이상 메인테이너 LGTM → 머지
-- 시한: 별도 코멘트 윈도우 없음 (로컬 게이트 통과 시 즉시 머지 가능 — RFC-0002 에 따라 GitHub Actions 미사용, pre-commit/pre-push hook + Makefile 로 검증)
+## Decision classification
 
-### 중간 변경 (Explicit Consensus)
-- 새 CRD 필드 추가, 새 reconciler, 의존성 major 업그레이드, 공개 API 변경
-- 절차: 이슈로 제안 → 7일 코멘트 윈도우 → 메인테이너 다수 LGTM → 머지
-- 거부 1건이 있을 시 메인테이너 회의에서 토론
+### Routine (lazy consensus)
 
-### 아키텍처 변경 (RFC 필수)
-- 새 컴포넌트 도입, 보안 모델 변경, 라이선스 변경, 호환성 깨는 변경
-- 절차:
-  1. `docs/kb/adr/NNNN-title.md`에 ADR 또는 RFC 제출
-  2. 14일 코멘트 윈도우
-  3. 메인테이너 2/3 이상 찬성
-  4. ADR/RFC Status: `Draft → Accepted` 후 구현 PR 진입
+- Bug fixes, doc improvements, new tests, minor/patch dependency
+  bumps, refactors with no public API change
+- Process: PR → at least one maintainer LGTM → merge
+- Comment window: none. Once local gates pass, the PR can merge
+  immediately (per RFC-0002 we do not rely on GitHub Actions for the
+  gates; pre-commit/pre-push hooks plus the Makefile are the
+  enforcement points).
 
-## 보안 결정
+### Medium (explicit consensus)
 
-CVE 보고, 시크릿/인증 모델 변경은 [SECURITY.md](SECURITY.md) 절차에 따라 비공개 채널에서 우선 처리한 뒤, 패치 릴리스 후 공개 합의를 거칩니다.
+- New CRD fields, new reconcilers, major dependency upgrades,
+  changes to the public API
+- Process: open an issue proposing the change → 7-day comment window
+  → maintainer majority LGTM → merge
+- A single objection triggers a maintainer meeting to debate.
 
-## 릴리스 결정
+### Architectural (RFC required)
 
-릴리스 분기 / 버전 bump 는 메인테이너 1 인이 lazy consensus 로 진행 가능. 단 LTS 라인 신설 / EOL 선언 은 explicit consensus 필수.
+- Introducing a new component, changing the security model, changing
+  the license, breaking backward compatibility
+- Process:
+  1. Submit an ADR or RFC at `docs/kb/adr/NNNN-title.md`
+  2. 14-day comment window
+  3. 2/3 maintainer approval
+  4. Move ADR/RFC `Status` from `Draft` to `Accepted`, then open the
+     implementation PR
 
-## 변경 이력
+## Security decisions
+
+CVE reports and changes to the secrets / auth model are handled first
+via the private channels in [SECURITY.md](SECURITY.md). Public
+consensus follows once a patch release ships.
+
+## Release decisions
+
+A single maintainer may cut a release branch or bump a version under
+lazy consensus. Creating a new LTS line or declaring End-of-Life on
+an existing one always requires explicit consensus.
+
+## Change history
 
 | Date | Change | Refs |
 |---|---|---|
-| 2026-05-07 | 본 문서 신설 — 3-repo (mongodb / postgresql / valkey) 거버넌스 자산 정합 | INC-2026-05-07 |
+| 2026-05-07 | Document created — 3-repo (mongodb / postgresql / valkey) governance asset alignment | INC-2026-05-07 |
+| 2026-05-12 | English becomes canonical; Korean preserved as `GOVERNANCE.ko.md` | i18n PR-K |
