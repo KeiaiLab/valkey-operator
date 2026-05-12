@@ -301,9 +301,3 @@ podDisruptionBudget:
   minAvailable: 1
   # -- Maximum unavailable pods
   maxUnavailable: ""
-
-# Priority class configuration
-priorityClassName: ""
-
-# Topology spread constraints
-topologySpreadConstraints: []
