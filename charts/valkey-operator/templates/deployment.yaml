@@ -3,7 +3,10 @@ kind: Deployment
 metadata:
   name: {{ include "valkey-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  annotations:
+    email: {{ .Values.ownership.email | default "security@keiailab.com" | quote }}
   labels:
+    owner: {{ .Values.ownership.owner | default "keiailab" | quote }}
     {{- include "valkey-operator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}

@@ -59,12 +59,6 @@ jobs:
             > /tmp/rendered/all-features.yaml
 
       - uses: stackrox/kube-linter-action@87802a2f4e01abebb3ee3c67a3002fea71f6eae5 # v1.0.7
-        # Informational for now — existing chart has known violations
-        # (dangling-service for the headless service, default-service-account
-        # on system Pods, etc.). Findings still upload to GitHub
-        # code-scanning via SARIF so they are visible and trackable.
-        # Flip to a hard failure after the chart cleanup PRs land.
-        continue-on-error: true
         with:
           directory: /tmp/rendered
           config: .github/kube-linter-config.yaml
