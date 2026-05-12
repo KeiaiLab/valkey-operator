@@ -9,7 +9,7 @@ valkey-operator 에 기여해 주셔서 감사합니다. 본 문서는 PR 절차
 
 | 도구 | 최소 버전 | 비고 |
 |---|---|---|
-| Go | 1.25 | `go.mod` 와 일치 |
+| Go | 1.26 | `go.mod` 와 일치 |
 | Docker | 24+ | buildx 기본 빌더 사용 |
 | kind | 0.27+ | 로컬 e2e |
 | kubectl | 1.34+ | k3s/kind 모두 지원 |
