@@ -14,10 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-*/
-
 // Package valkey — operator 가 in-process 로 valkey 인스턴스에 접속해 cluster
 // init / replication / health 를 제어하는 client 래퍼. mongodb-operator 의
 // internal/mongodb/client.go 패턴을 valkey 도메인에 맞게 차용.

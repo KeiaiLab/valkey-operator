@@ -14,10 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-*/
-
 // 순수함수 단위테스트 — Reconcile 통합 path 와 무관하게 알고리즘 회귀를 차단한다.
 // 외부 인프라 (envtest / Valkey 컨테이너) 불필요.
 package controller

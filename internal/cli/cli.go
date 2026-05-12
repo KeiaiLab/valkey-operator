@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package cli — operator binary 의 sub-command 분기 (ADR-0023).
-flag 표준 라이브러리만 사용. cobra 등 외부 의존성 없음.
-*/
-
+// Package cli — operator binary 의 sub-command 분기 (ADR-0023).
+// flag 표준 라이브러리만 사용. cobra 등 외부 의존성 없음.
 package cli
 
 import (

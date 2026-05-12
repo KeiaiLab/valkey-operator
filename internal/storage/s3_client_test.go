@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-S3Client builder + parseEndpoint 단위 테스트. ADR-0022.
-*/
-
+// S3Client builder + parseEndpoint 단위 테스트. ADR-0022.
 package storage
 
 import (

@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-ValkeyBackup TTL + finalizer + cleanup 단위 테스트.
-*/
-
+// ValkeyBackup TTL + finalizer + cleanup 단위 테스트.
 package controller
 
 import (

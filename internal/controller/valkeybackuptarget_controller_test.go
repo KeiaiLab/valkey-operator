@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-ValkeyBackupTarget verifyCredentials + Reconcile 단위 테스트 — fake client.
-envtest 의존 없음. ADR-0016.
-*/
-
+// ValkeyBackupTarget verifyCredentials + Reconcile 단위 테스트 — fake client.
+// envtest 의존 없음. ADR-0016.
 package controller
 
 import (

@@ -14,14 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package observability — OTEL tracer provider setup. ADR-0025.
-
-Optional — OTEL_EXPORTER_OTLP_ENDPOINT env 부재 시 noop tracer.
-*/
-
+// Package observability — OTEL tracer provider setup. ADR-0025.
+//
+// Optional — OTEL_EXPORTER_OTLP_ENDPOINT env 부재 시 noop tracer.
 package observability
 
 import (

@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,27 +17,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build e2e
-// +build e2e
-
-/*
-Copyright 2026 Keiailab.
-
-Version upgrade reconcile 회귀 가드 (ROADMAP P0 차단요인 2 영구 영구화).
-
-배경:
-- Phase B PoC (2026-05-07) 발견 — `spec.version.version` patch 가 STS template
-  image 로 propagate 되지 않는 의심 (가설 A: server-side merge 의 immutable
-  field 거부, 가설 B: webhook idempotency 누설, 가설 C: STS rolling update
-  partition 보존).
-- iteration 7 진단 (2026-05-07): fresh 인스턴스의 8.1.6 → 9.0.4 patch 시나리오
-  에서는 *재현 안됨*. STS image propagate + Pod rotation 모두 정상.
-- envtest 의 fake client 는 server-side merge 거부 행동을 모사하지 못함 — 본
-  e2e (real Kind API server) 가 정확한 회귀 가드.
-
-본 파일은 별도 Describe 로 e2e_test.go / failover_test.go 와 독립 실행 가능.
-*/
-
+// Version upgrade reconcile 회귀 가드 (ROADMAP P0 차단요인 2 영구 영구화).
+//
+// 배경:
+//   - Phase B PoC (2026-05-07) 발견 — `spec.version.version` patch 가 STS template
+//     image 로 propagate 되지 않는 의심 (가설 A: server-side merge 의 immutable
+//     field 거부, 가설 B: webhook idempotency 누설, 가설 C: STS rolling update
+//     partition 보존).
+//   - iteration 7 진단 (2026-05-07): fresh 인스턴스의 8.1.6 → 9.0.4 patch 시나리오
+//     에서는 *재현 안됨*. STS image propagate + Pod rotation 모두 정상.
+//   - envtest 의 fake client 는 server-side merge 거부 행동을 모사하지 못함 — 본
+//     e2e (real Kind API server) 가 정확한 회귀 가드.
+//
+// 본 파일은 별도 Describe 로 e2e_test.go / failover_test.go 와 독립 실행 가능.
 package e2e
 
 import (

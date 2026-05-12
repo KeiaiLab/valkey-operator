@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-ValkeyBackup phase 전이 단위테스트 — Reconcile() 직접 호출.
-*/
-
+// ValkeyBackup phase 전이 단위테스트 — Reconcile() 직접 호출.
 package controller
 
 import (

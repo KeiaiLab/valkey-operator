@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,21 +17,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build e2e
-// +build e2e
-
-/*
-Copyright 2026 Keiailab.
-
-Replication mode 자동 failover e2e 시나리오 (ADR-0017).
-
-전제:
-- e2e_test.go 의 BeforeAll 가 operator 배포 + cert-manager 활성화.
-- kind cluster 가 setup-test-e2e 로 생성됨.
-
-본 파일은 별도 Describe 로 e2e_test.go 와 독립 실행 가능.
-*/
-
+// Replication mode 자동 failover e2e 시나리오 (ADR-0017).
+//
+// 전제:
+// - e2e_test.go 의 BeforeAll 가 operator 배포 + cert-manager 활성화.
+// - kind cluster 가 setup-test-e2e 로 생성됨.
+//
+// 본 파일은 별도 Describe 로 e2e_test.go 와 독립 실행 가능.
 package e2e
 
 import (

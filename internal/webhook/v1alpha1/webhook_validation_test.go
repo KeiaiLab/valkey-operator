@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-직접 호출 단위테스트 — Ginkgo BDD 의 ValkeyCluster Webhook describe 와 별도.
-함수 단위 검증 으로 빠른 실행 + 명확한 실패 위치.
-*/
-
+// 직접 호출 단위테스트 — Ginkgo BDD 의 ValkeyCluster Webhook describe 와 별도.
+// 함수 단위 검증 으로 빠른 실행 + 명확한 실패 위치.
 package v1alpha1
 
 import (

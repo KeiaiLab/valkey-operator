@@ -1,3 +1,6 @@
+//go:build chaos
+// +build chaos
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,24 +17,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build chaos
-// +build chaos
-
-/*
-Copyright 2026 Keiailab.
-
-4 chaos 시나리오 — ADR-0041 §Action Items AI-002.
-
-각 scenario:
-  1. valkey CR 이미 healthy 상태 가정 (BeforeSuite 에서 배포).
-  2. chaos CR 적용 → 일정 시간 대기.
-  3. chaos CR 삭제.
-  4. cluster 회복 검증 (cluster_state=ok, slots=16384, ready_replicas 충족).
-
-본 시나리오들은 *비결정론적 장애* 회복 능력을 검증 — production SEV-1 의 다수가
-이런 패턴 (ADR-0040 §gap #4).
-*/
-
+// 4 chaos 시나리오 — ADR-0041 §Action Items AI-002.
+//
+// 각 scenario:
+//  1. valkey CR 이미 healthy 상태 가정 (BeforeSuite 에서 배포).
+//  2. chaos CR 적용 → 일정 시간 대기.
+//  3. chaos CR 삭제.
+//  4. cluster 회복 검증 (cluster_state=ok, slots=16384, ready_replicas 충족).
+//
+// 본 시나리오들은 *비결정론적 장애* 회복 능력을 검증 — production SEV-1 의 다수가
+// 이런 패턴 (ADR-0040 §gap #4).
 package chaos
 
 import (

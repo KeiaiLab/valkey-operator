@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-isPaused 헬퍼 단위 테스트 (PausedAnnotation 인식). ADR-0015.
-*/
-
+// isPaused 헬퍼 단위 테스트 (PausedAnnotation 인식). ADR-0015.
 package controller
 
 import (

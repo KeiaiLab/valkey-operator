@@ -14,15 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Download Job 빌더 — operator image 의 `download` sub-command 호출하여
-외부 저장 (S3) 의 RDB 를 PVC 로 다운로드. ADR-0023 의 reverse 패턴.
-
-ValkeyRestore Mounting phase 가 Source.TargetRef 시 본 빌더로 Job 생성.
-*/
-
+// Download Job 빌더 — operator image 의 `download` sub-command 호출하여
+// 외부 저장 (S3) 의 RDB 를 PVC 로 다운로드. ADR-0023 의 reverse 패턴.
+//
+// ValkeyRestore Mounting phase 가 Source.TargetRef 시 본 빌더로 Job 생성.
 package resources
 
 import (

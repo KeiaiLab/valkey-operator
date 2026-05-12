@@ -14,16 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package storage — Azure Blob Storage wrapper
-(github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4).
-
-ADR-0016 + ADR-0040 §gap #2. SDK 는 Microsoft 공식. 라이선스 MIT. sonatype-guide
-PURL ecosystem 미수록 (verifier gap, Microsoft 공식 source 직접 검증).
-*/
-
+// Package storage — Azure Blob Storage wrapper
+// (github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4).
+//
+// ADR-0016 + ADR-0040 §gap #2. SDK 는 Microsoft 공식. 라이선스 MIT. sonatype-guide
+// PURL ecosystem 미수록 (verifier gap, Microsoft 공식 source 직접 검증).
 package storage
 
 import (

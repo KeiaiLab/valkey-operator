@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-CLI sub-command (upload / download) 단위 테스트.
-*/
-
+// CLI sub-command (upload / download) 단위 테스트.
 package cli
 
 import (

@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-ValkeyRestore Reconcile + phase 전이 단위 테스트 — fake client.
-ADR-0015. Source.PVC + Standalone Valkey 만 첫 commit 범위.
-*/
-
+// ValkeyRestore Reconcile + phase 전이 단위 테스트 — fake client.
+// ADR-0015. Source.PVC + Standalone Valkey 만 첫 commit 범위.
 package controller
 
 import (

@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Upload Job 빌더 단위 테스트.
-*/
-
+// Upload Job 빌더 단위 테스트.
 package resources
 
 import (

@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,17 +17,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build e2e
-// +build e2e
-
-/*
-Copyright 2026 Keiailab.
-
-ValkeyBackup + ValkeyRestore (Standalone PVC) e2e 시나리오.
-
-Track A 검증: backup → 데이터 변경 → restore → 원래 데이터 복원 확인.
-*/
-
+// ValkeyBackup + ValkeyRestore (Standalone PVC) e2e 시나리오.
+//
+// Track A 검증: backup → 데이터 변경 → restore → 원래 데이터 복원 확인.
 package e2e
 
 import (

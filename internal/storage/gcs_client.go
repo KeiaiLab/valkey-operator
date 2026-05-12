@@ -14,15 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package storage — GCS object storage wrapper (cloud.google.com/go/storage v1.62.1).
-
-ADR-0016 + ADR-0040 §gap #2. sonatype-guide 검증 (2026-05-10): Apache-2.0,
-vulnerabilities 0, malicious 0, not EOL.
-*/
-
+// Package storage — GCS object storage wrapper (cloud.google.com/go/storage v1.62.1).
+//
+// ADR-0016 + ADR-0040 §gap #2. sonatype-guide 검증 (2026-05-10): Apache-2.0,
+// vulnerabilities 0, malicious 0, not EOL.
 package storage
 
 import (

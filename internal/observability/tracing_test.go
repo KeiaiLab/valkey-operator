@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-OTEL tracer provider 단위 테스트. ADR-0025.
-*/
-
+// OTEL tracer provider 단위 테스트. ADR-0025.
 package observability
 
 import (
