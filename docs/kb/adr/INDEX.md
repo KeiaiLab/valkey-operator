@@ -54,6 +54,7 @@
 | [0043](0043-cloudpirates-valkey-compatibility.md) | CloudPirates valkey 0.20.2 호환 정책 — data-plane knobs + 안전한 비채택 경계 | Accepted | 2026-05-12 |
 | [0044](0044-artifacthub-signed-official-trust-badges.md) | Artifact Hub trust badges — Signed mandatory, Official external review | Accepted | 2026-05-12 |
 | [0045](0045-restore-github-actions-for-oss-ci.md) | Restore GitHub Actions workflows for OSS CI (scoped deviation from RFC-0002) | Accepted | 2026-05-12 |
+| [0046](0046-slsa3-cosign-supply-chain.md) | SLSA-3 provenance + cosign keyless signing for release artifacts (image + chart + SBOM) | Accepted | 2026-05-12 |
 
 ## 작성 가이드
 
