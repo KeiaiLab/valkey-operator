@@ -38,6 +38,15 @@ podAnnotations: {}
 # -- Additional labels for the operator deployment
 podLabels: {}
 
+# -- Ownership metadata applied to the operator Deployment.
+# `email` populates the `email` annotation (kube-linter
+# `required-annotation-email` check); `owner` populates the
+# `owner` label (`required-label-owner` check). Override per
+# tenant in multi-team clusters.
+ownership:
+  email: security@keiailab.com
+  owner: keiailab
+
 # Pod security context
 podSecurityContext:
   runAsNonRoot: true
