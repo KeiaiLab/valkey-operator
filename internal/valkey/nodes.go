@@ -130,6 +130,12 @@ func parseSlotToken(s string) (SlotRange, bool) {
 		if errA != nil || errB != nil {
 			return SlotRange{}, false
 		}
+		// Reject malformed ranges where Start > End. Valkey itself
+		// should never emit these, but the fuzz suite confirmed the
+		// parser previously accepted "2-0" as a valid range.
+		if a > b {
+			return SlotRange{}, false
+		}
 		return SlotRange{Start: a, End: b}, true
 	}
 	n, err := strconv.Atoi(s)
