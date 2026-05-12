@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -71,24 +72,26 @@ func applyService(ctx context.Context, c client.Client, scheme *runtime.Scheme, 
 // applyStatefulSet — preserveReplicas 는 ScalePolicy.Deliberate=false 가드 또는
 // HPA 적용 중 spec.Replicas 보존을 위함.
 func applyStatefulSet(ctx context.Context, c client.Client, scheme *runtime.Scheme, owner client.Object, desired *appsv1.StatefulSet, preserveReplicas bool) error {
-	target := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: desired.Name, Namespace: desired.Namespace}}
-	_, err := controllerutil.CreateOrUpdate(ctx, c, target, func() error {
-		target.Labels = desired.Labels
-		target.Annotations = desired.Annotations
-		if target.CreationTimestamp.IsZero() {
-			target.Spec = desired.Spec
-		} else {
-			if !preserveReplicas {
-				target.Spec.Replicas = desired.Spec.Replicas
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		target := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: desired.Name, Namespace: desired.Namespace}}
+		_, err := controllerutil.CreateOrUpdate(ctx, c, target, func() error {
+			target.Labels = desired.Labels
+			target.Annotations = desired.Annotations
+			if target.CreationTimestamp.IsZero() {
+				target.Spec = desired.Spec
+			} else {
+				if !preserveReplicas {
+					target.Spec.Replicas = desired.Spec.Replicas
+				}
+				target.Spec.Template = desired.Spec.Template
+				target.Spec.UpdateStrategy = desired.Spec.UpdateStrategy
+				target.Spec.MinReadySeconds = desired.Spec.MinReadySeconds
+				target.Spec.PersistentVolumeClaimRetentionPolicy = desired.Spec.PersistentVolumeClaimRetentionPolicy
 			}
-			target.Spec.Template = desired.Spec.Template
-			target.Spec.UpdateStrategy = desired.Spec.UpdateStrategy
-			target.Spec.MinReadySeconds = desired.Spec.MinReadySeconds
-			target.Spec.PersistentVolumeClaimRetentionPolicy = desired.Spec.PersistentVolumeClaimRetentionPolicy
-		}
-		return controllerutil.SetControllerReference(owner, target, scheme)
+			return controllerutil.SetControllerReference(owner, target, scheme)
+		})
+		return err
 	})
-	return err
 }
 
 func applyNetworkPolicy(ctx context.Context, c client.Client, scheme *runtime.Scheme, owner client.Object, desired *networkingv1.NetworkPolicy) error {
