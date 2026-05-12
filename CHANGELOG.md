@@ -8,6 +8,21 @@
 
 ## [Unreleased]
 
+## [1.0.12] - 2026-05-12
+
+### Changed
+
+- Publish a clean Artifact Hub refresh release after the pre-existing
+  `v1.0.11` tag was found to point at an incomplete release commit.
+- Refresh the published chart metadata to advertise the Alpine 3.23 Valkey
+  runtime image and operator image tag `1.0.12`.
+- Keep the chart README and Artifact Hub visible metadata in English.
+
+### Fixed
+
+- Remove the prohibited GitHub Actions workflow files that were introduced
+  before the final release commit.
+
 ## [1.0.11] - 2026-05-12
 
 ### Changed

@@ -2,8 +2,8 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-version: 1.0.11
-appVersion: "1.0.11"
+version: 1.0.12
+appVersion: "1.0.12"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -116,13 +116,13 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:1.0.11
+      image: ghcr.io/keiailab/valkey-operator:1.0.12
     - name: valkey
       image: docker.io/valkey/valkey:9.0.4-alpine3.23
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
     - kind: fixed
-      description: Refresh Artifact Hub metadata with the Alpine 3.23 Valkey runtime image and chart release 1.0.11.
+      description: Refresh Artifact Hub metadata with the Alpine 3.23 Valkey runtime image and chart release 1.0.12.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
