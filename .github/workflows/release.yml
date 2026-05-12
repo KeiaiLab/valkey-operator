@@ -12,7 +12,8 @@ on:
 permissions:
   contents: write       # gh release create
   packages: write       # ghcr.io push
-  id-token: write       # cosign keyless (future)
+  id-token: write       # cosign keyless + SLSA-3 provenance OIDC
+  attestations: write   # GitHub-native artifact attestations (defense in depth)
 
 concurrency:
   group: release-${{ github.ref }}
@@ -58,6 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.push.outputs.digest }}
+      image: ${{ env.IMAGE }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -90,20 +92,76 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  sbom:
-    name: SBOM (syft)
+  sign-image:
+    name: Sign image (cosign keyless)
     needs: [preflight, image]
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      id-token: write     # OIDC token for keyless signing
+    steps:
+      - uses: sigstore/cosign-installer@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: cosign sign image (digest-pinned)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          IMAGE_REF: ${{ needs.image.outputs.image }}@${{ needs.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          echo "Signing $IMAGE_REF"
+          cosign sign --yes "$IMAGE_REF"
+
+  provenance:
+    # SLSA-3 provenance attached to the GHCR image via slsa-github-generator.
+    # The reusable workflow runs in an isolated builder + writes a non-falsifiable
+    # provenance statement signed by the GitHub OIDC identity.
+    needs: [preflight, image]
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ghcr.io/keiailab/valkey-operator
+      digest: ${{ needs.image.outputs.digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  sbom:
+    name: SBOM (syft) + signature
+    needs: [preflight, image]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write     # cosign keyless sign-blob
     steps:
       - uses: anchore/sbom-action@v0
         with:
           image: ${{ env.IMAGE }}:${{ needs.preflight.outputs.version }}
           format: spdx-json
           output-file: valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+      - uses: sigstore/cosign-installer@v3
+      - name: cosign sign-blob (SBOM)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          SBOM_FILE: valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --output-signature   "${SBOM_FILE}.sig" \
+            --output-certificate "${SBOM_FILE}.pem" \
+            "${SBOM_FILE}"
       - uses: actions/upload-artifact@v7
         with:
           name: sbom
-          path: valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+          path: |
+            valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+            valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json.sig
+            valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json.pem
 
   notes:
     name: Release notes (git-cliff)
@@ -126,26 +184,44 @@ jobs:
           path: CHANGES.md
 
   chart-tgz:
-    name: Package helm chart
+    name: Package & sign helm chart
     needs: preflight
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write     # cosign keyless sign-blob
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: azure/setup-helm@v5
         with: { version: latest }
-      - run: |
+      - name: helm package
+        run: |
           mkdir -p out
           helm package charts/valkey-operator -d out/
+      - uses: sigstore/cosign-installer@v3
+      - name: cosign sign-blob (chart .tgz)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          CHART_TGZ="out/valkey-operator-${VERSION}.tgz"
+          cosign sign-blob --yes \
+            --output-signature   "${CHART_TGZ}.sig" \
+            --output-certificate "${CHART_TGZ}.pem" \
+            "${CHART_TGZ}"
       - uses: actions/upload-artifact@v7
         with:
           name: chart-tgz
-          path: out/valkey-operator-*.tgz
+          path: |
+            out/valkey-operator-*.tgz
+            out/valkey-operator-*.tgz.sig
+            out/valkey-operator-*.tgz.pem
 
   github-release:
     name: Create GitHub Release
-    needs: [preflight, image, sbom, notes, chart-tgz]
+    needs: [preflight, image, sign-image, provenance, sbom, notes, chart-tgz]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -171,4 +247,8 @@ jobs:
           prerelease: ${{ steps.pre.outputs.prerelease == 'true' }}
           files: |
             assets/valkey-operator-${{ needs.preflight.outputs.version }}.tgz
+            assets/valkey-operator-${{ needs.preflight.outputs.version }}.tgz.sig
+            assets/valkey-operator-${{ needs.preflight.outputs.version }}.tgz.pem
             assets/valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
+            assets/valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json.sig
+            assets/valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json.pem
