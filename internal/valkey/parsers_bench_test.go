@@ -1,3 +1,19 @@
+/*
+Copyright 2026 Keiailab.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 // 핫 path parser 의 microbenchmark — performance 회귀 차단.
 // 본 parser 들은 매 reconcile / 매 health check 시점 호출 — 큰 cluster (100+ shards)
 // 에서 parseClusterNodes 가 GC pressure 의 주범이 되면 reconcile loop 지연 →
