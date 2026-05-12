@@ -8,6 +8,85 @@
 
 ## [Unreleased]
 
+### Added
+
+- ADR-0045: Restore GitHub Actions workflows for OSS CI (scoped
+  deviation from RFC-0002) (#89).
+- ADR-0046: SLSA-3 provenance + cosign keyless signing for release
+  artifacts — image + chart + SBOM (#92).
+- `.github/FUNDING.yml` — GitHub Sponsors disclosure (#91).
+- `.github/workflows/scorecard.yml` — weekly OpenSSF Scorecard
+  analysis + SARIF upload (#94).
+- `.github/workflows/dependency-review.yml` — block PRs that bring
+  in dependencies with High+ CVEs or disallowed licenses (#94).
+- `.github/workflows/codeql.yml` — CodeQL Go SAST with the
+  `security-extended` query suite (#99).
+- `.github/workflows/dco.yml` — server-side DCO sign-off check
+  mirroring the local lefthook commit-msg hook (#99).
+- `.github/ISSUE_TEMPLATE/config.yml` — disable blank issues and
+  expose Security Advisory / Discussions / Runbook contact links
+  (#96).
+- English README, CONTRIBUTING, SECURITY, GOVERNANCE, MAINTAINERS,
+  ADOPTERS as the canonical docs; Korean originals preserved as
+  `.ko.md` siblings (#93, #97, #98).
+- README "Known limitations" section to keep the SECURITY.md
+  cross-link valid (#93 follow-up).
+- `.editorconfig` covering Go (tabs), YAML / JSON / Markdown
+  (2-space, trim policies), Makefile (mandatory tabs), and shell
+  scripts.
+
+### Changed
+
+- Pin every GitHub Actions reference across all eight workflows to a
+  commit SHA with a trailing version comment, satisfying the OpenSSF
+  Scorecard `Pinned-Dependencies` check (#95).
+- `setup-go check-latest: true` and `toolchain go1.26.3` in `go.mod`
+  so the stdlib CVE fixes (16 advisories in 1.26.2 / 1.26.3) are
+  applied to every CI run (#92).
+- `security-scan.yml` now runs on every PR rather than only when
+  the diff touches go.mod / Dockerfile — security scans must never
+  be skipped because the diff is elsewhere (#92).
+- Branch protection on `main` enforces seven required status checks
+  (golangci-lint, unit + envtest, build, govulncheck, trivy-fs,
+  trivy-image, Review dependencies), strict mode, linear history,
+  conversation resolution, force-push and deletion blocked,
+  enforce-admins on.
+- Repository security toggles: Dependency graph, Automated security
+  fixes, Secret scanning, Secret-scanning push protection all
+  enabled.
+- README Go badge bumped from 1.25+ to 1.26+ (#90).
+- CONTRIBUTING.md Go prerequisite bumped to 1.26 to keep the
+  `TestGoVersionDockerfileVsGoMod` guard test green (#84
+  follow-up).
+- `release.yml` `sbom` job now declares `contents: read` and
+  `packages: read` alongside `id-token: write` so syft retains GHCR
+  manifest access while still keeping its OIDC token (#92 review
+  follow-up).
+- `cosign --certificate-identity-regexp` tightened to match the
+  exact `release.yml` workflow rather than any workflow in this
+  repository (#92 review follow-up).
+
+### Security
+
+- Sigstore Rekor transparency-log entries are now produced for every
+  signed image, chart, and SBOM (from v1.0.13).
+- SLSA-3 provenance attestation produced via
+  `slsa-framework/slsa-github-generator` for the container image
+  (from v1.0.13).
+- SECURITY.md documents the exact `cosign verify` and
+  `slsa-verifier verify-image` commands and the certificate
+  identity regex required to authenticate artifacts.
+
+### Dependencies
+
+- `actions/setup-go check-latest: true` ensures the CI Go runtime
+  receives stdlib CVE fixes automatically.
+- 7 dependabot updates merged into main:
+  - Docker base: `golang 1.26.3`, `distroless/static@e3f9456` (#80, #81)
+  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils +
+    operator-commons 0.7.0 + otel group + ginkgo 2.28.3 + gomega
+    1.40.0 (#84–#88).
+
 ## [1.0.12] - 2026-05-12
 
 ### Changed
