@@ -53,6 +53,7 @@
 | [0042](0042-commercial-parity-series-closure.md) | Commercial Parity Series 종합 — PR #38-#60 (~94% Redis Enterprise parity, ADR-0040 후속) | Accepted | 2026-05-10 |
 | [0043](0043-cloudpirates-valkey-compatibility.md) | CloudPirates valkey 0.20.2 호환 정책 — data-plane knobs + 안전한 비채택 경계 | Accepted | 2026-05-12 |
 | [0044](0044-artifacthub-signed-official-trust-badges.md) | Artifact Hub trust badges — Signed mandatory, Official external review | Accepted | 2026-05-12 |
+| [0045](0045-restore-github-actions-for-oss-ci.md) | Restore GitHub Actions workflows for OSS CI (scoped deviation from RFC-0002) | Accepted | 2026-05-12 |
 
 ## 작성 가이드
 
