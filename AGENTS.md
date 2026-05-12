@@ -318,3 +318,12 @@ make docker-build docker-push IMG=$IMG
 - **controller-runtime**: https://github.com/kubernetes-sigs/controller-runtime
 - **controller-tools**: https://github.com/kubernetes-sigs/controller-tools
 - **Kubebuilder Repo**: https://github.com/kubernetes-sigs/kubebuilder
+
+## 회피해야 할 함정
+
+- **Multi-architecture 빌드** — 저장소 종류 무관 `linux/amd64,linux/arm64` 멀티아키 통일. 외부/사내 사용자 환경(Apple Silicon, Graviton, kind on arm64 Mac 등) 다양성 일관 수용. 글로벌 §2 의 amd64 단일 조항은 본 정책으로 대체.
+- **GitHub Actions** — 저장소 종류에 따라 분기:
+  - public (GitHub, 본 저장소): CI/release/security-scan workflow 사용 가능.
+  - 사내 (GitLab): RFC 0002 영구 금지. 모든 게이트 lefthook 로컬 4 계층 (pre-commit + pre-push) — 외부 의존 회피.
+- **Mongo built-in 인증 우회** — keyfile + admin user 둘 다 필수. AdminCredentialsSecretRef 비워두면 bootstrap 자동 skip 되지만 production 에선 필수.
+
