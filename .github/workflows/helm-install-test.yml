@@ -61,13 +61,24 @@ jobs:
         env:
           IMG: ghcr.io/keiailab/valkey-operator:ct-install
         run: |
-          # Default values + override image so the chart resolves to
-          # the locally-built+loaded image.
+          # Override the image to the locally-built+loaded one, and
+          # disable monitoring (PrometheusRule + ServiceMonitor) plus
+          # the webhook so the install does not require the
+          # prometheus-operator CRDs in the test cluster. The chart's
+          # monitoring + webhook paths are exercised by the unit
+          # tests + helm-lint kubeconform path; this workflow
+          # specifically verifies the *core* install + Pod Ready.
           ct install \
             --target-branch=main \
             --charts charts/valkey-operator \
             --namespace=valkey-operator-system \
-            --helm-extra-set-args="--set=image.repository=ghcr.io/keiailab/valkey-operator --set=image.tag=ct-install --set=image.pullPolicy=IfNotPresent"
+            --helm-extra-set-args="\
+              --set=image.repository=ghcr.io/keiailab/valkey-operator \
+              --set=image.tag=ct-install \
+              --set=image.pullPolicy=IfNotPresent \
+              --set=metrics.enabled=false \
+              --set=metrics.serviceMonitor.enabled=false \
+              --set=webhook.enabled=false"
 
       - name: Show operator pod state on failure
         if: failure()
