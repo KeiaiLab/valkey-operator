@@ -1,39 +1,45 @@
 # Troubleshooting — valkey-operator
 
-운영 중 *증상 → 가능 원인 → 진단 명령 → 수습* 의 flow chart 형식. alert 별 MTTR
-은 `runbook.md §9` 가 SSOT — 본 문서는 **alert 가 발화하지 않는 (또는 발화 전)
-무지각 증상** 에 대응.
+> 한국어 버전: [troubleshooting.ko.md](troubleshooting.ko.md)
 
-문제 발생 시 *증상 분류 → 본 문서의 §X.Y 절 → 진단 → 수습* 순으로 활용.
+A symptom → likely cause → diagnostic command → remediation flowchart
+for live operations. Alert-driven MTTR procedures live in
+`runbook.md §9` (the SSOT); this document covers the **symptoms that
+fire no alert** (or fire before an alert exists).
 
-## 1. CR 가 만들어지지 않거나 phase 진입 실패
+Use it as: classify the symptom → jump to the relevant §X.Y →
+diagnose → remediate.
 
-### 1.1 `kubectl apply` 직후 CR 자체가 거부됨
+## 1. The CR never reaches a phase
 
-**증상**: `apply` 명령이 admission webhook 에러로 reject.
+### 1.1 `kubectl apply` is rejected by the webhook
+
+**Symptom**: `apply` returns an admission-webhook error.
 
 ```sh
 kubectl apply -f my-valkey.yaml
 # Error: admission webhook "vvalkey-v1alpha1.kb.io" denied the request: ...
 ```
 
-**가능 원인 + 진단**:
+**Possible causes + diagnostics**:
 
-| 원인 | 검증 명령 |
+| Cause | Verification |
 |---|---|
-| webhook configuration 미설치 / cert 미준비 | `kubectl get validatingwebhookconfiguration -l app.kubernetes.io/name=valkey-operator` + `kubectl describe ...` |
-| `Spec.TLS.CertManager` + `CustomCert` 동시 명시 | `kubectl explain valkey.spec.tls` (mutually exclusive — ADR-0010 webhook validation) |
-| Version 미지원 (allowlist 외) | `internal/version/matrix.go` 의 SupportedValkeyVersions 확인 (현 8.0.9 / 8.1.6 / 8.1.7 / 9.0.4) |
-| ResourceQuota 위반 | `kubectl describe resourcequota -n <ns>` |
+| Webhook configuration missing or cert not ready | `kubectl get validatingwebhookconfiguration -l app.kubernetes.io/name=valkey-operator` + `kubectl describe ...` |
+| `Spec.TLS.CertManager` **and** `CustomCert` set together | `kubectl explain valkey.spec.tls` (mutually exclusive per ADR-0010 webhook validation) |
+| Unsupported Valkey version (not on the allowlist) | Check `internal/version/matrix.go::SupportedValkeyVersions` (currently `8.0.9` / `8.1.6` / `8.1.7` / `9.0.4`) |
+| ResourceQuota violation | `kubectl describe resourcequota -n <ns>` |
 
-**수습**: 위 표의 해당 원인 fix → 재시도. webhook 자체 미동작 시 `runbook.md §6.1`
-manager 강제 재시작.
+**Fix**: address the matching row above and re-apply. If the webhook
+itself is misbehaving, follow `runbook.md §6.1` to force-restart the
+manager.
 
-### 1.2 CR 는 생성됐으나 phase 가 Pending 에서 진행 안 함
+### 1.2 CR is created but the phase stays `Pending`
 
-**증상**: `kubectl get vk` 가 5분 이상 `PHASE: Pending`.
+**Symptom**: `kubectl get vk` shows `PHASE: Pending` for more than 5
+minutes.
 
-**진단**:
+**Diagnostics**:
 
 ```sh
 kubectl describe vk <name>      # Events + Conditions
@@ -41,160 +47,184 @@ kubectl logs -n valkey-operator-system -l control-plane=controller-manager \
   --since=10m | grep "<ns>/<name>"
 ```
 
-**자주 발생**:
-- AuthSecret reference 가 다른 namespace → `Reason: SecretNotFound`. operator 는
-  단일 namespace scope (cross-namespace secret 미지원).
-- StorageClass 미지원 / `volumeBindingMode: WaitForFirstConsumer` + 노드 부족 →
-  PVC 가 Pending → STS Pod Pending → reconcile 진척 없음.
-- `ENABLE_CLUSTER_RECONCILER=false` 인데 `kind: ValkeyCluster` 생성 시도 (chart
-  의 `features.cluster.enabled=false` 환경) → Helm install 시 가드, 수동 CR 시
-  무동작.
+**Frequent root causes**:
 
-## 2. 데이터 plane 응답 안 함 (cluster_state=ok 인데도)
+- AuthSecret references a `Secret` in another namespace →
+  `Reason: SecretNotFound`. The operator is namespace-scoped;
+  cross-namespace Secret references are not supported.
+- StorageClass unsupported, or
+  `volumeBindingMode: WaitForFirstConsumer` + no available node →
+  PVC stays Pending → STS Pod stays Pending → reconcile makes no
+  progress.
+- `ENABLE_CLUSTER_RECONCILER=false` but a `kind: ValkeyCluster` is
+  created (chart `features.cluster.enabled=false` environment). Helm
+  installs guard this; a hand-written CR will sit silently.
 
-### 2.1 client 연결 timeout
+## 2. Data plane unresponsive even with `cluster_state=ok`
 
-**증상**: cluster 는 healthy 인데 application 이 connection refused / timeout.
+### 2.1 Client connection timeout
 
-**진단 순서**:
+**Symptom**: the cluster reports healthy, but the application sees
+connection refused / timeout.
 
-1. **service endpoints 확인**:
+**Order of diagnosis**:
+
+1. **Service endpoints**:
    ```sh
    kubectl get svc,endpointslices -l cache.keiailab.io/cluster=<name>
    ```
-   Endpoints 가 0 = pod label selector mismatch (operator 의 STS template 변경
-   후 patched-only label 누락). reconcile force trigger:
+   `Endpoints: 0` means a label-selector mismatch (the operator
+   changed the STS template but a patched-only label was missed).
+   Force a reconcile:
    `kubectl annotate vk <name> cache.keiailab.io/retry=true --overwrite`.
 
-2. **NetworkPolicy 차단 확인** (ADR-0035 AutoCreate 활성 시):
+2. **NetworkPolicy denial** (when ADR-0035 AutoCreate is on):
    ```sh
    kubectl get networkpolicy -l cache.keiailab.io/cluster=<name>
    kubectl describe networkpolicy <name>-allow
    ```
-   ingress podSelector 가 client app 의 label 과 일치하지 않으면 deny-by-default.
+   If the ingress `podSelector` does not match the client pod's
+   labels, traffic is denied by default.
 
-3. **TLS handshake 실패** (TLS enabled cluster):
+3. **TLS handshake failure** (TLS-enabled clusters):
    ```sh
    kubectl exec -it <client-pod> -- valkey-cli -h <svc> -p 6379 --tls --insecure ping
    ```
-   실패 시 `runbook.md §2.2` Pod CrashLoopBackOff 의 TLS Secret 미마운트 path.
+   On failure, follow `runbook.md §2.2` for the Pod
+   CrashLoopBackOff / TLS Secret-not-mounted path.
 
-### 2.2 일부 key 만 timeout (Cluster mode)
+### 2.2 Some keys time out (Cluster mode)
 
-**증상**: 동일 cluster 에서 key A 는 OK, key B 는 MOVED 또는 timeout.
+**Symptom**: in the same cluster, key A succeeds while key B returns
+MOVED or times out.
 
-**원인**: 특정 shard 의 primary 가 응답 불가 + replica 가 자동 promotion 못함.
+**Cause**: one shard's primary is unreachable and its replica has
+not auto-promoted yet.
 
 ```sh
-# 1. 어느 shard 의 어느 slot 인가
+# 1. Which slot is the key on?
 kubectl exec -it <pod> -- valkey-cli -c -h <svc> CLUSTER KEYSLOT <key>
 
-# 2. 그 slot owner shard 식별
-kubectl exec -it <pod> -- valkey-cli -c -h <svc> CLUSTER SLOTS | grep <slot번호>
+# 2. Which shard owns that slot?
+kubectl exec -it <pod> -- valkey-cli -c -h <svc> CLUSTER SLOTS | grep <slot>
 
-# 3. owner shard pod 의 logs
+# 3. Inspect that shard pod's logs
 kubectl logs <shard-N-0>
 ```
 
-**수습**: master with keys 가 응답 불가 시 ADR-0017 Replica with Largest Offset
-선출 정책에 따라 자동 failover. 5분 초과 시 `runbook.md §2.3` cluster_state=fail
-회복 절차.
+**Remediation**: when the primary that holds those keys is
+unreachable, ADR-0017 promotes the replica with the largest offset
+automatically. If recovery has not happened after 5 minutes, follow
+the `runbook.md §2.3` `cluster_state=fail` recovery procedure.
 
-## 3. 성능 저하 (latency 상승)
+## 3. Performance degradation (rising latency)
 
-### 3.1 reconcile thrashing
+### 3.1 Reconcile thrashing
 
-**증상**: operator pod CPU 100% + `valkey_cluster_reconcile_total` rate 폭증.
+**Symptom**: the operator pod sits at 100 % CPU and the
+`valkey_cluster_reconcile_total` rate spikes.
 
-**진단**:
+**Diagnostics**:
 
 ```sh
-# rate 측정 (Prometheus)
+# Rate, in Prometheus
 rate(valkey_cluster_reconcile_total[1m])
-# > 5/s 면 thrashing
+# > 5/s is thrashing
 
-# error component 식별
+# Which component is erroring?
 sum by (component) (rate(valkey_cluster_reconcile_errors_total[5m]))
 ```
 
-**자주 발생**:
-- Status update 무한 루프: spec drift 감지 → patch → reconcile → 동일 drift
-  재감지. `metadata.generation` 변경 없는데 reconcile 재진입 시 의심.
-- 외부 의존성 flapping: cert-manager Certificate Ready ↔ NotReady 전환 → operator
-  마다 재배포.
+**Common root causes**:
 
-**수습**: `kubectl logs ... --follow` 로 reconcile 사유 추적. drift 원인 fix
-(보통 admission webhook 의 mutating defaulter 와 reconciler 의 desired state
-mismatch).
+- Status-update loop: the operator detects spec drift → patches →
+  reconciles → detects the same drift again. Suspect this if
+  `metadata.generation` does not change but reconciles re-enter.
+- A flapping external dependency: cert-manager `Certificate` toggling
+  between `Ready` and `NotReady` causes operator re-runs every cycle.
 
-### 3.2 데이터 plane 응답 latency 상승 (slow log)
+**Fix**: `kubectl logs ... --follow` to trace the reconcile reason.
+Resolve the drift root cause — usually a mismatch between the
+admission webhook's mutating defaulter and the reconciler's desired
+state.
 
-**증상**: client p95 latency 평소 1ms → 100ms.
+### 3.2 Data-plane latency increase (slow log)
 
-**원인 후보** (operator scope 밖이지만 진단 가능):
+**Symptom**: client p95 latency climbs from ~1 ms to ~100 ms.
 
-| 원인 | 진단 |
+**Likely causes (outside the operator's scope but still
+diagnosable)**:
+
+| Cause | Diagnostic |
 |---|---|
-| AOF rewrite 진행 중 | `valkey-cli INFO persistence \| grep aof_rewrite_in_progress` |
-| RDB snapshot 진행 중 | `valkey-cli INFO persistence \| grep rdb_bgsave_in_progress` |
-| 큰 key 존재 (BIGKEY) | `valkey-cli --bigkeys` (sample) — 단일 key 가 100MB+ 면 slow O(N) 명령 노출 |
-| memory swap 발생 | `kubectl top pod <pod>` + node `vmstat 1` |
+| AOF rewrite in progress | `valkey-cli INFO persistence \| grep aof_rewrite_in_progress` |
+| RDB snapshot in progress | `valkey-cli INFO persistence \| grep rdb_bgsave_in_progress` |
+| Big key present (BIGKEY) | `valkey-cli --bigkeys` — a single 100 MB+ key exposes slow O(N) commands |
+| Memory swap | `kubectl top pod <pod>` and `vmstat 1` on the node |
 
-수습 방향은 *데이터 plane tuning 영역* — 본 operator 는 직접 개입 안 함.
-`runbook.md §6.3` 으로 직접 valkey-cli 진입 후 조사.
+Tuning here is a **data-plane** decision; the operator does not
+intervene directly. Drop into `runbook.md §6.3` and investigate via
+`valkey-cli` directly.
 
-## 4. backup / restore 실패
+## 4. Backup / restore failures
 
-### 4.1 ValkeyBackup phase=Failed
+### 4.1 `ValkeyBackup phase=Failed`
 
 ```sh
-kubectl describe vkb <name>     # Conditions 의 Reason
+kubectl describe vkb <name>     # Reason in Conditions
 kubectl logs job/<backup-job-name>
 ```
 
-**자주 발생**:
-- TargetRef 의 Secret credentials invalid → S3 client 가 `403 SignatureDoesNotMatch`.
-  `kubectl describe vbt <target>` 의 `status.reachable` 확인.
-- bucket 미존재 → `404 NoSuchBucket`. ValkeyBackupTarget 의 `spec.s3.bucket`
-  검증.
-- PVC 용량 부족 → `no space left on device`. RDB 크기 추정 = `INFO memory` 의
-  `used_memory_rss`.
+**Common root causes**:
 
-### 4.2 ValkeyRestore 무한 대기
+- `TargetRef` Secret credentials invalid → the S3 client returns
+  `403 SignatureDoesNotMatch`. Check `status.reachable` on
+  `kubectl describe vbt <target>`.
+- Bucket does not exist → `404 NoSuchBucket`. Verify
+  `spec.s3.bucket` on the `ValkeyBackupTarget`.
+- PVC out of space → `no space left on device`. Estimate the RDB
+  size as `used_memory_rss` from `INFO memory`.
 
-ADR-B02 에 의해 RDB format mismatch (e.g. Redis 8.2.1 → Valkey 9.0.4) 는
-*fail-fast* 처리됨 (Status.Phase=Failed). 그 외 대기:
+### 4.2 `ValkeyRestore` hangs forever
 
-- pod CrashLoopBackOff 가 5회 이상 = restore container 가 반복 fail. logs 의
-  `Can't handle RDB format version` 등 명시적 사유 확인.
-- TargetRef 의 RDB 다운로드 timeout (대용량 + 네트워크 느림) — Job 의 timeout
-  spec 확장.
+ADR-B02 fails-fast on an RDB format mismatch (e.g. Redis 8.2.1 →
+Valkey 9.0.4) and sets `Status.Phase=Failed`. Other hang patterns:
 
-## 5. 일반 진단 명령 cheat-sheet
+- Pod CrashLoopBackOff ≥ 5 times = the restore container keeps
+  failing. Check logs for explicit reasons such as
+  `Can't handle RDB format version`.
+- `TargetRef` RDB download timeout (large object + slow link) —
+  raise the Job's timeout spec.
+
+## 5. General diagnostic cheat-sheet
 
 ```sh
-# 모든 CR phase 한눈에
-kubectl get vk,vc,vkb,vbt,vkr -A -o custom-columns=NS:.metadata.namespace,KIND:.kind,NAME:.metadata.name,PHASE:.status.phase
+# Every CR's phase at a glance
+kubectl get vk,vc,vkb,vbt,vkr -A \
+  -o custom-columns=NS:.metadata.namespace,KIND:.kind,NAME:.metadata.name,PHASE:.status.phase
 
-# 최근 5분 reconcile 사유 (operator log)
-kubectl -n valkey-operator-system logs -l control-plane=controller-manager --since=5m | jq -R 'fromjson? | select(.msg)' | head -50
+# Last 5 minutes of reconcile reasons (operator log)
+kubectl -n valkey-operator-system logs -l control-plane=controller-manager --since=5m \
+  | jq -R 'fromjson? | select(.msg)' | head -50
 
-# Conditions diff (이전 status vs 현재)
+# Conditions diff (previous vs current status)
 kubectl get vk <name> -o jsonpath='{.status.conditions}' | jq
 
-# events 시간순
+# Recent events
 kubectl get events --field-selector involvedObject.name=<name> --sort-by='.lastTimestamp'
 ```
 
-## 6. 최후 수단
+## 6. Last-resort procedures
 
-- `runbook.md §6` Emergency 절차 (manager 강제 재시작 / Restore 강제 중단 / data
-  plane 직접 접근)
-- `INC-0001` 같은 cluster-fail 시나리오 → ADR-0039 self-heal 가 *대부분* 자동 수습.
-  자동 수습 미발생 시 `runbook.md §2.3.수동 회복` 절차.
+- `runbook.md §6` for emergency procedures (force-restart the
+  manager, abort a restore, drop into the data plane directly).
+- `INC-0001` style cluster-fail scenarios → ADR-0039 self-heal
+  recovers **most** automatically; if it does not, follow
+  `runbook.md §2.3` manual recovery.
 
-## 7. 수렴되지 않는 문제
+## 7. When a problem refuses to converge
 
-같은 문제 3회 이상 재발 시 `docs/kb/incident/INC-NNNN-*.md` 작성 + 글로벌 standards
-의 `incident-kb.md §2 작성 트리거` 적용. ADR 로 system 변경이 필요하면 RFC →
-ADR → 코드 변경의 정공법.
+If the same issue recurs three or more times, open
+`docs/kb/incident/INC-NNNN-*.md` per the global
+`incident-kb.md §2 trigger`. If a system change is required, follow
+the formal path: RFC → ADR → code change.
