@@ -9,7 +9,7 @@ require (
 	github.com/keiailab/operator-commons v0.7.0
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/onsi/ginkgo/v2 v2.27.2
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/gomega v1.40.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.19.0
 	go.opentelemetry.io/otel v1.43.0
