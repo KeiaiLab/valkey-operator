@@ -11,18 +11,13 @@ name: Dependency license report
 # - this workflow:        full transitive graph, every PR
 
 on:
+  # Run on every PR so the job functions as a `required_status_check`
+  # context (paths-filtered required checks stay pending forever on
+  # PRs that don't match — same lesson as kube-linter #118).
   pull_request:
     branches: [main]
-    paths:
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/go-licenses.yml"
-      - ".github/license-allowlist.txt"
   push:
     branches: [main]
-    paths:
-      - "go.mod"
-      - "go.sum"
   schedule:
     - cron: '47 7 * * 1'
   workflow_dispatch:
