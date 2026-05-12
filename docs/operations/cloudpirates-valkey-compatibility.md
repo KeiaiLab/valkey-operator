@@ -1,63 +1,68 @@
-# CloudPirates valkey 0.20.2 호환 매핑
+# CloudPirates valkey 0.20.2 compatibility mapping
 
-대상: ArtifactHub `cloudpirates-valkey/valkey` chart `0.20.2`
-(appVersion `9.0.0`). 본 문서는 chart values 를 valkey-operator CRD 로 옮길 때
-운영자가 확인할 단일 매핑표다.
+> 한국어 버전: [cloudpirates-valkey-compatibility.ko.md](cloudpirates-valkey-compatibility.ko.md)
 
-## 매핑 원칙
+Target: the ArtifactHub `cloudpirates-valkey/valkey` chart `0.20.2`
+(appVersion `9.0.0`). This document is the **single mapping table**
+an operator should consult when porting that chart's `values` to
+`valkey-operator` CRDs.
 
-- Helm chart 의 values 이름을 그대로 복제하지 않고, Kubernetes operator 가
-  안정적으로 소유할 수 있는 CRD 계약으로 제공한다.
-- Sentinel / HTTPRoute 처럼 dual control-plane 또는 TCP/L7 mismatch 를 만드는
-  항목은 직접 구현하지 않고, 운영 안정성이 높은 대체 경로를 제공한다.
-- literal password 값은 CRD 에 직접 넣지 않는다. Secret 을 먼저 만들고
-  `SecretKeySelector` 로 참조한다.
+## Mapping principles
 
-## 기능 매핑
+- We do **not** clone CloudPirates' value names verbatim. We offer
+  a CRD contract that a Kubernetes operator can own with stable
+  semantics.
+- Items that introduce a dual control-plane (Sentinel) or a TCP/L7
+  mismatch (HTTPRoute) are **not implemented directly**; we offer
+  an operationally safer alternative path.
+- Literal password values are **never** placed in a CRD — create a
+  `Secret` first and reference it with `SecretKeySelector`.
 
-| CloudPirates value | valkey-operator 경로 | 상태 |
+## Feature mapping
+
+| CloudPirates value | valkey-operator path | Status |
 |---|---|---|
-| `architecture=standalone` | `Valkey.spec.mode=Standalone` | 지원 |
-| `architecture=replication`, `replicaCount` | `Valkey.spec.mode=Replication`, `spec.replicas` | 지원 |
-| cluster sharding | `ValkeyCluster.spec.shards`, `replicasPerShard` | chart 이상 지원 |
-| `revisionHistoryLimit` | `spec.revisionHistoryLimit` | 지원 |
-| `image.registry/repository/tag`, digest tag | `spec.version.imageRef` 또는 `image` + `version` | 지원 |
-| `image.pullPolicy` | `spec.version.imagePullPolicy` | 지원 |
-| `imagePullSecrets` | `spec.pod.imagePullSecrets` | 지원 |
-| `auth.enabled` | `spec.auth.enabled` | 지원 |
-| `auth.existingSecret`, key | `spec.auth.passwordSecretRef` | 지원 |
-| `auth.password` literal | Secret 생성 후 `passwordSecretRef` | 직접 literal 비지원 |
-| `tls.enabled` | `spec.tls.enabled` | 지원 |
-| `tls.existingSecret` | `spec.tls.customCert.secretName` | 지원. key 는 `tls.crt`, `tls.key`, `ca.crt` 로 정규화 |
-| `tls.authClients` | `spec.tls.clientAuth=required|disabled` | 지원 |
-| `config.maxMemory`, `maxMemoryPolicy`, `extraConfig` | `spec.additionalConfig` | 지원 |
-| `config.save` | `spec.persistence.rdbSaveSchedule` 또는 `additionalConfig.save` | 지원 |
-| `config.existingConfigmap` | operator 생성 config + `additionalConfig` 병합 | 직접 교체 비지원 |
-| `externalReplica.*` | `spec.externalReplica.*` | 지원. v1alpha1 은 Standalone 한정 |
-| `service.type`, annotations/labels | `spec.service.type`, annotations/labels | 지원 |
-| `service.port`, `targetPort` | Valkey 표준 6379 / TLS 6380 | 고정 지원 |
-| `ipFamily` | `spec.service.ipFamilyPolicy`, `ipFamilies` | 지원 |
-| `ingress.*` | `spec.service.type=LoadBalancer` 또는 Helm `extraObjects` | HTTP Ingress 직접 비채택 |
-| `gatewayAPI.httpRoute.*` | Helm `extraObjects` 로 `TCPRoute` 등 L4 resource 관리 | HTTPRoute 직접 비채택 |
-| `resources` | `spec.resources` | 지원 |
-| `persistence.enabled=false` | `spec.storage.ephemeral=true` | 지원. dev/test 전용 |
-| `persistence.existingClaim` | `spec.storage.existingClaim` | 지원 |
-| `persistence.storageClass/size/accessModes` | `spec.storage.storageClassName/size/accessModes` | 지원 |
-| `persistence.annotations/labels` | `spec.storage.annotations/labels` | 지원 |
-| `livenessProbe/readinessProbe/startupProbe` | `spec.pod.livenessProbe/readinessProbe/startupProbe` | 지원 |
-| `nodeSelector/tolerations/affinity` | `spec.pod.nodeSelector/tolerations/affinity` | 지원 |
-| `hostAliases` | `spec.pod.hostAliases` | 지원 |
-| `priorityClassName` | `spec.pod.priorityClassName` | 지원 |
-| `podLabels/podAnnotations` | `spec.pod.labels/annotations` | 지원 |
-| `extraEnvVars` | `spec.pod.extraEnv` | 지원 |
-| `metrics.enabled` | `spec.monitoring.enabled` | 지원 |
-| `metrics.serviceMonitor.*` | `spec.monitoring.serviceMonitor.*` | 지원 |
-| `metrics.exporter.resources` | `spec.monitoring.exporter.resources` | 지원 |
-| `sentinel.*` | `mode=Replication` + AutoFailover | 직접 비채택. `sentinel-migration.md` 참조 |
-| `initContainer.resources` | operator bootstrap init container 불필요 | 직접 비채택 |
-| `extraObjects` | chart `values.extraObjects` | 지원 |
+| `architecture=standalone` | `Valkey.spec.mode=Standalone` | Supported |
+| `architecture=replication`, `replicaCount` | `Valkey.spec.mode=Replication`, `spec.replicas` | Supported |
+| Cluster sharding | `ValkeyCluster.spec.shards`, `replicasPerShard` | Supported (beyond chart scope) |
+| `revisionHistoryLimit` | `spec.revisionHistoryLimit` | Supported |
+| `image.registry/repository/tag`, digest tag | `spec.version.imageRef` or `image` + `version` | Supported |
+| `image.pullPolicy` | `spec.version.imagePullPolicy` | Supported |
+| `imagePullSecrets` | `spec.pod.imagePullSecrets` | Supported |
+| `auth.enabled` | `spec.auth.enabled` | Supported |
+| `auth.existingSecret`, key | `spec.auth.passwordSecretRef` | Supported |
+| `auth.password` (literal) | Create a `Secret`, then `passwordSecretRef` | Literal not supported |
+| `tls.enabled` | `spec.tls.enabled` | Supported |
+| `tls.existingSecret` | `spec.tls.customCert.secretName` | Supported; keys normalized to `tls.crt`, `tls.key`, `ca.crt` |
+| `tls.authClients` | `spec.tls.clientAuth=required|disabled` | Supported |
+| `config.maxMemory`, `maxMemoryPolicy`, `extraConfig` | `spec.additionalConfig` | Supported |
+| `config.save` | `spec.persistence.rdbSaveSchedule` or `additionalConfig.save` | Supported |
+| `config.existingConfigmap` | Operator-generated config merged with `additionalConfig` | Direct replacement not supported |
+| `externalReplica.*` | `spec.externalReplica.*` | Supported (v1alpha1: Standalone only) |
+| `service.type`, annotations/labels | `spec.service.type`, annotations/labels | Supported |
+| `service.port`, `targetPort` | Valkey standard 6379 / TLS 6380 | Fixed; supported |
+| `ipFamily` | `spec.service.ipFamilyPolicy`, `ipFamilies` | Supported |
+| `ingress.*` | `spec.service.type=LoadBalancer` or Helm `extraObjects` | HTTP Ingress not directly adopted |
+| `gatewayAPI.httpRoute.*` | L4 via Helm `extraObjects` (`TCPRoute` etc.) | HTTPRoute not directly adopted |
+| `resources` | `spec.resources` | Supported |
+| `persistence.enabled=false` | `spec.storage.ephemeral=true` | Supported (dev/test only) |
+| `persistence.existingClaim` | `spec.storage.existingClaim` | Supported |
+| `persistence.storageClass/size/accessModes` | `spec.storage.storageClassName/size/accessModes` | Supported |
+| `persistence.annotations/labels` | `spec.storage.annotations/labels` | Supported |
+| `livenessProbe/readinessProbe/startupProbe` | `spec.pod.livenessProbe/readinessProbe/startupProbe` | Supported |
+| `nodeSelector/tolerations/affinity` | `spec.pod.nodeSelector/tolerations/affinity` | Supported |
+| `hostAliases` | `spec.pod.hostAliases` | Supported |
+| `priorityClassName` | `spec.pod.priorityClassName` | Supported |
+| `podLabels/podAnnotations` | `spec.pod.labels/annotations` | Supported |
+| `extraEnvVars` | `spec.pod.extraEnv` | Supported |
+| `metrics.enabled` | `spec.monitoring.enabled` | Supported |
+| `metrics.serviceMonitor.*` | `spec.monitoring.serviceMonitor.*` | Supported |
+| `metrics.exporter.resources` | `spec.monitoring.exporter.resources` | Supported |
+| `sentinel.*` | `mode=Replication` + AutoFailover | Not directly adopted. See `sentinel-migration.md`. |
+| `initContainer.resources` | Operator does not require a bootstrap init container | Not directly adopted |
+| `extraObjects` | chart `values.extraObjects` | Supported |
 
-## 예시: CloudPirates 스타일 운영 CR
+## Example: CloudPirates-style production CR
 
 ```yaml
 apiVersion: cache.keiailab.io/v1alpha1
@@ -109,11 +114,13 @@ spec:
       interval: 30s
 ```
 
-## Sentinel 사용자의 전환 경로
+## Transition path for Sentinel users
 
-CloudPirates `sentinel.enabled=true` 는 Sentinel-aware client 가
-`SENTINEL get-master-addr-by-name` 으로 primary 를 찾는 모델이다. 본 operator 는
-Kubernetes Service 와 controller leader election 을 사용하므로 client 를
-Service-aware 방식으로 전환한다.
+CloudPirates' `sentinel.enabled=true` assumes a Sentinel-aware
+client that resolves the primary via
+`SENTINEL get-master-addr-by-name`. This operator uses a Kubernetes
+`Service` and controller leader election, so clients must switch
+to the Service-aware model.
 
-운영 절차는 `docs/operations/sentinel-migration.md` 를 따른다.
+Operational procedure: see
+[`sentinel-migration.md`](sentinel-migration.md).
