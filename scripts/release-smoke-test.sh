@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# release-smoke-test.sh — 첫 publish 또는 release 직후 5층 smoke 검증.
+# release-smoke-test.sh — 첫 publish 또는 release 직후 8층 smoke 검증.
 #
 # 검증 항목 (8 층):
 #   1. GH Release tag 존재 + asset 첨부 (.tgz)
@@ -77,7 +77,7 @@ echo "════════════════════════�
 
 # 1. GH Release + assets (chart .tgz + SBOM)
 echo ""
-echo "▸ [1/6] GH Release tag + assets"
+echo "▸ [1/8] GH Release tag + assets"
 if gh release view "$VERSION" -R "${GH_OWNER}/${GH_REPO}" >/dev/null 2>&1; then
   pass "release ${VERSION} 존재"
   ASSETS="$(gh release view "$VERSION" -R "${GH_OWNER}/${GH_REPO}" --json assets --jq '.assets[].name')"
@@ -98,7 +98,7 @@ fi
 
 # 2. GHCR image
 echo ""
-echo "▸ [2/6] GHCR image manifest"
+echo "▸ [2/8] GHCR image manifest"
 # Image name 은 GH repo name 을 따름 (chart name 과 다를 수 있음 — postgresql-operator
 # chart 가 ghcr.io/keiailab/postgres-operator 로 push 되는 패턴 등).
 IMAGE_REF="ghcr.io/${GH_OWNER}/${GH_REPO}:${VERSION}"
@@ -111,7 +111,7 @@ fi
 
 # 3. GitHub Pages — build 가 queued/building 상태에서 시작될 수 있어 retry.
 echo ""
-echo "▸ [3/6] GitHub Pages status"
+echo "▸ [3/8] GitHub Pages status"
 _check_pages_built() {
   local status
   status="$(gh api "repos/${GH_OWNER}/${GH_REPO}/pages/builds" --jq '.[0].status' 2>/dev/null || echo missing)"
@@ -124,7 +124,7 @@ retry_check \
 
 # 4. Helm repo index.yaml — gh-pages CDN 반영 지연 흡수를 위해 fetch+grep retry.
 echo ""
-echo "▸ [4/6] Helm repo index.yaml fetch"
+echo "▸ [4/8] Helm repo index.yaml fetch"
 INDEX_FILE="/tmp/release-smoke-index-$$.yaml"
 _fetch_index_only() { curl -sfo "$INDEX_FILE" "${HELM_REPO_URL}/index.yaml"; }
 _fetch_index_with_version() {
