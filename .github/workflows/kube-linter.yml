@@ -11,18 +11,14 @@ name: kube-linter
 # - security-scan.yml  (image CVE scan)
 
 on:
+  # Run on every PR so the job functions as a `required_status_check`
+  # context. Paths-filtered required checks stay pending forever on
+  # PRs that don't touch the filtered paths, which blocks otherwise
+  # legitimate merges.
   pull_request:
     branches: [main]
-    paths:
-      - "charts/**"
-      - "config/**"
-      - ".github/workflows/kube-linter.yml"
-      - ".github/kube-linter-config.yaml"
   push:
     branches: [main]
-    paths:
-      - "charts/**"
-      - "config/**"
   schedule:
     - cron: '53 8 * * 1'
   workflow_dispatch:
