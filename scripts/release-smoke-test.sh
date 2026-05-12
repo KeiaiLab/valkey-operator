@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # release-smoke-test.sh — 첫 publish 또는 release 직후 5층 smoke 검증.
 #
-# 검증 항목 (7 층):
+# 검증 항목 (8 층):
 #   1. GH Release tag 존재 + asset 첨부 (.tgz)
 #   2. GHCR image manifest 가져오기 (digest 일치)
 #   3. GitHub Pages built status
 #   4. Helm repo index.yaml fetch + version entry
-#   5. helm pull + helm template (default + all-features)
-#   6. trivy image post-publish vulnerability scan (HIGH+CRITICAL)
-#   7. cosign verify image + verify-attestation (SLSA L2 provenance) — ADR-0033
+#   5. Helm provenance(.tgz.prov) fetch + public key 검증
+#   6. helm pull + helm template (default + all-features)
+#   7. trivy image post-publish vulnerability scan (HIGH+CRITICAL)
+#   8. cosign verify image + verify-attestation (SLSA L2 provenance) — ADR-0033
 #
 # 사용법:
 #   scripts/release-smoke-test.sh                        # Chart.yaml 의 현재 version
 #   scripts/release-smoke-test.sh v0.1.0-alpha.1         # 특정 version
 #
 # 환경: gh CLI 인증 + helm + curl 필요. trivy/cosign optional.
-# COSIGN_PUBLIC_KEY env (cosign.pub 경로) 설정 시 cosign 검증 활성.
+# COSIGN_PUBLIC_KEY env (cosign.pub 경로) 설정 시 cosign image 검증 활성.
 #
 # Exit code: 0 = 모두 PASS, 1 = 1건 이상 fail.
 
@@ -81,6 +82,11 @@ if gh release view "$VERSION" -R "${GH_OWNER}/${GH_REPO}" >/dev/null 2>&1; then
   pass "release ${VERSION} 존재"
   ASSETS="$(gh release view "$VERSION" -R "${GH_OWNER}/${GH_REPO}" --json assets --jq '.assets[].name')"
   if echo "$ASSETS" | grep -q "${CHART_NAME}-${TAG_VER}.tgz"; then pass "chart .tgz asset 첨부"; else fail "chart .tgz asset 누락"; fi
+  if echo "$ASSETS" | grep -q "${CHART_NAME}-${TAG_VER}.tgz.prov"; then
+    pass "chart .tgz.prov asset 첨부 — Helm provenance"
+  else
+    fail "chart .tgz.prov asset 누락 — Artifact Hub Signed badge 불가"
+  fi
   if echo "$ASSETS" | grep -Eq "${CHART_NAME}-${VERSION}\.spdx\.json"; then
     pass "SBOM (SPDX) asset 첨부 — supply chain 표준"
   else
@@ -138,15 +144,66 @@ if retry_check \
 fi
 rm -f "$INDEX_FILE"
 
-# 5. helm pull + template
+# 5. Helm provenance file + signature verification
 echo ""
-echo "▸ [5/6] helm pull + template (default + all-features)"
+echo "▸ [5/8] Helm provenance(.tgz.prov) + PGP signature"
+PROV_URL="${HELM_REPO_URL}/${CHART_NAME}-${TAG_VER}.tgz.prov"
+CHART_URL="${HELM_REPO_URL}/${CHART_NAME}-${TAG_VER}.tgz"
+CHART_FILE="/tmp/${CHART_NAME}-${TAG_VER}.tgz"
+PROV_FILE="/tmp/${CHART_NAME}-${TAG_VER}-smoke.tgz.prov"
+_fetch_provenance() { curl -sfo "$PROV_FILE" "$PROV_URL"; }
+_fetch_chart_archive() { curl -sfo "$CHART_FILE" "$CHART_URL"; }
+if retry_check \
+     "provenance fetch ${CHART_NAME}-${TAG_VER}.tgz.prov" \
+     "provenance fetch 실패 (${PROV_URL})" \
+     _fetch_provenance; then
+  SIZE=$(wc -c < "$PROV_FILE" | tr -d ' ')
+  echo "    (${SIZE} bytes)"
+  cp "$PROV_FILE" "${CHART_FILE}.prov"
+  retry_check \
+    "chart archive fetch ${CHART_NAME}-${TAG_VER}.tgz" \
+    "chart archive fetch 실패 (${CHART_URL})" \
+    _fetch_chart_archive
+  if command -v gpg >/dev/null 2>&1; then
+    META_FILE="/tmp/${CHART_NAME}-${TAG_VER}-artifacthub-repo.yml"
+    PUB_ASC="/tmp/${CHART_NAME}-${TAG_VER}-artifacthub-signing.asc"
+    PUB_RING="/tmp/${CHART_NAME}-${TAG_VER}-artifacthub-pubring.gpg"
+    GPG_HOME="/tmp/${CHART_NAME}-${TAG_VER}-gnupg"
+    rm -rf "$GPG_HOME"
+    mkdir -p "$GPG_HOME"
+    chmod 700 "$GPG_HOME"
+    if curl -sfo "$META_FILE" "${HELM_REPO_URL}/artifacthub-repo.yml" \
+        && awk '
+          /-----BEGIN PGP PUBLIC KEY BLOCK-----/ { in_key=1 }
+          in_key {
+            sub(/^    /, "")
+            print
+          }
+          /-----END PGP PUBLIC KEY BLOCK-----/ { in_key=0 }
+        ' "$META_FILE" > "$PUB_ASC" \
+        && grep -q "BEGIN PGP PUBLIC KEY BLOCK" "$PUB_ASC" \
+        && GNUPGHOME="$GPG_HOME" gpg --batch --import "$PUB_ASC" >/dev/null 2>&1 \
+        && GNUPGHOME="$GPG_HOME" gpg --batch --export > "$PUB_RING" \
+        && helm verify "$CHART_FILE" --keyring "$PUB_RING" >/dev/null 2>&1; then
+      pass "helm verify: Artifact Hub signingKey 로 provenance 검증"
+    else
+      fail "helm verify 실패 — artifacthub-repo.yml signingKey 또는 .tgz.prov 불일치"
+    fi
+    rm -rf "$GPG_HOME" "$META_FILE" "$PUB_ASC" "$PUB_RING"
+  else
+    fail "gpg 미설치 — Helm provenance 검증 불가"
+  fi
+fi
+
+# 6. helm pull + template
+echo ""
+echo "▸ [6/8] helm pull + template (default + all-features)"
 TMP_REPO="smoke-test-$$"
 # helm pull 자체는 인덱스 캐시 의존 — 매 시도마다 repo update 강제하여
 # gh-pages 신규 entry 가 client cache 에 반영될 시간을 준다.
 _helm_update_and_pull() {
   helm repo update "$TMP_REPO" >/dev/null 2>&1 \
-    && helm pull "${TMP_REPO}/${CHART_NAME}" --version "${TAG_VER}" --destination /tmp >/dev/null 2>&1
+    && helm pull "${TMP_REPO}/${CHART_NAME}" --version "${TAG_VER}" --destination /tmp --prov >/dev/null 2>&1
 }
 if helm repo add "$TMP_REPO" "${HELM_REPO_URL}" >/dev/null 2>&1; then
   TMP_TGZ="/tmp/${CHART_NAME}-${TAG_VER}-smoke.tgz"
@@ -158,6 +215,11 @@ if helm repo add "$TMP_REPO" "${HELM_REPO_URL}" >/dev/null 2>&1; then
     if [ -f "$PULLED_TGZ" ]; then
       SIZE=$(stat -f%z "$PULLED_TGZ" 2>/dev/null || stat -c%s "$PULLED_TGZ")
       pass "chart .tgz ${SIZE} bytes"
+      if [ -f "${PULLED_TGZ}.prov" ]; then
+        pass "helm pull --prov: provenance 동시 다운로드"
+      else
+        fail "helm pull --prov: provenance 파일 누락"
+      fi
       # default values render
       if helm template smoke "$PULLED_TGZ" --namespace "${CHART_NAME}-system" >/dev/null 2>&1; then
         pass "helm template (default values)"
@@ -187,9 +249,9 @@ else
   fail "helm repo add ${HELM_REPO_URL} 실패"
 fi
 
-# 6. trivy image post-publish vulnerability scan (exit-code 기반)
+# 7. trivy image post-publish vulnerability scan (exit-code 기반)
 echo ""
-echo "▸ [6/7] trivy image post-publish scan (HIGH+CRITICAL, fixed only)"
+echo "▸ [7/8] trivy image post-publish scan (HIGH+CRITICAL, fixed only)"
 if command -v trivy >/dev/null 2>&1; then
   TRIVY_OUT="/tmp/release-smoke-trivy-$$.txt"
   # --exit-code 1 → CVE 검출 시 exit 1 (정직한 fail). --ignore-unfixed → fix 가능한 것만.
@@ -205,9 +267,9 @@ else
   echo "  ○ trivy 미설치 — skip (brew install trivy 권장)"
 fi
 
-# 7. cosign verify image + attestation (SLSA L2 provenance) — ADR-0033
+# 8. cosign verify image + attestation (SLSA L2 provenance) — ADR-0033
 echo ""
-echo "▸ [7/7] cosign verify image + verify-attestation (ADR-0033)"
+echo "▸ [8/8] cosign verify image + verify-attestation (ADR-0033)"
 if command -v cosign >/dev/null 2>&1; then
   if [[ -z "${COSIGN_PUBLIC_KEY:-}" ]]; then
     echo "  ○ COSIGN_PUBLIC_KEY 미설정 — skip (export COSIGN_PUBLIC_KEY=/path/to/cosign.pub)"

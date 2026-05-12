@@ -454,7 +454,13 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 	@echo "=== Step 4/6- GitHub Release (prerelease if -alpha/-beta/-rc) ==="
 	@PREFLAG=""; case "$(VERSION)" in *alpha*|*beta*|*rc*) PREFLAG="--prerelease";; esac; \
 	mkdir -p "$(RELEASE_TMP)"; \
-	helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	if [ "$(HELM_SIGN)" = "1" ]; then \
+		$(MAKE) helm-signing-preflight VERSION="$(VERSION)" >/dev/null; \
+		helm package --sign --key "$(HELM_GPG_KEY)" --keyring "$(HELM_KEYRING)" "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	else \
+		helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	fi; \
+	PROV_ASSET="$$(ls "$(RELEASE_TMP)"/valkey-operator-$$(echo "$(VERSION)" | sed 's/^v//').tgz.prov 2>/dev/null || true)"; \
 	if command -v git-cliff >/dev/null 2>&1; then \
 		git-cliff --strip all --tag "$(VERSION)" --unreleased > "/tmp/release-notes-$(VERSION).md" 2>/dev/null && \
 			NOTES_FLAG="--notes-file /tmp/release-notes-$(VERSION).md"; \
@@ -474,6 +480,7 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 			--title "$(VERSION)" \
 			$$NOTES_FLAG \
 			"$(RELEASE_TMP)/valkey-operator-$$(echo "$(VERSION)" | sed 's/^v//').tgz" \
+			$$PROV_ASSET \
 			$$SBOM_ASSET; \
 	fi
 	@rm -rf "$(RELEASE_TMP)"
@@ -488,12 +495,27 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 	@echo "  - Helm Repo: helm repo update && helm search repo keiailab/valkey-operator"
 	@echo "  - ArtifactHub 은 ~30분 내 인덱스 자동 갱신"
 
-# PGP signing 옵션 — HELM_SIGN=1 시 helm package --sign 으로 .prov 파일 자동 생성.
+# PGP signing 옵션 — 기본값 1. Artifact Hub Signed badge 는 Helm provenance
+# 파일(.tgz.prov)이 차트와 같은 경로에 있어야 활성화된다.
 # HELM_GPG_KEY 가 GnuPG keyring 에 import 되어 있어야 함 (private key, 비공개).
-# 미설정 시 .prov 없이 chart 만 publish (기본 동작).
-HELM_SIGN     ?= 0
-HELM_GPG_KEY  ?= 89A409476828CB992338C378651E51AF520BCB78
+# Helm --key 는 fingerprint 가 아니라 UID substring 을 요구한다.
+HELM_SIGN     ?= 1
+HELM_GPG_KEY  ?= Keiailab Helm
+HELM_GPG_FINGERPRINT ?= 89A409476828CB992338C378651E51AF520BCB78
 HELM_KEYRING  ?= $(HOME)/.gnupg/secring.gpg
+
+.PHONY: helm-signing-preflight
+helm-signing-preflight: ## Helm chart provenance 서명 전제조건 검사 — Artifact Hub Signed badge 게이트.
+	@if [ "$(HELM_SIGN)" != "1" ]; then \
+		echo "ERROR: Artifact Hub Signed badge 를 위해 HELM_SIGN=1 이 필요"; \
+		exit 1; \
+	fi
+	@if [ ! -s "$(HELM_KEYRING)" ]; then \
+		echo "ERROR: HELM_KEYRING 누락: $(HELM_KEYRING)"; \
+		echo "  GPG secret key 를 import 한 뒤: gpg --export-secret-keys > $(HELM_KEYRING)"; \
+		exit 1; \
+	fi
+	@echo "✓ Helm signing preflight: key=$(HELM_GPG_KEY), fingerprint=$(HELM_GPG_FINGERPRINT), keyring=$(HELM_KEYRING)"
 
 .PHONY: release-notes
 release-notes: ## git-cliff 로 release notes 자동 생성 — 출력 파일 /tmp/release-notes-$(VERSION).md.
@@ -568,15 +590,23 @@ helm-docs: ## helm-docs 로 chart README 의 values 표 자동 생성 (values.ya
 	@echo "✓ chart README values 표 자동 갱신"
 
 .PHONY: helm-publish
-helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 로컬 자동화). gh-pages 부재 시 auto-orphan. HELM_SIGN=1 시 PGP .prov 동반.
+helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 로컬 자동화). gh-pages 부재 시 auto-orphan. 기본 PGP .prov 동반.
 	@echo "=== helm package ==="
 	@rm -rf "$(RELEASE_TMP)" "$(GHPAGES_TMP)"
 	@mkdir -p "$(RELEASE_TMP)"
 	@if [ "$(HELM_SIGN)" = "1" ]; then \
+		$(MAKE) helm-signing-preflight VERSION="$(VERSION)" >/dev/null; \
 		echo "INFO- chart 서명 활성 (PGP key $(HELM_GPG_KEY))"; \
 		helm package --sign --key "$(HELM_GPG_KEY)" --keyring "$(HELM_KEYRING)" "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
 	else \
+		echo "WARN- HELM_SIGN=0: Artifact Hub Signed badge 비활성 릴리스"; \
 		helm package "$(HELM_CHART)" -d "$(RELEASE_TMP)"; \
+	fi
+	@if [ "$(HELM_SIGN)" = "1" ]; then \
+		ls "$(RELEASE_TMP)"/valkey-operator-*.tgz.prov >/dev/null 2>&1 || { \
+			echo "ERROR: signed chart provenance(.tgz.prov) 생성 실패"; \
+			exit 1; \
+		}; \
 	fi
 	@echo "=== gh-pages worktree (auto-orphan if branch missing) ==="
 	@if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then \
@@ -588,7 +618,11 @@ helm-publish: ## Publish helm chart to gh-pages (RFC 0002 — GH Actions 대체 
 	fi
 	@echo "=== copy chart + regen index ==="
 	cp "$(RELEASE_TMP)"/valkey-operator-*.tgz "$(GHPAGES_TMP)/"
-	@cp "$(RELEASE_TMP)"/valkey-operator-*.tgz.prov "$(GHPAGES_TMP)/" 2>/dev/null || true
+	@if [ "$(HELM_SIGN)" = "1" ]; then \
+		cp "$(RELEASE_TMP)"/valkey-operator-*.tgz.prov "$(GHPAGES_TMP)/"; \
+	else \
+		cp "$(RELEASE_TMP)"/valkey-operator-*.tgz.prov "$(GHPAGES_TMP)/" 2>/dev/null || true; \
+	fi
 	cp "$(HELM_CHART)/../artifacthub-repo.yml" "$(GHPAGES_TMP)/" 2>/dev/null || true
 	@if [ -f "$(GHPAGES_TMP)/index.yaml" ]; then \
 		cd "$(GHPAGES_TMP)" && helm repo index . --merge index.yaml --url "$(HELM_REPO_URL)"; \

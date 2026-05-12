@@ -69,6 +69,9 @@ push 도 동일 통과 필수.
 | 42 | `TestGoVersionDockerfileVsGoMod` | Dockerfile 의 FROM golang:X.Y ↔ go.mod 의 `go X.Y` minimum directive 동기 (+ CONTRIBUTING.md Go table — cycle 96) |
 | 43 | `TestKubernetesVersionSync` | Chart.yaml kubeVersion ↔ README badge ↔ chart README Kubernetes prerequisite 3-surface 동기 |
 | 44 | `TestReleaseTargetInjectsBuildMetadataAndAmd64Only` | release image 의 build metadata 주입 + linux/amd64 단일 platform 강제 (CLAUDE.md §2 멀티아키 금지 정합) |
+| 45 | `TestArtifactHubRepositoryMetadataEnablesVerifiedPublisherAndSigningKey` | artifacthub-repo.yml repositoryID + signingKey + owners 유지 |
+| 46 | `TestReleasePipelineRequiresSignedHelmCharts` | release/helm-publish 가 기본 HELM_SIGN=1 + .tgz.prov asset 을 강제 |
+| 47 | `TestReleaseSmokeVerifiesHelmProvenance` | release-smoke 가 GH Release/gh-pages provenance 와 signingKey 기반 helm verify 검증 |
 
 검증 명령: `go test ./internal/observability/`
 
@@ -76,10 +79,12 @@ push 도 동일 통과 필수.
 
 - [ ] `make sbom VERSION=vX.Y.Z` — syft SPDX-2.3 SBOM 생성.
 - [ ] release pipeline 이 SBOM 을 GH Release asset 자동 첨부.
-- [ ] `bash scripts/release-smoke-test.sh` — 6 단계 (chart asset + SBOM
-      asset + helm pull + image manifest + ArtifactHub fetch + trivy CVE scan).
-- [ ] 멀티아키 이미지 (linux/amd64, linux/arm64) — `docker buildx default`
-      builder 의 `--platform` 자동 (CLAUDE.md §2 준수).
+- [ ] release pipeline 이 chart `.tgz.prov` 를 GH Release + gh-pages 에 자동 첨부.
+- [ ] `bash scripts/release-smoke-test.sh` — 8 단계 (chart asset + SBOM
+      asset + Helm provenance verify + helm pull + image manifest + gh-pages +
+      trivy CVE scan + cosign verify).
+- [ ] 단일 아키텍처 이미지 (linux/amd64 only) — `docker buildx default`
+      builder 의 `--platform linux/amd64` 강제 (CLAUDE.md §2 준수).
 
 ## 4. 문서
 
