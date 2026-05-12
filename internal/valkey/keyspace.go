@@ -67,7 +67,10 @@ func parseKeyspaceKeys(info string) int64 {
 			if !strings.HasPrefix(kv, "keys=") {
 				continue
 			}
-			if n, err := strconv.ParseInt(strings.TrimPrefix(kv, "keys="), 10, 64); err == nil {
+			if n, err := strconv.ParseInt(strings.TrimPrefix(kv, "keys="), 10, 64); err == nil && n >= 0 {
+				// Reject negative key counts — Valkey never emits them,
+				// but the fuzz suite confirmed the parser previously
+				// accepted `keys=-1` as a valid negative contribution.
 				total += n
 			}
 			break
