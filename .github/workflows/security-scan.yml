@@ -14,8 +14,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
-  security-events: write
+  contents: read   # security-events:write scoped per job (trivy SARIF upload)
 
 jobs:
   govulncheck:
@@ -39,6 +38,9 @@ jobs:
 
   trivy-fs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to code-scanning
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -56,6 +58,9 @@ jobs:
 
   trivy-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to code-scanning
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Build image (no push)
