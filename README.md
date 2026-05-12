@@ -179,6 +179,30 @@ Decision rationale lives in [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md).
 Feature requests go on [Issues](https://github.com/keiailab/valkey-operator/issues)
 or in GitHub Discussions.
 
+## Known limitations
+
+This is `v1alpha1` software, exercised on every release but not yet
+GA. Current known caveats:
+
+- `Spec.Auth.Enabled=false` is honoured as a no-op — the operator
+  always provisions auth (ADR-0013). If you need an unauthenticated
+  cluster, do not deploy this operator.
+- IPv6-only environments are untested; `CLUSTER MEET` prefers IPv4
+  hostnames (ADR-0012).
+- `NetworkPolicy.Enabled` only emits the resource; *actual*
+  enforcement depends on a policy-aware CNI (Calico, Cilium).
+- Replication automatic failover gives no strong split-brain
+  guarantee under network partitions — see ADR-0017 for the trade-off.
+- ValkeyCluster restore requires `ReadOnlyMany` or `ReadWriteMany`
+  source PVC accessMode; RWO is not supported.
+- `cluster-announce-hostname` is not used; revisit if you run on a
+  Kubernetes-aware DNS service that resolves pod hostnames into
+  routable IPs differently from the in-cluster DNS the operator
+  already uses.
+
+A fuller Korean-language list lives in
+[README.ko.md → 잠재적 운영 이슈](README.ko.md#잠재적-운영-이슈-현재-알려진-한계).
+
 ## Uninstall
 
 ```sh
