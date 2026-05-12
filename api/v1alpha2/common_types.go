@@ -61,12 +61,22 @@ type ValkeyVersion struct {
 	// +optional
 	Image string `json:"image,omitempty"`
 
+	// ImageRef 는 registry/repository:tag@sha256:digest 전체 image reference.
+	// 명시 시 Image + Version 조합보다 우선한다.
+	// +optional
+	ImageRef string `json:"imageRef,omitempty"`
+
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
 // StorageSpec — Valkey 데이터 디렉터리(/data) 마운트용 PVC.
 type StorageSpec struct {
+	// Ephemeral — true 면 PVC 대신 emptyDir 를 사용한다.
+	// +kubebuilder:default=false
+	// +optional
+	Ephemeral bool `json:"ephemeral,omitempty"`
+
 	// +optional
 	StorageClassName string `json:"storageClassName,omitempty"`
 
@@ -75,6 +85,18 @@ type StorageSpec struct {
 
 	// +kubebuilder:default="/data"
 	DataDirPath string `json:"dataDirPath,omitempty"`
+
+	// +optional
+	ExistingClaim string `json:"existingClaim,omitempty"`
+
+	// +optional
+	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
+
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // ResourcesSpec — pod resource requests/limits.
@@ -240,6 +262,12 @@ type ExporterSpec struct {
 // readOnlyRootFilesystem 등). false 시 SecurityContext /
 // ContainerSecurityContext 의 사용자 정의 우선.
 type PodSpec struct {
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// PodSecurityRestricted — PSA "restricted" profile 강제 토글
 	// (Plan §2 D3, ADR-0036). default=true 유지로 secure-by-default 보존.
 	//
@@ -271,6 +299,62 @@ type PodSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// +optional
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// +optional
+	HostAliases []corev1.HostAlias `json:"hostAliases,omitempty"`
+	// +optional
+	ExtraEnv []corev1.EnvVar `json:"extraEnv,omitempty"`
+	// +optional
+	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
+	// +optional
+	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
+	// +optional
+	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+}
+
+// ServiceSpec — Valkey client/headless Service 커스터마이즈.
+type ServiceSpec struct {
+	// +kubebuilder:validation:Enum=ClusterIP;NodePort;LoadBalancer
+	// +kubebuilder:default="ClusterIP"
+	// +optional
+	Type corev1.ServiceType `json:"type,omitempty"`
+	// IPFamilyPolicy — dual-stack / single-stack Service 정책. 미지정 시
+	// Kubernetes 기본값 사용.
+	// +optional
+	IPFamilyPolicy *corev1.IPFamilyPolicy `json:"ipFamilyPolicy,omitempty"`
+	// IPFamilies — Service IP family 순서. 예: ["IPv4"], ["IPv6"],
+	// ["IPv4", "IPv6"].
+	// +optional
+	IPFamilies []corev1.IPFamily `json:"ipFamilies,omitempty"`
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
+// ExternalReplicaSpec — 외부 Redis/Valkey primary 에서 단방향 복제.
+type ExternalReplicaSpec struct {
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+	// +optional
+	Host string `json:"host,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	// +kubebuilder:default=6379
+	// +optional
+	Port int32 `json:"port,omitempty"`
+	// +optional
+	Auth *ExternalReplicaAuthSpec `json:"auth,omitempty"`
+}
+
+type ExternalReplicaAuthSpec struct {
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+	// +optional
+	PasswordSecretRef *corev1.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 }
 
 // NetworkPolicySpec — opt-in NetworkPolicy. 기본 deny + 같은 인스턴스 pod 간 6379/16379 허용.

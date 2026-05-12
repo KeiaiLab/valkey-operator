@@ -12,8 +12,16 @@ spec:
   version:
     image: docker.io/valkey/valkey
     version: "9.0.4"
+    # imageRef: docker.io/valkey/valkey:9.0.4@sha256:<digest>
+  revisionHistoryLimit: 10
+  service:
+    type: ClusterIP
+    # ipFamilyPolicy: PreferDualStack
+    # ipFamilies: [IPv4, IPv6]
   storage:
     size: 8Gi
+    # accessModes: [ReadWriteOnce]
+    # existingClaim: valkey-cluster-data    # 단일 PVC 재사용은 shard별 분리 요구와 충돌할 수 있으므로 주의
     # encryptionRequired: true             # PR #45 — SC 가 encryption 미표시 시 Warning event
     # encryptionEnforce: true              # PR #55 — encryptionRequired + 본 필드 시 reconcile reject
   resources:
@@ -35,6 +43,16 @@ spec:
   autoFailover: true                       # primary 장애 시 자동 promote (ADR-0017)
   # podDisruptionBudget:                   # PR #49 — replicas>=2 시 자동 생성 (default-on)
   #   enabled: false                       # 명시적 opt-out
+  # pod:
+  #   labels:
+  #     workload-tier: cache
+  #   annotations:
+  #     backup.velero.io/backup-volumes: data
+  #   imagePullSecrets:
+  #     - name: private-registry
+  #   extraEnv:
+  #     - name: VALKEY_LOG_FORMAT
+  #       value: json
   monitoring:
     enabled: true
   # slowLog:                               # PR #45 — slowlog-log-slower-than directive 주입

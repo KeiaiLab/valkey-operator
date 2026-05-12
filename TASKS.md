@@ -28,6 +28,7 @@
 | B02 | Redis 8.2.1 RDB → Valkey 9.0.4 restore 무한대기 fail-fast        | 완료   | 100%   | B01  | Phase B        | 2026-05-07. Redis 8.2.1 RDB 는 Valkey 9.0.4 에서 `Can't handle RDB format version 12` 로 직접 restore 불가. Restoring 중 pod CrashLoopBackOff 를 `ValkeyRestore.status.phase=Failed` 로 표시하는 단위/E2E 회귀 가드 추가. |
 | T11 | ValkeyCluster 9.0.4 sharded 3×1 Kind smoke                     | 완료   | 100%   | B01  | Phase B        | 2026-05-07. 3 shards × 1 replica, 6 pod Ready, `cluster_state=ok`, `assignedSlots=16384`, `status.version=9.0.4`, `valkey-cli -c SET/GET` 검증. |
 | T12 | latest 기본값 정렬 — Valkey 9.0.4 + 8.0/8.1 milestone whitelist | 완료   | 100%   | T11  | chart/API/deploy | 2026-05-07. API default, CRD default, Helm values, ArtifactHub examples/images, samples, GitOps CR 기본값을 9.0.4 로 정렬. `SupportedValkeyVersions` 는 8.0.9/8.1.6/8.1.7/9.0.4 허용. `make test`, `make lint`, `make helm-template`, deploy overlay render PASS. |
+| T13 | CloudPirates valkey 0.20.2 운영 knob 교차검증 + CRD 호환 확장 | 구현   | 90%    | T12  | API/controller/chart/docs | 2026-05-12. imageRef, storage ephemeral/existing/accessModes/metadata, service type/IP family/metadata, pod metadata/probe/env/hostAliases, externalReplica, revisionHistoryLimit, chart extraObjects 구현. 로컬 게이트와 현 클러스터 적용 검증 진행 중. |
 
 ## 차단됨
 

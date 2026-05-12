@@ -69,6 +69,9 @@ type ValkeySpec struct {
 	Pod *PodSpec `json:"pod,omitempty"`
 
 	// +optional
+	Service *ServiceSpec `json:"service,omitempty"`
+
+	// +optional
 	PodDisruptionBudget *PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 
 	// +optional
@@ -108,6 +111,14 @@ type ValkeySpec struct {
 	// Autoscaling — operator-managed HPA v2 (ADR-0027, Replication mode 만).
 	// +optional
 	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
+
+	// +optional
+	ExternalReplica *ExternalReplicaSpec `json:"externalReplica,omitempty"`
+
+	// RevisionHistoryLimit — StatefulSet rollout history 보존 개수.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 // ModuleSpec — Valkey module 정의 (Plan §2 D9, ADR-0032).

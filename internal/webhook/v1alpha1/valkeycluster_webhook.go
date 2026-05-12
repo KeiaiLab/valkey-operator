@@ -207,6 +207,7 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	// storage.size 하한 1Gi (cross-cut audit, mongodb-operator it46 step 7
 	// commit 8b2414f 와 동일 invariant). RDB snapshot + AOF 합산 floor 보장.
 	errs = append(errs, validateStorageSizeMin(specPath.Child("storage", "size"), vc.Spec.Storage.Size)...)
+	errs = append(errs, validateStorageMode(specPath.Child("storage"), vc.Spec.Storage)...)
 
 	// storage.storageClassName DNS-1123 subdomain 검증 (ROADMAP RBD storageClass
 	// 기본 검증 — ceph-rbd 등 RBD 계열 이름 사전 reject 패턴).
@@ -256,6 +257,34 @@ func validateUsersSecretRefs(path *field.Path, users []cachev1alpha1.ValkeyUser)
 		}
 	}
 	return errs
+}
+
+func validateSecretKeySelector(
+	path *field.Path,
+	ref *corev1.SecretKeySelector,
+	label string,
+) field.ErrorList {
+	if ref == nil {
+		return field.ErrorList{field.Required(path, label+" is required")}
+	}
+	var errs field.ErrorList
+	if ref.Name == "" {
+		errs = append(errs, field.Invalid(path.Child("name"), "", label+".name must be non-empty"))
+	}
+	if ref.Key == "" {
+		errs = append(errs, field.Invalid(path.Child("key"), "", label+".key must be non-empty"))
+	}
+	return errs
+}
+
+func validateStorageMode(path *field.Path, s cachev1alpha1.StorageSpec) field.ErrorList {
+	if s.Ephemeral && s.ExistingClaim != "" {
+		return field.ErrorList{field.Forbidden(
+			path,
+			"storage.ephemeral=true and storage.existingClaim are mutually exclusive",
+		)}
+	}
+	return nil
 }
 
 // validateStorageClassName — storage.storageClassName 의 기본 형식 검증.

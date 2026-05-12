@@ -110,6 +110,46 @@ func TestValidateValkeySpec(t *testing.T) {
 			t.Error("auth.users with auth.enabled=false → expected error")
 		}
 	})
+	t.Run("externalReplica requires standalone host and auth secret", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeReplication
+		v.Spec.Replicas = 2
+		v.Spec.ExternalReplica = &cachev1alpha1.ExternalReplicaSpec{
+			Enabled: true,
+			Auth:    &cachev1alpha1.ExternalReplicaAuthSpec{Enabled: true},
+		}
+		errs := validateValkeySpec(v)
+		for _, sub := range []string{"mode=Standalone", "externalReplica.host", "passwordSecretRef"} {
+			var found bool
+			for _, e := range errs {
+				if strings.Contains(e.Error(), sub) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("expected error containing %q, got %v", sub, errs)
+			}
+		}
+	})
+	t.Run("storage ephemeral and existingClaim are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.Storage.Ephemeral = true
+		v.Spec.Storage.ExistingClaim = "data-pvc"
+		errs := validateValkeySpec(v)
+		var found bool
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "mutually exclusive") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("expected storage mode mutex error, got %v", errs)
+		}
+	})
 	// 화이트리스트 검증 — ROADMAP Phase B prerequisite (Valkey 9.x 지원).
 	t.Run("supported version 8.1.6 → ok", func(t *testing.T) {
 		t.Parallel()

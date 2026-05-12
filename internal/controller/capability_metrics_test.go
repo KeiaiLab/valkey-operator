@@ -25,6 +25,8 @@ func TestSetCapabilityMetrics_active_set_to_1(t *testing.T) {
 		CapabilityEncryptionEnforce: 0,
 		CapabilityNetworkPolicy:     0,
 		CapabilityTLSAutoCA:         0,
+		CapabilityExternalReplica:   0,
+		CapabilityEphemeralStorage:  0,
 	}
 	for cap, want := range cases {
 		got := testutil.ToFloat64(MetricCapabilityActive.WithLabelValues("ns-cap", "vk-cap", cap))
@@ -63,8 +65,8 @@ func TestDeleteMetricsFor_clears_capabilities(t *testing.T) {
 }
 
 func TestAllCapabilities_count(t *testing.T) {
-	// 토큰 9 개 (PR #62 godoc 동기). 신규 추가 시 본 테스트도 함께 갱신.
-	if len(AllCapabilities) != 9 {
-		t.Errorf("AllCapabilities length: got %d want 9 (PR #62 spec)", len(AllCapabilities))
+	// 토큰 11 개 (ADR-0043 추가 2개 포함). 신규 추가 시 본 테스트도 함께 갱신.
+	if len(AllCapabilities) != 11 {
+		t.Errorf("AllCapabilities length: got %d want 11 (ADR-0043 spec)", len(AllCapabilities))
 	}
 }

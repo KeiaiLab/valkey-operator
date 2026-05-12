@@ -6,6 +6,7 @@ package resources
 
 import (
 	"fmt"
+	"maps"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,19 +21,21 @@ import (
 
 // STSParams — Valkey / ValkeyCluster 양쪽이 공유하는 STS 빌드 파라미터.
 type STSParams struct {
-	CRName            string
-	Namespace         string
-	Replicas          int32
-	Image             string
-	PullPolicy        corev1.PullPolicy
-	Resources         corev1.ResourceRequirements
-	StorageClass      string
-	StorageSize       resource.Quantity
-	PasswordRef       *corev1.SecretKeySelector
-	ClusterMode       bool
-	ExporterImg       string                      // 비어 있으면 sidecar 없음
-	ExporterResources corev1.ResourceRequirements // metrics sidecar 의 resources (cycle 21 stop hook 15차 — IaC drift 0 진정 도달)
-	Pod               *cachev1alpha1.PodSpec
+	CRName               string
+	Namespace            string
+	Replicas             int32
+	Image                string
+	PullPolicy           corev1.PullPolicy
+	Resources            corev1.ResourceRequirements
+	StorageClass         string
+	StorageSize          resource.Quantity
+	Storage              cachev1alpha1.StorageSpec
+	PasswordRef          *corev1.SecretKeySelector
+	ClusterMode          bool
+	ExporterImg          string                      // 비어 있으면 sidecar 없음
+	ExporterResources    corev1.ResourceRequirements // metrics sidecar 의 resources (cycle 21 stop hook 15차 — IaC drift 0 진정 도달)
+	Pod                  *cachev1alpha1.PodSpec
+	RevisionHistoryLimit *int32
 	// TLSSecretName — 비어 있지 않으면 해당 Secret (kubernetes.io/tls + ca.crt) 을
 	// `/tls` 에 readOnly 마운트. configmap 의 tls-* 디렉티브 가 이 경로 를 참조.
 	TLSSecretName string
@@ -50,21 +53,36 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	selector := SelectorLabels(p.CRName)
 
 	storageSize := p.StorageSize
+	if !p.Storage.Size.IsZero() {
+		storageSize = p.Storage.Size
+	}
 	if storageSize.IsZero() {
 		storageSize = resource.MustParse("8Gi")
 	}
 
+	accessModes := p.Storage.AccessModes
+	if len(accessModes) == 0 {
+		accessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	}
 	dataPVC := corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "data"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "data",
+			Labels:      copyStringMap(p.Storage.Labels),
+			Annotations: copyStringMap(p.Storage.Annotations),
+		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			AccessModes: accessModes,
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceStorage: storageSize},
 			},
 		},
 	}
-	if p.StorageClass != "" {
-		dataPVC.Spec.StorageClassName = &p.StorageClass
+	storageClass := p.StorageClass
+	if p.Storage.StorageClassName != "" {
+		storageClass = p.Storage.StorageClassName
+	}
+	if storageClass != "" {
+		dataPVC.Spec.StorageClassName = &storageClass
 	}
 
 	envFromPassword := []corev1.EnvVar{}
@@ -110,6 +128,9 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			},
 		},
 	}
+	if p.Pod != nil && len(p.Pod.ExtraEnv) > 0 {
+		containers[0].Env = append(containers[0].Env, p.Pod.ExtraEnv...)
+	}
 	if p.ClusterMode {
 		containers[0].Ports = append(containers[0].Ports, corev1.ContainerPort{
 			Name: "cluster-bus", ContainerPort: PortClusterBus, Protocol: corev1.ProtocolTCP,
@@ -142,6 +163,21 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			},
 		},
 	})
+	if p.Storage.Ephemeral {
+		volumes = append(volumes, corev1.Volume{
+			Name:         "data",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		})
+	} else if p.Storage.ExistingClaim != "" {
+		volumes = append(volumes, corev1.Volume{
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: p.Storage.ExistingClaim,
+				},
+			},
+		})
+	}
 	volumes = append(volumes, tlsVols...)
 
 	podSpec := corev1.PodSpec{
@@ -164,10 +200,24 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		podSpec.PriorityClassName = p.Pod.PriorityClassName
 		podSpec.ServiceAccountName = p.Pod.ServiceAccountName
 		podSpec.TopologySpreadConstraints = p.Pod.TopologySpreadConstraints
+		podSpec.ImagePullSecrets = p.Pod.ImagePullSecrets
+		podSpec.HostAliases = p.Pod.HostAliases
+		if p.Pod.TerminationGracePeriodSeconds != nil {
+			podSpec.TerminationGracePeriodSeconds = p.Pod.TerminationGracePeriodSeconds
+		}
 		if p.Pod.ContainerSecurityContext != nil {
 			for i := range podSpec.Containers {
 				podSpec.Containers[i].SecurityContext = p.Pod.ContainerSecurityContext
 			}
+		}
+		if p.Pod.LivenessProbe != nil {
+			podSpec.Containers[0].LivenessProbe = p.Pod.LivenessProbe
+		}
+		if p.Pod.ReadinessProbe != nil {
+			podSpec.Containers[0].ReadinessProbe = p.Pod.ReadinessProbe
+		}
+		if p.Pod.StartupProbe != nil {
+			podSpec.Containers[0].StartupProbe = p.Pod.StartupProbe
 		}
 	}
 	// HA out-of-box default: Spec.Pod.TopologySpreadConstraints 미명시 + replicas >= 2
@@ -190,12 +240,11 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			Selector:            &metav1.LabelSelector{MatchLabels: selector},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
+					Labels:      podTemplateLabels(labels, p.Pod),
 					Annotations: podTemplateAnnotations(p),
 				},
 				Spec: podSpec,
 			},
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{dataPVC},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
@@ -203,6 +252,12 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 				},
 			},
 		},
+	}
+	if p.RevisionHistoryLimit != nil {
+		sts.Spec.RevisionHistoryLimit = p.RevisionHistoryLimit
+	}
+	if !p.Storage.Ephemeral && p.Storage.ExistingClaim == "" {
+		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{dataPVC}
 	}
 	return sts
 }
@@ -241,10 +296,36 @@ func defaultTopologySpread(selector map[string]string) []corev1.TopologySpreadCo
 const AnnotationAuthSecretHash = "cache.keiailab.io/auth-secret-hash"
 
 func podTemplateAnnotations(p STSParams) map[string]string {
+	annotations := map[string]string{}
+	if p.Pod != nil {
+		maps.Copy(annotations, p.Pod.Annotations)
+	}
 	if p.AuthSecretHash == "" {
+		if len(annotations) == 0 {
+			return nil
+		}
+		return annotations
+	}
+	annotations[AnnotationAuthSecretHash] = p.AuthSecretHash
+	return annotations
+}
+
+func podTemplateLabels(base map[string]string, pod *cachev1alpha1.PodSpec) map[string]string {
+	labels := copyStringMap(base)
+	if pod == nil {
+		return labels
+	}
+	maps.Copy(labels, pod.Labels)
+	return labels
+}
+
+func copyStringMap(in map[string]string) map[string]string {
+	if len(in) == 0 {
 		return nil
 	}
-	return map[string]string{AnnotationAuthSecretHash: p.AuthSecretHash}
+	out := make(map[string]string, len(in))
+	maps.Copy(out, in)
+	return out
 }
 
 // PodSecurity "restricted" 정책을 만족하는 컨테이너 SecurityContext.

@@ -20,6 +20,8 @@ const (
 	CapabilityEncryptionEnforce = "EncryptionEnforce"
 	CapabilityNetworkPolicy     = "NetworkPolicy"
 	CapabilityMonitoring        = "Monitoring"
+	CapabilityExternalReplica   = "ExternalReplica"
+	CapabilityEphemeralStorage  = "EphemeralStorage"
 )
 
 // AllCapabilities — Prometheus Metric 의 inactive=0 명시 set 위해 전체 리스트
@@ -27,7 +29,8 @@ const (
 var AllCapabilities = []string{
 	CapabilityTLS, CapabilityTLSAutoCA, CapabilityAuth, CapabilityAutoscaling,
 	CapabilitySlowLog, CapabilityEncryptionAudit, CapabilityEncryptionEnforce,
-	CapabilityNetworkPolicy, CapabilityMonitoring,
+	CapabilityNetworkPolicy, CapabilityMonitoring, CapabilityExternalReplica,
+	CapabilityEphemeralStorage,
 }
 
 // computeValkeyCapabilities — Valkey CR 의 활성 optional features 슬라이스 산출.
@@ -64,6 +67,12 @@ func computeValkeyCapabilities(v *cachev1alpha1.Valkey) []string {
 	if v.Spec.Monitoring != nil && v.Spec.Monitoring.Enabled {
 		out = append(out, CapabilityMonitoring)
 	}
+	if v.Spec.ExternalReplica != nil && v.Spec.ExternalReplica.Enabled {
+		out = append(out, CapabilityExternalReplica)
+	}
+	if v.Spec.Storage.Ephemeral {
+		out = append(out, CapabilityEphemeralStorage)
+	}
 	return out
 }
 
@@ -96,6 +105,9 @@ func computeClusterCapabilities(vc *cachev1alpha1.ValkeyCluster) []string {
 	}
 	if vc.Spec.Monitoring != nil && vc.Spec.Monitoring.Enabled {
 		out = append(out, CapabilityMonitoring)
+	}
+	if vc.Spec.Storage.Ephemeral {
+		out = append(out, CapabilityEphemeralStorage)
 	}
 	return out
 }

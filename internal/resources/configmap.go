@@ -27,6 +27,10 @@ type ConfigData struct {
 	ClusterEnabled           bool
 	ClusterNodeTimeout       int32
 	ClusterReplicaNoFailover bool // Spec.AutoFailover=false 일 때 true → "cluster-replica-no-failover yes".
+	ExternalReplicaEnabled   bool
+	ExternalReplicaHost      string
+	ExternalReplicaPort      int32
+	ExternalReplicaPassword  string
 	TLSEnabled               bool
 	// TLSAuthClients 는 valkey 의 tls-auth-clients 옵션. yes (mTLS 강제) /
 	// optional (cert 검증 옵션) / no (server-only TLS, password-only auth).
@@ -86,8 +90,16 @@ func RenderValkeyConf(d ConfigData) (string, error) {
 }
 
 // BuildConfigMapForValkey — Valkey CR (Standalone/Replication) 용 ConfigMap.
-func BuildConfigMapForValkey(vk *cachev1alpha1.Valkey, password string) (*corev1.ConfigMap, error) {
-	d := configDataFromValkey(vk, password)
+func BuildConfigMapForValkey(
+	vk *cachev1alpha1.Valkey,
+	password string,
+	externalReplicaPassword ...string,
+) (*corev1.ConfigMap, error) {
+	extPassword := ""
+	if len(externalReplicaPassword) > 0 {
+		extPassword = externalReplicaPassword[0]
+	}
+	d := configDataFromValkey(vk, password, extPassword)
 	conf, err := RenderValkeyConf(d)
 	if err != nil {
 		return nil, err
@@ -119,7 +131,7 @@ func BuildConfigMapForValkeyCluster(vc *cachev1alpha1.ValkeyCluster, password st
 	}, nil
 }
 
-func configDataFromValkey(vk *cachev1alpha1.Valkey, password string) ConfigData {
+func configDataFromValkey(vk *cachev1alpha1.Valkey, password, externalReplicaPassword string) ConfigData {
 	d := ConfigData{
 		DataDir:         DataDir,
 		RequirePass:     password,
@@ -127,6 +139,15 @@ func configDataFromValkey(vk *cachev1alpha1.Valkey, password string) ConfigData 
 		RDBSchedule:     "3600 1 300 100 60 10000",
 		AOFFsync:        "everysec",
 		Extra:           mergeSlowLog(vk.Spec.AdditionalConfig, vk.Spec.SlowLog),
+	}
+	if vk.Spec.ExternalReplica != nil && vk.Spec.ExternalReplica.Enabled {
+		d.ExternalReplicaEnabled = true
+		d.ExternalReplicaHost = vk.Spec.ExternalReplica.Host
+		d.ExternalReplicaPort = vk.Spec.ExternalReplica.Port
+		if d.ExternalReplicaPort == 0 {
+			d.ExternalReplicaPort = PortClient
+		}
+		d.ExternalReplicaPassword = externalReplicaPassword
 	}
 	if vk.Spec.Persistence != nil {
 		if vk.Spec.Persistence.Mode != "" {

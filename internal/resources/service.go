@@ -5,9 +5,13 @@ Copyright 2026 Keiailab.
 package resources
 
 import (
+	"maps"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
 // BuildHeadlessService — pod-to-pod stable DNS (StatefulSet 필수).
@@ -15,7 +19,11 @@ import (
 // tlsEnabled=true 시 TLS-port (6380) 를 추가 expose — Valkey 의 port (6379 plain) /
 // tls-port (6380 TLS) 분리 모델 정합. 외부 client (또는 inter-pod TLS replication)
 // 가 6380 으로 connect 가능. tls-auth-clients=yes 운영 시 client cert 필요.
-func BuildHeadlessService(crName, namespace string, clusterMode, tlsEnabled bool) *corev1.Service {
+func BuildHeadlessService(
+	crName, namespace string,
+	clusterMode, tlsEnabled bool,
+	serviceSpec ...*cachev1alpha1.ServiceSpec,
+) *corev1.Service {
 	ports := []corev1.ServicePort{
 		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
 	}
@@ -30,14 +38,20 @@ func BuildHeadlessService(crName, namespace string, clusterMode, tlsEnabled bool
 			TargetPort: intstr.FromInt(PortClusterBus), Protocol: corev1.ProtocolTCP,
 		})
 	}
+	opts := firstServiceSpec(serviceSpec)
+	labels := CommonLabels(crName, "valkey")
+	maps.Copy(labels, opts.Labels)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(crName),
-			Namespace: namespace,
-			Labels:    CommonLabels(crName, "valkey"),
+			Name:        HeadlessServiceName(crName),
+			Namespace:   namespace,
+			Labels:      labels,
+			Annotations: copyStringMap(opts.Annotations),
 		},
 		Spec: corev1.ServiceSpec{
 			ClusterIP:                "None",
+			IPFamilyPolicy:           opts.IPFamilyPolicy,
+			IPFamilies:               opts.IPFamilies,
 			PublishNotReadyAddresses: true, // cluster init / replication 시 미준비 pod DNS 필요
 			Selector:                 SelectorLabels(crName),
 			Ports:                    ports,
@@ -77,7 +91,11 @@ func MetricsServiceLabels(crName string) map[string]string {
 //
 // tlsEnabled=true 시 client-tls (6380) 도 expose — 외부 client 가 TLS connection
 // 사용 가능 (rediss:// scheme + tls-auth-clients=yes 시 client cert 필요).
-func BuildClientService(crName, namespace string, tlsEnabled bool) *corev1.Service {
+func BuildClientService(
+	crName, namespace string,
+	tlsEnabled bool,
+	serviceSpec ...*cachev1alpha1.ServiceSpec,
+) *corev1.Service {
 	ports := []corev1.ServicePort{
 		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
 	}
@@ -86,16 +104,33 @@ func BuildClientService(crName, namespace string, tlsEnabled bool) *corev1.Servi
 			Name: "client-tls", Port: PortTLS, TargetPort: intstr.FromInt(PortTLS), Protocol: corev1.ProtocolTCP,
 		})
 	}
+	opts := firstServiceSpec(serviceSpec)
+	serviceType := opts.Type
+	if serviceType == "" {
+		serviceType = corev1.ServiceTypeClusterIP
+	}
+	labels := CommonLabels(crName, "valkey")
+	maps.Copy(labels, opts.Labels)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ClientServiceName(crName),
-			Namespace: namespace,
-			Labels:    CommonLabels(crName, "valkey"),
+			Name:        ClientServiceName(crName),
+			Namespace:   namespace,
+			Labels:      labels,
+			Annotations: copyStringMap(opts.Annotations),
 		},
 		Spec: corev1.ServiceSpec{
-			Type:     corev1.ServiceTypeClusterIP,
-			Selector: SelectorLabels(crName),
-			Ports:    ports,
+			Type:           serviceType,
+			IPFamilyPolicy: opts.IPFamilyPolicy,
+			IPFamilies:     opts.IPFamilies,
+			Selector:       SelectorLabels(crName),
+			Ports:          ports,
 		},
 	}
+}
+
+func firstServiceSpec(specs []*cachev1alpha1.ServiceSpec) *cachev1alpha1.ServiceSpec {
+	if len(specs) == 0 || specs[0] == nil {
+		return &cachev1alpha1.ServiceSpec{}
+	}
+	return specs[0]
 }

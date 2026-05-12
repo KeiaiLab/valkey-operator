@@ -59,6 +59,9 @@ func (d *ValkeyCustomDefaulter) Default(_ context.Context, obj *cachev1alpha1.Va
 	if obj.Spec.Version.Image == "" {
 		obj.Spec.Version.Image = cachev1alpha1.DefaultValkeyImage
 	}
+	if obj.Spec.ExternalReplica != nil && obj.Spec.ExternalReplica.Enabled && obj.Spec.ExternalReplica.Port == 0 {
+		obj.Spec.ExternalReplica.Port = 6379
+	}
 	// Auth.Enabled 는 omitempty 부재로 zero value 가 false 로 직렬화 → CRD
 	// schema default=true 가 skip 된다. 본 operator 는 ADR-0013 옵션 A 에 따라
 	// 항상 auth 를 강제하므로 webhook 에서 true 로 정규화한다.
@@ -139,6 +142,7 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 			))
 		}
 	}
+	errs = append(errs, validateExternalReplica(p.Child("externalReplica"), v)...)
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		// hasCertMgr: CertManager pointer non-nil + (IssuerRef.Name 명시 OR AutoSelfSigned=true).
 		// CRD required marker 가 struct value 빈 객체 통과 허용 (cross-cut audit).
@@ -170,6 +174,7 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 	}
 	// storage.size 하한 1Gi (cross-cut audit, ADR-0016).
 	errs = append(errs, validateStorageSizeMin(p.Child("storage", "size"), v.Spec.Storage.Size)...)
+	errs = append(errs, validateStorageMode(p.Child("storage"), v.Spec.Storage)...)
 
 	// storage.storageClassName DNS-1123 subdomain 검증 (ROADMAP RBD storageClass
 	// 기본 검증 — Valkey CR 동일 invariant).
@@ -197,6 +202,38 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 			p.Child("auth"),
 			"auth.users requires auth.enabled=true",
 		))
+	}
+	return errs
+}
+
+func validateExternalReplica(path *field.Path, v *cachev1alpha1.Valkey) field.ErrorList {
+	if v.Spec.ExternalReplica == nil || !v.Spec.ExternalReplica.Enabled {
+		return nil
+	}
+	var errs field.ErrorList
+	if v.Spec.Mode != cachev1alpha1.ModeStandalone {
+		errs = append(errs, field.Forbidden(
+			path, "externalReplica is supported only when mode=Standalone; use operator Replication/Cluster for internal HA",
+		))
+	}
+	if v.Spec.ExternalReplica.Host == "" {
+		errs = append(errs, field.Required(
+			path.Child("host"),
+			"externalReplica.host is required when externalReplica.enabled=true",
+		))
+	}
+	if v.Spec.ExternalReplica.Port < 0 || v.Spec.ExternalReplica.Port > 65535 {
+		errs = append(errs, field.Invalid(
+			path.Child("port"), v.Spec.ExternalReplica.Port,
+			"externalReplica.port must be between 1 and 65535",
+		))
+	}
+	if v.Spec.ExternalReplica.Auth != nil && v.Spec.ExternalReplica.Auth.Enabled {
+		errs = append(errs, validateSecretKeySelector(
+			path.Child("auth", "passwordSecretRef"),
+			v.Spec.ExternalReplica.Auth.PasswordSecretRef,
+			"externalReplica.auth.passwordSecretRef",
+		)...)
 	}
 	return errs
 }

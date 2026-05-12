@@ -121,9 +121,13 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "AuthSecret", err, r.Recorder)
 	}
+	externalReplicaPassword, err := r.externalReplicaPassword(ctx, v)
+	if err != nil {
+		return applyErrorCondition(ctx, r.Client, v, "ExternalReplica", err, r.Recorder)
+	}
 
 	// 4. ConfigMap
-	cm, err := resources.BuildConfigMapForValkey(v, password)
+	cm, err := resources.BuildConfigMapForValkey(v, password, externalReplicaPassword)
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ConfigMap", err, r.Recorder)
 	}
@@ -133,11 +137,11 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 5. Headless + Client Service (TLS 활성 시 6380 port 추가 expose)
 	tlsEnabled := v.Spec.TLS != nil && v.Spec.TLS.Enabled
-	hs := resources.BuildHeadlessService(v.Name, v.Namespace, false, tlsEnabled)
+	hs := resources.BuildHeadlessService(v.Name, v.Namespace, false, tlsEnabled, v.Spec.Service)
 	if err := applyService(ctx, r.Client, r.Scheme, v, hs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "HeadlessService", err, r.Recorder)
 	}
-	cs := resources.BuildClientService(v.Name, v.Namespace, tlsEnabled)
+	cs := resources.BuildClientService(v.Name, v.Namespace, tlsEnabled, v.Spec.Service)
 	if err := applyService(ctx, r.Client, r.Scheme, v, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ClientService", err, r.Recorder)
 	}
@@ -162,18 +166,20 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 6. StatefulSet
 	stsParams := resources.STSParams{
-		CRName:         v.Name,
-		Namespace:      v.Namespace,
-		Replicas:       desiredReplicas(v),
-		Image:          imageOrDefault(v.Spec.Version),
-		PullPolicy:     v.Spec.Version.ImagePullPolicy,
-		Resources:      buildResourceReq(v.Spec.Resources),
-		StorageClass:   v.Spec.Storage.StorageClassName,
-		StorageSize:    v.Spec.Storage.Size,
-		PasswordRef:    secretRef,
-		ClusterMode:    false,
-		Pod:            v.Spec.Pod,
-		AuthSecretHash: hashAuthSecret(password),
+		CRName:               v.Name,
+		Namespace:            v.Namespace,
+		Replicas:             desiredReplicas(v),
+		Image:                imageOrDefault(v.Spec.Version),
+		PullPolicy:           v.Spec.Version.ImagePullPolicy,
+		Resources:            buildResourceReq(v.Spec.Resources),
+		StorageClass:         v.Spec.Storage.StorageClassName,
+		StorageSize:          v.Spec.Storage.Size,
+		Storage:              v.Spec.Storage,
+		PasswordRef:          secretRef,
+		ClusterMode:          false,
+		Pod:                  v.Spec.Pod,
+		AuthSecretHash:       hashAuthSecret(password),
+		RevisionHistoryLimit: v.Spec.RevisionHistoryLimit,
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		switch {
@@ -219,8 +225,10 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 6.5 PVC online expansion — STS VCT 가 immutable 이므로 기존 PVC 직접 patch.
 	// webhook 에서 size 감소는 reject. 증가만 도달.
-	if err := expandDataPVCs(ctx, r.Client, v.Namespace, v.Name, v.Spec.Storage.Size); err != nil {
-		return applyErrorCondition(ctx, r.Client, v, "PVCResize", err, r.Recorder)
+	if !v.Spec.Storage.Ephemeral && v.Spec.Storage.ExistingClaim == "" {
+		if err := expandDataPVCs(ctx, r.Client, v.Namespace, v.Name, v.Spec.Storage.Size); err != nil {
+			return applyErrorCondition(ctx, r.Client, v, "PVCResize", err, r.Recorder)
+		}
 	}
 
 	// 6.6 Encryption-at-rest audit/enforce — Spec.Storage.EncryptionRequired=true 시
@@ -270,7 +278,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// 9a. Replication 자동 failover 검토 (ADR-0017) — primary NotReady 30s+ 시
 	// 새 primary 선출. readyReplicas 가 desired 미만일 때만 의미. non-fatal —
 	// 실패 시 다음 reconcile 재시도.
-	if v.Spec.Mode == cachev1alpha1.ModeReplication && v.Spec.Replicas > 1 {
+	if v.Spec.Mode == cachev1alpha1.ModeReplication && v.Spec.Replicas > 1 && !isExternalReplica(v) {
 		tlsCfg, _ := r.tlsConfigForValkey(ctx, v)
 		if err := r.reconcileFailover(ctx, v, password, tlsCfg); err != nil {
 			logger.Info("failover reconciliation failed", "error", err.Error())
@@ -278,7 +286,8 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// 9. Replication: primary 가 ready 되면 모든 replica 가 REPLICAOF primary 호출.
-	if v.Spec.Mode == cachev1alpha1.ModeReplication && desiredReplicas(v) > 1 && stsObj.readyReplicas == desiredReplicas(v) {
+	if v.Spec.Mode == cachev1alpha1.ModeReplication && desiredReplicas(v) > 1 &&
+		!isExternalReplica(v) && stsObj.readyReplicas == desiredReplicas(v) {
 		tlsCfg, tlsErr := r.tlsConfigForValkey(ctx, v)
 		if tlsErr != nil {
 			logger.Info("Replication TLS config pending", "error", tlsErr.Error())
@@ -408,6 +417,9 @@ func (r *ValkeyReconciler) determinePrimary(v *cachev1alpha1.Valkey) string {
 }
 
 func imageOrDefault(vv cachev1alpha1.ValkeyVersion) string {
+	if vv.ImageRef != "" {
+		return vv.ImageRef
+	}
 	if vv.Image != "" && vv.Version != "" {
 		return fmt.Sprintf("%s:%s", vv.Image, vv.Version)
 	}
@@ -473,6 +485,32 @@ func (r *ValkeyReconciler) ensureAuthSecret(ctx context.Context, v *cachev1alpha
 		LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
 		Key:                  resources.SecretPasswordKey,
 	}, nil
+}
+
+func isExternalReplica(v *cachev1alpha1.Valkey) bool {
+	return v.Spec.ExternalReplica != nil && v.Spec.ExternalReplica.Enabled
+}
+
+func (r *ValkeyReconciler) externalReplicaPassword(
+	ctx context.Context,
+	v *cachev1alpha1.Valkey,
+) (string, error) {
+	if !isExternalReplica(v) || v.Spec.ExternalReplica.Auth == nil || !v.Spec.ExternalReplica.Auth.Enabled {
+		return "", nil
+	}
+	ref := v.Spec.ExternalReplica.Auth.PasswordSecretRef
+	if ref == nil {
+		return "", fmt.Errorf("externalReplica.auth.passwordSecretRef is required when externalReplica.auth.enabled=true")
+	}
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: v.Namespace}, secret); err != nil {
+		return "", fmt.Errorf("get external replica auth secret: %w", err)
+	}
+	key := ref.Key
+	if key == "" {
+		key = resources.SecretPasswordKey
+	}
+	return string(secret.Data[key]), nil
 }
 
 type stsStatus struct {

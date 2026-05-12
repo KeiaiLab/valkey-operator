@@ -69,6 +69,9 @@ type ValkeySpec struct {
 	Pod *PodSpec `json:"pod,omitempty"`
 
 	// +optional
+	Service *ServiceSpec `json:"service,omitempty"`
+
+	// +optional
 	PodDisruptionBudget *PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 
 	// +optional
@@ -102,6 +105,14 @@ type ValkeySpec struct {
 	// nil 이면 valkey 기본값 (10ms / 128 entries) 사용.
 	// +optional
 	SlowLog *SlowLogSpec `json:"slowLog,omitempty"`
+
+	// +optional
+	ExternalReplica *ExternalReplicaSpec `json:"externalReplica,omitempty"`
+
+	// RevisionHistoryLimit — StatefulSet rollout history 보존 개수.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 // IsAutoFailoverEnabled — Spec.AutoFailover 가 nil 또는 true 면 true (default
@@ -138,6 +149,8 @@ type ValkeyStatus struct {
 	//   "EncryptionEnforce" — Spec.Storage.EncryptionEnforce (PR #55)
 	//   "NetworkPolicy"   — Spec.NetworkPolicy.Enabled
 	//   "Monitoring"      — Spec.Monitoring.Enabled
+	//   "ExternalReplica" — Spec.ExternalReplica.Enabled
+	//   "EphemeralStorage" — Spec.Storage.Ephemeral
 	// +optional
 	Capabilities []string `json:"capabilities,omitempty"`
 }

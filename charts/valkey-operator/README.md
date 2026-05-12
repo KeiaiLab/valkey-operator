@@ -21,6 +21,8 @@ A Kubernetes Operator for deploying and managing Valkey instances and Clusters
 - **Chaos engineering**: chaos-mesh foundation (PR #41, ADR-0041)
 - **PITR foundation**: Source.VolumeSnapshot + PointInTime API (PR #51-#58 + #54)
 - **Status.Capabilities**: kubectl get -o wide 한눈에 활성 features (PR #62)
+- **CloudPirates valkey compatibility**: image digest, storage/service/pod knobs,
+  external replica, revision history, dual-stack Service, chart extraObjects (ADR-0043)
 
 자세한 평가: `docs/operations/commercial-parity-status.md` (Redis Enterprise ~94% parity).
 

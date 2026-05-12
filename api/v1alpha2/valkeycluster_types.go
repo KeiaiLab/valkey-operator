@@ -75,6 +75,8 @@ type ValkeyClusterSpec struct {
 	// +optional
 	Pod *PodSpec `json:"pod,omitempty"`
 	// +optional
+	Service *ServiceSpec `json:"service,omitempty"`
+	// +optional
 	PodDisruptionBudget *PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// +optional
 	NetworkPolicy *NetworkPolicySpec `json:"networkPolicy,omitempty"`
@@ -84,6 +86,11 @@ type ValkeyClusterSpec struct {
 	Persistence *PersistencePolicy `json:"persistence,omitempty"`
 	// +optional
 	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
+
+	// RevisionHistoryLimit — StatefulSet rollout history 보존 개수.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type ShardStatus struct {

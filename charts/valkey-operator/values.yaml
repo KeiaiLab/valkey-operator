@@ -251,6 +251,12 @@ extraVolumeMounts: []
 # -- Extra volumes for the operator
 extraVolumes: []
 
+# -- Helm release 와 함께 배포할 추가 Kubernetes manifest 목록.
+# CloudPirates valkey chart 의 extraObjects 와 같은 운영 escape hatch.
+# CRD 가 직접 소유하지 않는 TCPRoute, NetworkPolicy, SecretProviderClass 등은
+# 여기서 명시하고 GitOps 로 추적한다.
+extraObjects: []
+
 # ----------------------------------------------------------------------------
 # Carve-out feature gates (v0.1.0-alpha)
 # alpha 출시 범위: Valkey 단일 인스턴스. 다음 기능은 alpha 단계로 기본 비활성화.

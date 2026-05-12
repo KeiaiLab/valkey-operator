@@ -194,6 +194,35 @@ func TestBuildClientService(t *testing.T) {
 	if len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != PortClient {
 		t.Error("client 포트 1개여야 함")
 	}
+	policy := corev1.IPFamilyPolicyPreferDualStack
+	custom := &cachev1alpha1.ServiceSpec{
+		Type:           corev1.ServiceTypeLoadBalancer,
+		IPFamilyPolicy: &policy,
+		IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol, corev1.IPv6Protocol},
+		Annotations: map[string]string{
+			"service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
+		},
+		Labels: map[string]string{"traffic": "external"},
+	}
+	customSvc := BuildClientService("rs", "ns", true, custom)
+	if customSvc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		t.Fatalf("custom service type=%s, want LoadBalancer", customSvc.Spec.Type)
+	}
+	if customSvc.Annotations["service.beta.kubernetes.io/aws-load-balancer-type"] != "nlb" {
+		t.Fatalf("service annotations not merged: %v", customSvc.Annotations)
+	}
+	if customSvc.Labels["traffic"] != "external" {
+		t.Fatalf("service labels not merged: %v", customSvc.Labels)
+	}
+	if customSvc.Spec.IPFamilyPolicy == nil || *customSvc.Spec.IPFamilyPolicy != corev1.IPFamilyPolicyPreferDualStack {
+		t.Fatalf("ipFamilyPolicy=%v, want PreferDualStack", customSvc.Spec.IPFamilyPolicy)
+	}
+	if got := customSvc.Spec.IPFamilies; len(got) != 2 || got[0] != corev1.IPv4Protocol || got[1] != corev1.IPv6Protocol {
+		t.Fatalf("ipFamilies=%v, want [IPv4 IPv6]", got)
+	}
+	if len(customSvc.Spec.Ports) != 2 {
+		t.Fatalf("tls enabled client service should expose 2 ports, got %d", len(customSvc.Spec.Ports))
+	}
 }
 
 // BuildCertificateForValkey + PortIntOrString 회귀 보호 (cycle 128) — 잔여
@@ -371,6 +400,99 @@ func TestBuildStatefulSet(t *testing.T) {
 		vct := sts.Spec.VolumeClaimTemplates[0]
 		if vct.Name != "data" {
 			t.Errorf("VolumeClaimTemplate name='data' 기대, got %q", vct.Name)
+		}
+	})
+	t.Run("CloudPirates compatibility pod and storage knobs", func(t *testing.T) {
+		t.Parallel()
+		rev := int32(7)
+		term := int64(45)
+		p := makeParams()
+		p.RevisionHistoryLimit = &rev
+		p.Storage = cachev1alpha1.StorageSpec{
+			Ephemeral: true,
+			Labels:    map[string]string{"storage-tier": "ephemeral"},
+		}
+		p.Pod = &cachev1alpha1.PodSpec{
+			Labels: map[string]string{"workload": "cache"},
+			Annotations: map[string]string{
+				"prometheus.io/scrape": "true",
+			},
+			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "pull-secret"}},
+			HostAliases: []corev1.HostAlias{{
+				IP:        "127.0.0.1",
+				Hostnames: []string{"rs-0"},
+			}},
+			ExtraEnv: []corev1.EnvVar{{Name: "CUSTOM_VAR", Value: "custom"}},
+			StartupProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					Exec: &corev1.ExecAction{Command: []string{"true"}},
+				},
+			},
+			TerminationGracePeriodSeconds: &term,
+		}
+		sts := BuildStatefulSet(p)
+		if sts.Spec.RevisionHistoryLimit == nil || *sts.Spec.RevisionHistoryLimit != rev {
+			t.Fatalf("revisionHistoryLimit=%v, want %d", sts.Spec.RevisionHistoryLimit, rev)
+		}
+		if len(sts.Spec.VolumeClaimTemplates) != 0 {
+			t.Fatalf("ephemeral storage should not create VCT, got %d", len(sts.Spec.VolumeClaimTemplates))
+		}
+		var hasDataEmptyDir bool
+		for _, v := range sts.Spec.Template.Spec.Volumes {
+			if v.Name == "data" && v.EmptyDir != nil {
+				hasDataEmptyDir = true
+			}
+		}
+		if !hasDataEmptyDir {
+			t.Fatal("storage.ephemeral=true should mount data emptyDir")
+		}
+		tpl := sts.Spec.Template
+		if tpl.Labels["workload"] != "cache" {
+			t.Errorf("pod label merge 누락: %v", tpl.Labels)
+		}
+		if tpl.Annotations["prometheus.io/scrape"] != "true" {
+			t.Errorf("pod annotation merge 누락: %v", tpl.Annotations)
+		}
+		spec := tpl.Spec
+		if len(spec.ImagePullSecrets) != 1 || spec.ImagePullSecrets[0].Name != "pull-secret" {
+			t.Errorf("imagePullSecrets 누락: %v", spec.ImagePullSecrets)
+		}
+		if len(spec.HostAliases) != 1 || spec.HostAliases[0].IP != "127.0.0.1" {
+			t.Errorf("hostAliases 누락: %v", spec.HostAliases)
+		}
+		if spec.TerminationGracePeriodSeconds == nil || *spec.TerminationGracePeriodSeconds != term {
+			t.Errorf("terminationGracePeriodSeconds=%v, want %d", spec.TerminationGracePeriodSeconds, term)
+		}
+		c := spec.Containers[0]
+		if c.StartupProbe == nil {
+			t.Fatal("custom startupProbe 누락")
+		}
+		var hasCustomEnv bool
+		for _, env := range c.Env {
+			if env.Name == "CUSTOM_VAR" && env.Value == "custom" {
+				hasCustomEnv = true
+			}
+		}
+		if !hasCustomEnv {
+			t.Errorf("extraEnv 누락: %v", c.Env)
+		}
+	})
+	t.Run("existingClaim uses PVC volume without VCT", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.Storage = cachev1alpha1.StorageSpec{ExistingClaim: "precreated-data"}
+		sts := BuildStatefulSet(p)
+		if len(sts.Spec.VolumeClaimTemplates) != 0 {
+			t.Fatalf("existingClaim should not create VCT, got %d", len(sts.Spec.VolumeClaimTemplates))
+		}
+		var claim string
+		for _, v := range sts.Spec.Template.Spec.Volumes {
+			if v.Name == "data" && v.PersistentVolumeClaim != nil {
+				claim = v.PersistentVolumeClaim.ClaimName
+			}
+		}
+		if claim != "precreated-data" {
+			t.Fatalf("data volume claim=%q, want precreated-data", claim)
 		}
 	})
 	t.Run("exporter sidecar when ExporterImg set", func(t *testing.T) {
@@ -627,6 +749,28 @@ func TestBuildConfigMapForValkey(t *testing.T) {
 		conf := cm.Data[ConfigFileName]
 		if !strings.Contains(conf, "tls-port") {
 			t.Error("TLS enabled → tls-port directive 누락")
+		}
+	})
+	t.Run("external replica uses external masterauth instead of local password", func(t *testing.T) {
+		t.Parallel()
+		vk := &cachev1alpha1.Valkey{}
+		vk.Name = "rs"
+		vk.Namespace = "ns"
+		vk.Spec.ExternalReplica = &cachev1alpha1.ExternalReplicaSpec{
+			Enabled: true,
+			Host:    "redis-master.example.com",
+			Port:    6380,
+		}
+		cm, _ := BuildConfigMapForValkey(vk, "local-pass", "external-pass")
+		conf := cm.Data[ConfigFileName]
+		if !strings.Contains(conf, "replicaof redis-master.example.com 6380") {
+			t.Fatalf("external replicaof directive 누락: %s", conf)
+		}
+		if !strings.Contains(conf, "masterauth external-pass") {
+			t.Fatalf("external masterauth 누락: %s", conf)
+		}
+		if strings.Contains(conf, "masterauth local-pass") {
+			t.Fatalf("external replica mode 에서 local masterauth 사용 금지: %s", conf)
 		}
 	})
 }

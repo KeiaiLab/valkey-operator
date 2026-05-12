@@ -7,7 +7,17 @@ protected-mode no
 dir {{ .DataDir }}
 {{- if .RequirePass }}
 requirepass {{ .RequirePass }}
+{{- if not .ExternalReplicaEnabled }}
 masterauth {{ .RequirePass }}
+{{- end }}
+{{- end }}
+
+{{- if .ExternalReplicaEnabled }}
+# External replica mode
+replicaof {{ .ExternalReplicaHost }} {{ .ExternalReplicaPort }}
+{{- if .ExternalReplicaPassword }}
+masterauth {{ .ExternalReplicaPassword }}
+{{- end }}
 {{- end }}
 
 # Persistence

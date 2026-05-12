@@ -1,11 +1,14 @@
 # Commercial Parity Status — valkey-operator
 
 ADR-0040 (Helm chart vs Operator 채택 정책) 의 commercial parity 5 gap 해소 +
-phase 2 추가 hardening 9건 반영 후의 상태. **production-grade OSS Redis/Valkey
+phase 2 추가 hardening 9건 + CloudPirates valkey `0.20.2` 교차검증 반영 후의 상태. **production-grade OSS Redis/Valkey
 operator** 로서의 기능 인벤토리.
 
 비교 대상: Bitnami Redis chart (paywall 전환 후 OSS) / CloudPirates Redis chart /
 Redis Enterprise / AWS ElastiCache / GCP Memorystore.
+
+CloudPirates valkey chart `0.20.2` 세부 values 매핑은
+`docs/operations/cloudpirates-valkey-compatibility.md` 가 단일 진실원이다.
 
 본 문서는 신규 사용자가 *"이 operator 로 production 운영 가능한가?"* 를 1분 안에
 판단할 수 있도록 작성. 미달 항목은 *Pro tier / 후속 epic 후보* 로 명시.
@@ -39,16 +42,20 @@ Redis Enterprise / AWS ElastiCache / GCP Memorystore.
 | **Auth** | Auto-generated random password | ✅ GA | 32-byte secret 자동 생성 |
 | **Auth** | AuthSecret rotation auto-restart | ✅ GA | PR #46 (PodTemplate annotation hash) |
 | **Storage** | PVC dynamic provisioning | ✅ GA | StatefulSet VCT |
+| **Storage** | Ephemeral / existing PVC / accessModes / PVC metadata | ✅ GA | ADR-0043 |
 | **Storage** | PVC auto-resize | ✅ GA | PR #39 (StorageClass.AllowVolumeExpansion) |
 | **Storage** | Encryption-at-rest audit | ✅ GA | PR #45 (6 provider 패턴 인식) |
 | **Storage** | Encryption-at-rest enforce | ✅ GA | PR #55 (compliance hard-fail mode) |
+| **Networking** | Service type / annotation / label / dual-stack IP family | ✅ GA | ADR-0043 |
 | **Networking** | NetworkPolicy (opt-in) | ✅ GA | ADR-0035 |
 | **Networking** | default-deny + allow CR pods | ✅ GA | NetworkPolicySpec |
 | **Scaling** | Replication HPA (CPU/Memory) | ✅ GA | ADR-0027 impl (PR #44) |
 | **Scaling** | Manual scale (replicas/shards) | ✅ GA | ScalePolicy |
 | **Lifecycle** | Rolling upgrade (Valkey version) | ✅ GA | ValkeyVersion field + B01 e2e |
+| **Lifecycle** | digest imageRef + StatefulSet revisionHistoryLimit | ✅ GA | ADR-0043 |
 | **Lifecycle** | Pre-stop hook | ✅ GA | ConfigMap |
 | **Lifecycle** | Finalizer + graceful teardown | ✅ GA | ADR-0005 |
+| **Migration** | External replica from remote Redis/Valkey | ✅ GA | ADR-0043 (`mode=Standalone`) |
 
 ## 2. Observability
 

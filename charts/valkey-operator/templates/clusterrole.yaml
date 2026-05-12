@@ -74,6 +74,15 @@ rules:
       - update
       - watch
 
+  # Events API resources — recorder 는 events.k8s.io/v1 Event 를 사용한다.
+  - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+
   # Apps resources
   - apiGroups:
       - apps

@@ -136,11 +136,11 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// 5. Headless + Client Service. Headless 는 cluster-bus(16379) 포트 추가.
 	// TLS 활성 시 client-tls(6380) 도 expose.
 	tlsEnabled := vc.Spec.TLS != nil && vc.Spec.TLS.Enabled
-	hs := resources.BuildHeadlessService(vc.Name, vc.Namespace, true, tlsEnabled)
+	hs := resources.BuildHeadlessService(vc.Name, vc.Namespace, true, tlsEnabled, vc.Spec.Service)
 	if err := applyService(ctx, r.Client, r.Scheme, vc, hs); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "HeadlessService", err, r.Recorder)
 	}
-	cs := resources.BuildClientService(vc.Name, vc.Namespace, tlsEnabled)
+	cs := resources.BuildClientService(vc.Name, vc.Namespace, tlsEnabled, vc.Spec.Service)
 	if err := applyService(ctx, r.Client, r.Scheme, vc, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "ClientService", err, r.Recorder)
 	}
@@ -192,18 +192,20 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	SetCapabilityMetrics(vc.Namespace, vc.Name, AllCapabilities, vc.Status.Capabilities)
 
 	stsParams := resources.STSParams{
-		CRName:         vc.Name,
-		Namespace:      vc.Namespace,
-		Replicas:       totalReplicas,
-		Image:          imageOrDefault(vc.Spec.Version),
-		PullPolicy:     vc.Spec.Version.ImagePullPolicy,
-		Resources:      buildResourceReq(vc.Spec.Resources),
-		StorageClass:   vc.Spec.Storage.StorageClassName,
-		StorageSize:    vc.Spec.Storage.Size,
-		PasswordRef:    secretRef,
-		ClusterMode:    true,
-		Pod:            vc.Spec.Pod,
-		AuthSecretHash: hashAuthSecret(password),
+		CRName:               vc.Name,
+		Namespace:            vc.Namespace,
+		Replicas:             totalReplicas,
+		Image:                imageOrDefault(vc.Spec.Version),
+		PullPolicy:           vc.Spec.Version.ImagePullPolicy,
+		Resources:            buildResourceReq(vc.Spec.Resources),
+		StorageClass:         vc.Spec.Storage.StorageClassName,
+		StorageSize:          vc.Spec.Storage.Size,
+		Storage:              vc.Spec.Storage,
+		PasswordRef:          secretRef,
+		ClusterMode:          true,
+		Pod:                  vc.Spec.Pod,
+		AuthSecretHash:       hashAuthSecret(password),
+		RevisionHistoryLimit: vc.Spec.RevisionHistoryLimit,
 	}
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
 		// CertManager 와 CustomCert 둘 다 동일 secret 마운트 — webhook 이 둘 중 하나만
@@ -226,8 +228,10 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// 6.5 PVC online expansion — STS VCT 가 immutable 이므로 기존 PVC 직접 patch.
 	// webhook 에서 size 감소는 reject. 증가만 도달.
-	if err := expandDataPVCs(ctx, r.Client, vc.Namespace, vc.Name, vc.Spec.Storage.Size); err != nil {
-		return applyErrorCondition(ctx, r.Client, vc, "PVCResize", err, r.Recorder)
+	if !vc.Spec.Storage.Ephemeral && vc.Spec.Storage.ExistingClaim == "" {
+		if err := expandDataPVCs(ctx, r.Client, vc.Namespace, vc.Name, vc.Spec.Storage.Size); err != nil {
+			return applyErrorCondition(ctx, r.Client, vc, "PVCResize", err, r.Recorder)
+		}
 	}
 
 	// 6.6 Encryption-at-rest audit/enforce — Spec.Storage.EncryptionRequired=true 시
