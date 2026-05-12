@@ -116,7 +116,7 @@ func BuildBackupJob(p BackupJobParams) *batchv1.Job {
 			Name: "tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName:  p.TLSSecretName,
-					DefaultMode: ptrInt32(0o400),
+					DefaultMode: new(int32(0o400)),
 				},
 			},
 		})
@@ -158,9 +158,9 @@ func BuildBackupJob(p BackupJobParams) *batchv1.Job {
 					}},
 					Volumes: volumes,
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptrBool(true),
-						RunAsUser:    ptrInt64(999),
-						FSGroup:      ptrInt64(999),
+						RunAsNonRoot: new(true),
+						RunAsUser:    new(int64(999)),
+						FSGroup:      new(int64(999)),
 					},
 				},
 			},

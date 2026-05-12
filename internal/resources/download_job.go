@@ -21,6 +21,8 @@ limitations under the License.
 package resources
 
 import (
+	"strconv"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -156,9 +158,9 @@ func BuildDownloadJob(p DownloadJobParams) *batchv1.Job {
 						}},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptrBool(true),
-						RunAsUser:    ptrInt64(65532),
-						FSGroup:      ptrInt64(65532),
+						RunAsNonRoot: new(true),
+						RunAsUser:    new(int64(65532)),
+						FSGroup:      new(int64(65532)),
 					},
 				},
 			},
@@ -196,8 +198,5 @@ func s3EnvForJob(endpoint, region string, forcePathStyle bool,
 }
 
 func boolStr(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
+	return strconv.FormatBool(b)
 }

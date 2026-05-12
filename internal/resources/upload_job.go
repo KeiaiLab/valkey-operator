@@ -139,9 +139,9 @@ func BuildUploadJob(p UploadJobParams) *batchv1.Job {
 						}},
 					},
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptrBool(true),
-						RunAsUser:    ptrInt64(65532),
-						FSGroup:      ptrInt64(65532),
+						RunAsNonRoot: new(true),
+						RunAsUser:    new(int64(65532)),
+						FSGroup:      new(int64(65532)),
 					},
 				},
 			},

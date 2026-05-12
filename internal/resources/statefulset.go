@@ -195,11 +195,11 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		Containers: containers,
 		Volumes:    volumes,
 		SecurityContext: &corev1.PodSecurityContext{
-			RunAsNonRoot: ptrBool(true),
-			RunAsUser:    ptrInt64(999),
-			FSGroup:      ptrInt64(999),
+			RunAsNonRoot: new(true),
+			RunAsUser:    new(int64(999)),
+			FSGroup:      new(int64(999)),
 		},
-		TerminationGracePeriodSeconds: ptrInt64(30),
+		TerminationGracePeriodSeconds: new(int64(30)),
 	}
 	if p.Pod != nil {
 		if p.Pod.SecurityContext != nil {
@@ -245,7 +245,7 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			Labels:    labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:            ptrInt32(p.Replicas),
+			Replicas:            new(p.Replicas),
 			ServiceName:         HeadlessServiceName(p.CRName),
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Selector:            &metav1.LabelSelector{MatchLabels: selector},
@@ -259,7 +259,7 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: ptrInt32(0),
+					Partition: new(int32(0)),
 				},
 			},
 		},
@@ -272,10 +272,6 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	}
 	return sts
 }
-
-func ptrBool(b bool) *bool    { return &b }
-func ptrInt32(i int32) *int32 { return &i }
-func ptrInt64(i int64) *int64 { return &i }
 
 // defaultTopologySpread — Spec.Pod.TopologySpreadConstraints 미명시 + replicas >= 2
 // 시 자동 주입되는 zone + node 2-축 spread. ScheduleAnyway 로 강제 unschedulable
@@ -377,7 +373,7 @@ func tlsVolumes(secretName string) []corev1.Volume {
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName:  secretName,
-				DefaultMode: ptrInt32(0o400),
+				DefaultMode: new(int32(0o400)),
 			},
 		},
 	}}
