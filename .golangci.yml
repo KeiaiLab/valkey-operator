@@ -53,7 +53,7 @@ linters:
         you may not use this file except in compliance with the License.
         You may obtain a copy of the License at
 
-            http://www.apache.org/licenses/LICENSE-2.0
+        {{ INDENT }}http://www.apache.org/licenses/LICENSE-2.0
 
         Unless required by applicable law or agreed to in writing, software
         distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,6 +63,9 @@ linters:
       values:
         regexp:
           YEAR: "20\\d\\d"
+          # gofmt re-indents the URL line to either 4 spaces or a tab,
+          # depending on whether the surrounding comment uses tabs. Accept either.
+          INDENT: "(?:    |\\t)"
     # depguard 는 비활성 — valkey internal boundary 도입 시 (ADR 후) 활성화 +
     # deny list 정의. 빈 deny list 는 golangci-lint v2.8 schema 거부.
   exclusions:

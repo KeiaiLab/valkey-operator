@@ -1,3 +1,6 @@
+//go:build chaos
+// +build chaos
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,16 +17,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build chaos
-// +build chaos
-
-/*
-Copyright 2026 Keiailab.
-
-unstructured → YAML helper. chaos-mesh CRD 를 kubectl apply 로 적용하기 위한
-serializer.
-*/
-
+// unstructured → YAML helper. chaos-mesh CRD 를 kubectl apply 로 적용하기 위한
+// serializer.
 package chaos
 
 import (

@@ -14,28 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package aoftime — Valkey AOF (Append-Only File) format 의 timestamp marker 파싱.
-
-Valkey 8.0+ 의 `aof-timestamp-enabled yes` 활성 시, AOF 파일은 RESP commands
-사이에 `#TS:<unix-seconds>\r\n` marker 포함. 본 패키지는 marker 위치를 식별해
-*Point-In-Time Recovery 의 truncation 위치* 를 반환.
-
-PITR 사용:
-
-	bytes, _ := os.ReadFile("dump.aof")
-	cutoff := aoftime.TruncateOffset(bytes, time.Date(2026, 5, 10, 14, 30, 0, 0, time.UTC))
-	// cutoff bytes 까지 만 valkey-cli --pipe 로 replay → 해당 시각까지의 데이터 복원
-
-ADR-0040 §6 의 PITR phase 2 enterprise-tier 항목 — phase 1 (PR #54 API/webhook)
-의 *replay 측 missing piece*. 외부 `valkey-aof-trim` 도구 의존 제거.
-
-본 패키지는 *parse-only* — 실제 truncate 는 caller 가 byte slice 자르기.
-reconciler 통합은 별도 후속 (controller 가 본 패키지 호출 → truncated bytes 를
-PVC 에 write → init container 가 valkey-cli --pipe).
-*/
+// Package aoftime — Valkey AOF (Append-Only File) format 의 timestamp marker 파싱.
+//
+// Valkey 8.0+ 의 `aof-timestamp-enabled yes` 활성 시, AOF 파일은 RESP commands
+// 사이에 `#TS:<unix-seconds>\r\n` marker 포함. 본 패키지는 marker 위치를 식별해
+// *Point-In-Time Recovery 의 truncation 위치* 를 반환.
+//
+// PITR 사용:
+//
+//	bytes, _ := os.ReadFile("dump.aof")
+//	cutoff := aoftime.TruncateOffset(bytes, time.Date(2026, 5, 10, 14, 30, 0, 0, time.UTC))
+//	// cutoff bytes 까지 만 valkey-cli --pipe 로 replay → 해당 시각까지의 데이터 복원
+//
+// ADR-0040 §6 의 PITR phase 2 enterprise-tier 항목 — phase 1 (PR #54 API/webhook)
+// 의 *replay 측 missing piece*. 외부 `valkey-aof-trim` 도구 의존 제거.
+//
+// 본 패키지는 *parse-only* — 실제 truncate 는 caller 가 byte slice 자르기.
+// reconciler 통합은 별도 후속 (controller 가 본 패키지 호출 → truncated bytes 를
+// PVC 에 write → init container 가 valkey-cli --pipe).
 package aoftime
 
 import (

@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-ValkeyRestore Init container + Source volume + Inject/Remove 단위 테스트.
-*/
-
+// ValkeyRestore Init container + Source volume + Inject/Remove 단위 테스트.
 package resources
 
 import (

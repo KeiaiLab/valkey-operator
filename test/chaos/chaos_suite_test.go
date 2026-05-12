@@ -1,3 +1,6 @@
+//go:build chaos
+// +build chaos
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,28 +17,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build chaos
-// +build chaos
-
-/*
-Copyright 2026 Keiailab.
-
-chaos engineering e2e — ADR-0041 chaos-mesh 기반.
-
-전제 조건:
-  - Kind cluster (또는 임의 K8s) 활성, kubeconfig 가 가리키는 context 가 *test
-    가능* 환경 (production 사용 금지).
-  - chaos-mesh CRD + controller 설치 (`make chaos-mesh-install`).
-  - cert-manager 설치 (cert-manager auto-discovery 통합 시).
-  - valkey-operator 가 kind cluster 에 deploy 된 상태 (`make deploy`).
-
-실행:
-  go test -tags=chaos ./test/chaos/... -v -timeout=20m
-
-또는:
-  make chaos-e2e
-*/
-
+// chaos engineering e2e — ADR-0041 chaos-mesh 기반.
+//
+// 전제 조건:
+//   - Kind cluster (또는 임의 K8s) 활성, kubeconfig 가 가리키는 context 가 *test
+//     가능* 환경 (production 사용 금지).
+//   - chaos-mesh CRD + controller 설치 (`make chaos-mesh-install`).
+//   - cert-manager 설치 (cert-manager auto-discovery 통합 시).
+//   - valkey-operator 가 kind cluster 에 deploy 된 상태 (`make deploy`).
+//
+// 실행:
+//
+//	go test -tags=chaos ./test/chaos/... -v -timeout=20m
+//
+// 또는:
+//
+//	make chaos-e2e
 package chaos
 
 import (

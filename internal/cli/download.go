@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-`valkey-operator download` sub-command — S3 에서 파일 다운로드 (ADR-0023).
-ValkeyRestore Mounting phase 의 외부 source 에 사용.
-*/
-
+// `valkey-operator download` sub-command — S3 에서 파일 다운로드 (ADR-0023).
+// ValkeyRestore Mounting phase 의 외부 source 에 사용.
 package cli
 
 import (

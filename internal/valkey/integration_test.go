@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
 Copyright 2026 Keiailab.
 
@@ -14,20 +16,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build integration
-
-/*
-Copyright 2026 Keiailab.
-
-통합 테스트 — 실제 valkey:8 컨테이너로 cluster bootstrap / replication 알고리즘 검증.
-Docker daemon 필요. `make integration-test` 로 실행.
-
-설계 원칙:
-  - 외부 의존성 0 (testcontainers-go 등 SDK 미사용, os/exec 만).
-  - 각 테스트가 자체 docker network + 컨테이너 정리 (defer cleanup).
-  - 빌드 태그 `integration` 으로 일반 `make test` 와 격리.
-*/
-
+// 통합 테스트 — 실제 valkey:8 컨테이너로 cluster bootstrap / replication 알고리즘 검증.
+// Docker daemon 필요. `make integration-test` 로 실행.
+//
+// 설계 원칙:
+//   - 외부 의존성 0 (testcontainers-go 등 SDK 미사용, os/exec 만).
+//   - 각 테스트가 자체 docker network + 컨테이너 정리 (defer cleanup).
+//   - 빌드 태그 `integration` 으로 일반 `make test` 와 격리.
 package valkey
 
 import (

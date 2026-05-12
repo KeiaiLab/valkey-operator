@@ -14,20 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package controller — ClusterRef 기반 dial helpers (receiver-less).
-ValkeyBackup/ValkeyRestore 양쪽이 같은 패턴으로 사용 — code 중복 해소.
-
-본 파일의 함수들은 ValkeyBackupReconciler.dialBackupTarget /
-fetchBackupTargetPassword / tlsConfigForBackupTarget 의 본문을 receiver-less
-형태로 추출한 것. ValkeyBackupReconciler / ValkeyRestoreReconciler 의
-method 들은 본 함수들을 호출하는 thin wrapper.
-
-ADR 별개 — 단순 refactor.
-*/
-
+// Package controller — ClusterRef 기반 dial helpers (receiver-less).
+// ValkeyBackup/ValkeyRestore 양쪽이 같은 패턴으로 사용 — code 중복 해소.
+//
+// 본 파일의 함수들은 ValkeyBackupReconciler.dialBackupTarget /
+// fetchBackupTargetPassword / tlsConfigForBackupTarget 의 본문을 receiver-less
+// 형태로 추출한 것. ValkeyBackupReconciler / ValkeyRestoreReconciler 의
+// method 들은 본 함수들을 호출하는 thin wrapper.
+//
+// ADR 별개 — 단순 refactor.
 package controller
 
 import (

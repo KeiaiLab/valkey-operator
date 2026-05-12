@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-`valkey-operator upload` sub-command — S3 에 파일 업로드 (ADR-0023).
-*/
-
+// `valkey-operator upload` sub-command — S3 에 파일 업로드 (ADR-0023).
 package cli
 
 import (

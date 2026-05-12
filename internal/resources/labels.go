@@ -14,10 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-*/
-
 // Package resources — Valkey / ValkeyCluster 가 사용하는 K8s 리소스 빌더.
 // mongodb-operator/internal/resources/builder.go 의 함수형 builder 패턴 차용.
 package resources

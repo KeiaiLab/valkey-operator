@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-INFO keyspace 호출 + 응답 파싱. ValkeyRestore 의 데이터 plane 검증 (Verifying
-phase) 에서 RestoredKeys 추정에 사용.
-*/
-
+// INFO keyspace 호출 + 응답 파싱. ValkeyRestore 의 데이터 plane 검증 (Verifying
+// phase) 에서 RestoredKeys 추정에 사용.
 package valkey
 
 import (

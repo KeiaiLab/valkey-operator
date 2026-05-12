@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Upload Job 빌더 — operator image 의 `upload` sub-command 호출하여 PVC 의
-RDB 를 외부 저장 (S3) 으로 업로드. ADR-0023.
-*/
-
+// Upload Job 빌더 — operator image 의 `upload` sub-command 호출하여 PVC 의
+// RDB 를 외부 저장 (S3) 으로 업로드. ADR-0023.
 package resources
 
 import (

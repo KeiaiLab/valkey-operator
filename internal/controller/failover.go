@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Replication mode failover helpers (ADR-0017).
-*/
-
+// Replication mode failover helpers (ADR-0017).
 package controller
 
 import (

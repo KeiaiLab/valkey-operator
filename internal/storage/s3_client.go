@@ -14,14 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-Package storage — S3-compatible object storage wrapper (minio-go v7).
-ADR-0022 채택. 본 패키지가 minio-go import 를 *유일하게* 가지며, 외부에는
-ADR-0016 의 ValkeyBackupTarget.Spec.S3 추상화를 노출.
-*/
-
+// Package storage — S3-compatible object storage wrapper (minio-go v7).
+// ADR-0022 채택. 본 패키지가 minio-go import 를 *유일하게* 가지며, 외부에는
+// ADR-0016 의 ValkeyBackupTarget.Spec.S3 추상화를 노출.
 package storage
 
 import (

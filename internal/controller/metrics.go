@@ -14,10 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-*/
-
 // Package controller — Prometheus metrics 정의.
 //
 // controller-runtime 의 글로벌 metrics registry 에 자동 등록.

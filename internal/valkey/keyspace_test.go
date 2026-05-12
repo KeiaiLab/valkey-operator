@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Copyright 2026 Keiailab.
-
-INFO keyspace 응답 파싱 단위 테스트. redis client 의존 없는 순수 함수만.
-*/
-
+// INFO keyspace 응답 파싱 단위 테스트. redis client 의존 없는 순수 함수만.
 package valkey
 
 import "testing"
