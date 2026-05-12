@@ -118,7 +118,7 @@ annotations:
     - name: valkey-operator
       image: ghcr.io/keiailab/valkey-operator:1.0.10
     - name: valkey
-      image: docker.io/valkey/valkey:9.0.4
+      image: docker.io/valkey/valkey:9.0.4-alpine3.23
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
     - kind: fixed

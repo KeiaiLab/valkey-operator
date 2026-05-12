@@ -70,7 +70,7 @@ spec:
   replicas: 3
   revisionHistoryLimit: 10
   version:
-    imageRef: docker.io/valkey/valkey:9.0.4
+    imageRef: docker.io/valkey/valkey:9.0.4-alpine3.23
     imagePullPolicy: IfNotPresent
   auth:
     enabled: true
