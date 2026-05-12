@@ -1,0 +1,28 @@
+name: DCO
+
+# CONTRIBUTING.md requires every commit to carry a
+# `Signed-off-by:` trailer (Developer Certificate of Origin). The
+# lefthook commit-msg hook enforces this locally for maintainers, but
+# external contributors opening a PR from a fork cannot run our
+# lefthook profile — so we add a server-side check that mirrors it.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: Verify Signed-off-by
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0          # need full history for the commit range
+      - name: Check DCO sign-off on every PR commit
+        uses: tim-actions/dco@f2279e6e62d5a7d9115b0cb8e837b777b1b02e21 # master @ 2026-02
