@@ -57,6 +57,15 @@ jobs:
           make docker-build IMG="$IMG"
           kind load docker-image "$IMG" --name chart-install-test
 
+      - name: Pre-create chart install namespace
+        # ct install with --namespace does NOT auto-create the
+        # namespace; helm install --create-namespace also unavailable
+        # via ct's flag passthrough. Create it explicitly so the
+        # chart install does not race with namespace creation.
+        run: |
+          kubectl create namespace valkey-operator-system \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: ct install (chart functional test)
         env:
           IMG: ghcr.io/keiailab/valkey-operator:ct-install
