@@ -1,0 +1,32 @@
+# Gitleaks configuration — secret pattern detection for pre-commit + CI.
+# Custom rules for keiailab/valkey-operator on top of gitleaks default rules.
+#
+# References:
+#   - https://github.com/gitleaks/gitleaks
+#   - .github/workflows/security-scan.yml (CI integration, future)
+#   - lefthook.yml pre-commit gitleaks hook
+
+title = "keiailab/valkey-operator gitleaks config"
+
+[extend]
+# Inherit the default ruleset (60+ patterns for AWS, GCP, Azure, GitHub,
+# Slack, Stripe, etc.) and only override / extend where needed.
+useDefault = true
+
+[[rules]]
+id = "keiailab-pgp-fingerprint"
+description = "Allow keiailab public PGP fingerprint (Security advisory key)"
+regex = '''89A4 0947 6828 CB99 2338 C378 651E 51AF 520B CB78'''
+allowlist = true
+
+[allowlist]
+paths = [
+  # Test fixtures + example values intentionally include placeholder credentials.
+  '''(.*/)?testdata/.*''',
+  '''(.*/)?examples/.*''',
+  '''charts/valkey-operator/values\.yaml''',
+  '''SECURITY\.md''',
+  '''SECURITY\.ko\.md''',
+]
+
+# Future: re-enable per-rule overrides as the surface grows.
