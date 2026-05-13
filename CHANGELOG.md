@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [1.0.13] - 2026-05-13
+
 ### Added
 
 - ADR-0045: Restore GitHub Actions workflows for OSS CI (scoped
