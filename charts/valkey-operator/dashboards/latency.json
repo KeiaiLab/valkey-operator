@@ -1,0 +1,16 @@
+{
+  "title": "Valkey Latency",
+  "uid": "valkey-latency",
+  "tags": ["valkey", "keiailab"],
+  "schemaVersion": 38,
+  "panels": [
+    {"id": 1, "title": "Command latency p99 (μs)", "type": "timeseries",
+     "targets": [{"expr": "valkey_commands_latencies_usec{quantile=\"0.99\"}"}]},
+    {"id": 2, "title": "Slowlog count", "type": "stat",
+     "targets": [{"expr": "valkey_slowlog_length"}]},
+    {"id": 3, "title": "Client connections", "type": "timeseries",
+     "targets": [{"expr": "valkey_connected_clients"}]},
+    {"id": 4, "title": "Blocked clients", "type": "stat",
+     "targets": [{"expr": "valkey_blocked_clients"}]}
+  ]
+}

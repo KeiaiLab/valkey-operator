@@ -1,0 +1,32 @@
+{
+  "title": "Valkey Cluster Overview",
+  "uid": "valkey-cluster-overview",
+  "tags": ["valkey", "keiailab"],
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Cluster size (shards × replicas)",
+      "type": "stat",
+      "targets": [{"expr": "count(valkey_cluster_node_role{role=\"master\"})", "legendFormat": "shards"}]
+    },
+    {
+      "id": 2,
+      "title": "Slot distribution",
+      "type": "heatmap",
+      "targets": [{"expr": "valkey_cluster_slots_assigned"}]
+    },
+    {
+      "id": 3,
+      "title": "Memory used per shard",
+      "type": "timeseries",
+      "targets": [{"expr": "valkey_memory_used_bytes", "legendFormat": "{{instance}}"}]
+    },
+    {
+      "id": 4,
+      "title": "Operations per second",
+      "type": "timeseries",
+      "targets": [{"expr": "rate(valkey_commands_processed_total[1m])", "legendFormat": "{{cmd}}"}]
+    }
+  ]
+}

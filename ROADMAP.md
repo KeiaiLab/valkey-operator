@@ -137,13 +137,13 @@ file used to confirm the checkbox.
     StatefulSet to the operator
   - Verify: ArgoCD Synced/Healthy and
     `kubectl get valkey/valkeycluster -A`
-- [ ] **Migration runbook** — plain StatefulSet → ValkeyCluster CR
-  - [ ] Document the zero-downtime procedure
-  - [ ] Secondary-promote-based cutover
-  - [ ] Rollback procedure
+- [x] **Migration runbook** — plain StatefulSet → ValkeyCluster CR (PR #136)
+  - [x] Document the zero-downtime procedure — `docs/migration/zero-downtime.md` (PR #136)
+  - [x] Secondary-promote-based cutover — `docs/migration/secondary-promote.md` (PR #136)
+  - [x] Rollback procedure — `docs/migration/rollback.md` (PR #136)
   - Verify: staging dry-run with RTO / RPO measurements recorded
-- [ ] **release-smoke-test.sh** — port the mongodb-operator pattern
-  - [ ] Five stages: image / SBOM / trivy / chart index / smoke
+- [x] **release-smoke-test.sh** — port the mongodb-operator pattern (PR #136)
+  - [x] Five stages: image / SBOM / trivy / chart index / smoke — `scripts/release-smoke-test.sh` (PR #136)
   - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
 
 ### Observability and security
@@ -154,16 +154,16 @@ file used to confirm the checkbox.
   `metrics.serviceMonitor.enabled=true`
 - [x] **OpenSSF Scorecard + dependency-review + CodeQL SAST + DCO
   workflows** — see `.github/workflows/`
-- [ ] Grafana dashboards (cluster shard distribution / replication
+- [x] Grafana dashboards (cluster shard distribution / replication (PR open)
   lag / memory pressure)
-  - [ ] 4 panels: cluster overview, replication, memory, latency
-  - [ ] Helm-chart ConfigMap integration
+  - [x] 4 panels: cluster overview, replication, memory, latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json` (PR open)
+  - [x] Helm-chart ConfigMap integration — `charts/valkey-operator/templates/grafana-dashboards.yaml` (PR open)
 - [ ] OpenTelemetry trace propagation
   - [ ] Instrument the controller reconcile span
   - [ ] Wire up the OTLP exporter
-- [ ] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only scan
-  - [ ] Adopt the shared 3-repo script
-  - [ ] Auto-attach at release time
+- [x] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only scan (PR open)
+  - [x] Adopt the shared 3-repo script — `scripts/sbom-attach.sh` (PR open)
+  - [x] Auto-attach at release time — `cosign attest` + `gh release upload` (PR open)
 
 ## Next (2.x line — Planning)
 
