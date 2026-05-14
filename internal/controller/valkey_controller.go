@@ -321,6 +321,13 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		v.Status.Phase = cachev1alpha1.PhaseRunning
 	}
 
+	// 비-Running 상태에서 pod 의 *실제 차단 사유* 를 status.conditions[Ready].message 로
+	// surface — 9 일간 CrashLoopBackOff stuck 사고 (RDB version 80) RCA. best-effort.
+	var readyMsg string
+	if v.Status.Phase != cachev1alpha1.PhaseRunning {
+		readyMsg = r.diagnoseUnhealthyPods(ctx, v)
+	}
+
 	conds := v.GetConditions()
 	*conds = filterConditionsByType(*conds, "Ready")
 	*conds = append(*conds, metav1.Condition{
@@ -328,6 +335,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		Reason:             string(v.Status.Phase),
+		Message:            readyMsg,
 	})
 	if err := updateStatusWithRetry(ctx, r.Client, v); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
@@ -420,6 +428,67 @@ func (r *ValkeyReconciler) determinePrimary(v *cachev1alpha1.Valkey) string {
 		return v.Status.CurrentPrimary
 	}
 	return fmt.Sprintf("%s-0", v.Name)
+}
+
+// diagnoseUnhealthyPods — readyReplicas == 0 상태에서 pod 의 *실제 차단 사유* 한 줄.
+// status.conditions[Ready].message 로 surface 하여 `kubectl get valkey -o yaml` 만으로
+// CrashLoopBackOff / ImagePullBackOff / Terminated 등 진단 가능.
+// best-effort: list 실패 또는 unhealthy pod 없음 → "".
+func (r *ValkeyReconciler) diagnoseUnhealthyPods(ctx context.Context, v *cachev1alpha1.Valkey) string {
+	pods := &corev1.PodList{}
+	if err := r.List(ctx, pods,
+		client.InNamespace(v.Namespace),
+		client.MatchingLabels(resources.SelectorLabels(v.Name)),
+	); err != nil {
+		return ""
+	}
+	for _, pod := range pods.Items {
+		if !pod.DeletionTimestamp.IsZero() {
+			continue
+		}
+		if msg := firstUnhealthyContainerMessage(pod.Name, pod.Status.InitContainerStatuses); msg != "" {
+			return msg
+		}
+		if msg := firstUnhealthyContainerMessage(pod.Name, pod.Status.ContainerStatuses); msg != "" {
+			return msg
+		}
+	}
+	return ""
+}
+
+// firstUnhealthyContainerMessage — Waiting (CrashLoopBackOff 류) 또는 Terminated
+// (ExitCode != 0) container 의 사유를 한 줄로 요약. corev1.ContainerStatus 만 의존 —
+// fake client + 표 기반 단위 테스트로 검증 가능.
+func firstUnhealthyContainerMessage(podName string, statuses []corev1.ContainerStatus) string {
+	for _, s := range statuses {
+		if s.State.Waiting != nil && isTerminalWaitingReason(s.State.Waiting.Reason) {
+			return fmt.Sprintf("Pod %s container %s waiting %s: %s",
+				podName, s.Name, s.State.Waiting.Reason, s.State.Waiting.Message)
+		}
+		if s.State.Terminated != nil && s.State.Terminated.ExitCode != 0 {
+			return fmt.Sprintf("Pod %s container %s terminated exitCode=%d: %s",
+				podName, s.Name, s.State.Terminated.ExitCode, s.State.Terminated.Message)
+		}
+	}
+	return ""
+}
+
+// isTerminalWaitingReason — kubelet 가 pod 시작 자체 차단 시 보고하는 Waiting reason.
+// 일시 Pending (ContainerCreating, PodInitializing) 은 의도적으로 제외 — 정상 부트스트랩
+// 신호 surfacing 시 노이즈.
+func isTerminalWaitingReason(reason string) bool {
+	switch reason {
+	case "CrashLoopBackOff",
+		"CreateContainerConfigError",
+		"CreateContainerError",
+		"ErrImagePull",
+		"ImagePullBackOff",
+		"InvalidImageName",
+		"RunContainerError":
+		return true
+	default:
+		return false
+	}
 }
 
 func imageOrDefault(vv cachev1alpha1.ValkeyVersion) string {
