@@ -290,12 +290,15 @@ func validateValkeyImmutable(oldObj, newObj *cachev1alpha1.Valkey) field.ErrorLi
 			"storage.size cannot be decreased (Kubernetes PVC shrink is unsupported)",
 		))
 	}
+	// TLS.Enabled 의 immutability — *true → false 만 reject* (mTLS client 연결 끊김
+	// 회피). *false → true 는 허용* — Defaulter 가 spec.tls.{certManager,customCert}
+	// 의도 노출 시 enabled=true 정규화하므로 첫 진입 시 immutable trap 방지.
 	oldTLS := oldObj.Spec.TLS != nil && oldObj.Spec.TLS.Enabled
 	newTLS := newObj.Spec.TLS != nil && newObj.Spec.TLS.Enabled
-	if oldTLS != newTLS {
+	if oldTLS && !newTLS {
 		errs = append(errs, field.Forbidden(
 			p.Child("tls", "enabled"),
-			"tls.enabled is immutable",
+			"tls.enabled cannot be disabled once enabled (would break existing mTLS clients)",
 		))
 	}
 	return errs

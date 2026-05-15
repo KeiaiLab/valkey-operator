@@ -111,11 +111,14 @@ func TestValkeyClusterValidate_Update_storageClass_immutable(t *testing.T) {
 	}
 }
 
-func TestValkeyClusterValidate_Update_tlsToggle_immutable(t *testing.T) {
+// TLS.Enabled false → true 는 허용 (Defaulter 가 spec.tls 의도 노출 시 정규화 정합).
+// 단방향 immutability: true → false 만 reject (mTLS client 연결 끊김 회피).
+func TestValkeyClusterValidate_Update_tls_false_to_true_allowed(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	old := &cachev1alpha1.ValkeyCluster{}
 	old.Spec.Shards = 3
 	old.Spec.ReplicasPerShard = 1
+	old.Spec.Version.Version = "8.1.6"
 	old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
 	new := old.DeepCopy()
 	new.Spec.TLS = &cachev1alpha1.TLSSpec{
@@ -123,8 +126,26 @@ func TestValkeyClusterValidate_Update_tlsToggle_immutable(t *testing.T) {
 		CustomCert: &cachev1alpha1.CustomCertSpec{SecretName: "ca"},
 	}
 
+	if _, err := v.ValidateUpdate(context.Background(), old, new); err != nil {
+		t.Fatalf("false → true 허용 기대, got: %v", err)
+	}
+}
+
+func TestValkeyClusterValidate_Update_tls_true_to_false_forbidden(t *testing.T) {
+	v := &ValkeyClusterCustomValidator{}
+	old := &cachev1alpha1.ValkeyCluster{}
+	old.Spec.Shards = 3
+	old.Spec.ReplicasPerShard = 1
+	old.Spec.Version.Version = "8.1.6"
+	old.Spec.TLS = &cachev1alpha1.TLSSpec{
+		Enabled:    true,
+		CustomCert: &cachev1alpha1.CustomCertSpec{SecretName: "ca"},
+	}
+	new := old.DeepCopy()
+	new.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
+
 	if _, err := v.ValidateUpdate(context.Background(), old, new); err == nil {
-		t.Fatal("expected validation error for TLS toggle")
+		t.Fatal("true → false reject 기대")
 	}
 }
 

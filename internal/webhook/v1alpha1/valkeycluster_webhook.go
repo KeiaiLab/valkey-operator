@@ -491,12 +491,13 @@ func validateClusterImmutable(oldObj, newObj *cachev1alpha1.ValkeyCluster) field
 		))
 	}
 
+	// Valkey CR 와 sister — false → true 허용 (Defaulter 정규화 정합), true → false reject.
 	oldTLS := oldObj.Spec.TLS != nil && oldObj.Spec.TLS.Enabled
 	newTLS := newObj.Spec.TLS != nil && newObj.Spec.TLS.Enabled
-	if oldTLS != newTLS {
+	if oldTLS && !newTLS {
 		errs = append(errs, field.Forbidden(
 			p.Child("tls", "enabled"),
-			"tls.enabled is immutable (toggling breaks active client connections)",
+			"tls.enabled cannot be disabled once enabled (would break existing mTLS clients)",
 		))
 	}
 
