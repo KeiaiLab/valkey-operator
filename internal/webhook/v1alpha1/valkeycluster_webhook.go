@@ -94,6 +94,11 @@ func (d *ValkeyClusterCustomDefaulter) Default(_ context.Context, obj *cachev1al
 	}
 	// Auth.Enabled — ADR-0013 옵션 A: 항상 강제 (보안 기본값).
 	obj.Spec.Auth.Enabled = true
+	// TLS.Enabled 동등 정규화 — Valkey CR 와 sister. spec.tls.{certManager,customCert}
+	// 의도 노출 시 Enabled=true. silent disable 차단.
+	if obj.Spec.TLS != nil && tlsIntentPresent(obj.Spec.TLS) {
+		obj.Spec.TLS.Enabled = true
+	}
 	return nil
 }
 
