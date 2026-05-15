@@ -341,15 +341,34 @@ func TestValidateValkeyImmutable(t *testing.T) {
 			t.Error("storageClassName change → expected error")
 		}
 	})
-	t.Run("tls.enabled toggle → forbidden", func(t *testing.T) {
+	t.Run("tls.enabled false→true allowed (first-time enable, Defaulter 정합)", func(t *testing.T) {
 		t.Parallel()
 		old := &cachev1alpha1.Valkey{}
 		old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
 		newV := &cachev1alpha1.Valkey{}
 		newV.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true}
 		errs := validateValkeyImmutable(old, newV)
-		if len(errs) == 0 {
-			t.Error("tls.enabled toggle → expected error")
+		for _, e := range errs {
+			if e.Field == "spec.tls.enabled" {
+				t.Errorf("false→true 허용돼야 함, got %v", e)
+			}
+		}
+	})
+	t.Run("tls.enabled true→false forbidden (mTLS client 연결 끊김)", func(t *testing.T) {
+		t.Parallel()
+		old := &cachev1alpha1.Valkey{}
+		old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true}
+		newV := &cachev1alpha1.Valkey{}
+		newV.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
+		errs := validateValkeyImmutable(old, newV)
+		found := false
+		for _, e := range errs {
+			if e.Field == "spec.tls.enabled" {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("true→false reject 기대")
 		}
 	})
 	t.Run("no change → no error", func(t *testing.T) {
