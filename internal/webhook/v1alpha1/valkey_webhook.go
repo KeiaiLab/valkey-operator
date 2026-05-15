@@ -72,7 +72,30 @@ func (d *ValkeyCustomDefaulter) Default(_ context.Context, obj *cachev1alpha1.Va
 	// schema default=true 가 skip 된다. 본 operator 는 ADR-0013 옵션 A 에 따라
 	// 항상 auth 를 강제하므로 webhook 에서 true 로 정규화한다.
 	obj.Spec.Auth.Enabled = true
+	// TLS.Enabled 동등 정규화 — spec.tls.{certManager,customCert} 가 *의도 노출*
+	// 한 경우 Enabled=true 로 자동 set. omitempty + zero-value 직렬화로 인한
+	// silent disable 차단. 라이브 사고 (kind-vk-op-livetest vk-tls 2026-05-15):
+	// issuerRef + ClusterIssuer 가 정상 적용됐으나 Enabled 누락 → STS TLS mount
+	// + valkey.conf tls-port 미적용. controller reconcile path 가 Enabled 분기
+	// 의존이므로 webhook 에서 단일 진실로 정규화.
+	if obj.Spec.TLS != nil && tlsIntentPresent(obj.Spec.TLS) {
+		obj.Spec.TLS.Enabled = true
+	}
 	return nil
+}
+
+// tlsIntentPresent — spec.tls 의 CertManager 또는 CustomCert 가 *비-zero 의도* 인지.
+// validateValkeySpec 의 hasCertMgr/hasCustom 검사와 동일 의도 — defaulter ↔ validator
+// 정합. 둘 다 비어 있으면 ("의도 없음") false.
+func tlsIntentPresent(tls *cachev1alpha1.TLSSpec) bool {
+	if tls.CertManager != nil &&
+		(tls.CertManager.IssuerRef.Name != "" || tls.CertManager.AutoSelfSigned) {
+		return true
+	}
+	if tls.CustomCert != nil && tls.CustomCert.SecretName != "" {
+		return true
+	}
+	return false
 }
 
 // +kubebuilder:webhook:path=/validate-cache-keiailab-io-v1alpha1-valkey,mutating=false,failurePolicy=fail,sideEffects=None,groups=cache.keiailab.io,resources=valkeys,verbs=create;update,versions=v1alpha1,name=vvalkey-v1alpha1.kb.io,admissionReviewVersions=v1
