@@ -31,6 +31,9 @@
 
 ## 차단됨
 
+<!-- historical-exempt: ADR-0057, expiry: never -->
+<!-- C01 의 Bitnami redis-cluster 호환성 분석은 historical evidence — ADR-0136 (Bitnami portfolio 영구 폐기, keiailab/argos-infra-bootstrap MR !25) 이후 Adopter migration reference 로 보존. -->
+
 | ID  | 차단 내용 | 증거 | 다음 결정 |
 |-----|-----------|------|-----------|
 | C01 | 현재 Bitnami redis-cluster appVersion 계열 Redis 8.2.x RDB 를 Valkey 9.0.4 로 직접 restore 하는 경로는 호환되지 않음 | `redis:8.2.1` 로 생성한 RDB 를 `valkey:9.0.4` 가 `Can't handle RDB format version 12` 로 거부. Kind E2E 도 동일 원인 log 확인. | Bitnami 대체 마이그레이션은 RDB 직접 restore 가 아니라 온라인 key copy/dual-write/cutover 또는 Valkey 호환 source dump 경로로 별도 설계 필요. |

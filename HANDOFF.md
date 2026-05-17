@@ -194,7 +194,8 @@ skip) 가 무한 loop 방지. partial recovery 도 다음 reconcile 에 수렴.
   $ kustomize build deploy/overlays/prod
   namespace_count=0, line_count=5407
   ```
-- **남은 리스크**:
+- **남은 리스크** <!-- historical-exempt: ADR-0057, expiry: never -->:
+  <!-- Redis 8.2.x RDB 호환성 분석은 historical knowledge — ADR-0136 (Bitnami portfolio 영구 폐기, keiailab/argos-infra-bootstrap MR !25) 이후에도 Adopter migration 경로 reference 로 보존. -->
   - Redis 8.2.x RDB 직접 restore 는 여전히 호환 불가다. 현재 구현은 fail-fast 로 멈추며, Bitnami redis-cluster 대체 마이그레이션은 온라인 key copy/dual-write/cutover 또는 Valkey 호환 source dump 경로가 필요하다.
 
 ## 이전 현재 상태 (2026-05-07, Phase B RDB 호환성 blocker + fail-fast 완료)
