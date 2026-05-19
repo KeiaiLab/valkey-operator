@@ -25,20 +25,21 @@
 apiVersion: olm.operatorframework.io/v1
 kind: ClusterCatalog
 metadata:
-  name: keiailab-operator-catalog
+  name: valkey-operator-catalog
   labels:
-    app.kubernetes.io/name: keiailab-operator-catalog
+    app.kubernetes.io/name: valkey-operator-catalog
     app.kubernetes.io/component: olm-catalog
     app.kubernetes.io/part-of: valkey-operator
 spec:
   source:
     type: Image
     image:
-      # ADR-0137 D1: v1.0.13 upstream image base + 별도 catalog image
-      # bundle image = ghcr.io/keiailab/valkey-operator-bundle:v1.0.13
-      # catalog image = ghcr.io/keiailab/keiailab-operator-catalog:v1
-      # (publish 는 별도 release-bundle target 실행 필요)
-      ref: ghcr.io/keiailab/keiailab-operator-catalog:v1
+      # 라이브 publish (2026-05-19):
+      # - manifest sha256:dfc438eb65f159546377ce4fee87bbb55d6fb4d7398e521ddd85a8a68b26be99
+      # - bundle ref: ghcr.io/keiailab/valkey-operator-bundle:v1.0.9
+      # - operator image (multiarch): ghcr.io/keiailab/valkey-operator:v1.0.13-multiarch
+      # ADR-0137 D1 의 v1.0.13 채택 = bundle CSV regen 후 별 PR (현재 CSV = v1.0.9)
+      ref: ghcr.io/keiailab/valkey-operator-catalog:v1.0.9
       pollIntervalMinutes: 1440  # 1d, prod 안정성 우선
 
 ---
@@ -69,8 +70,8 @@ spec:
       packageName: valkey-operator
       channels:
         - alpha  # bundle/metadata/annotations.yaml channel = alpha
-      version: ">=1.0.13"  # ADR-0137 D1: v1.0.13 진본 baseline
-      # selector: catalog 가 multi-version 제공 시 channel head 자동 선택
+      version: ">=1.0.9"  # 현재 catalog FBC = v1.0.9 (bundle CSV baseline)
+      # ADR-0137 D1 v1.0.13 채택 = operator-sdk bundle generate 별 PR 후 갱신
   install:
     preflight:
       crdUpgradeSafety:
