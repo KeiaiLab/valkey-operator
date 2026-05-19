@@ -47,11 +47,14 @@ verify: lint test build validate audit ## Run the full local verification pipeli
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: controller-gen sync-crds ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	@echo "=== chart CRD 사본 자동 sync (TestCRDBaseChartSync 게이트 충족) ==="
+
+.PHONY: sync-crds
+sync-crds: ## Sync config/crd/bases → charts/valkey-operator/crds (TestCRDBaseChartSync 게이트 충족, postgres ADR-0013 + mongodb v1.4.3 parity).
+	@echo "=== sync CRD bundles (config/crd/bases → charts/valkey-operator/crds) ==="
 	@cp config/crd/bases/*.yaml charts/valkey-operator/crds/
-	@echo "✓ charts/valkey-operator/crds/ ← config/crd/bases/ 동기 완료"
+	@echo "✓ CRD bundles synced"
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
