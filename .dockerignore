@@ -14,3 +14,7 @@
 !**/*.tmpl
 !**/*.lua
 !**/*.sh
+
+# Re-include OLM bundle manifest + metadata (bundle.Dockerfile build context, ADR-0137)
+!bundle/manifests/**
+!bundle/metadata/**

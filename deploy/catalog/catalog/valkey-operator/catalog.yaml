@@ -1,0 +1,52 @@
+---
+schema: olm.package
+name: valkey-operator
+defaultChannel: alpha
+description: |
+  Kubernetes operator for Valkey — manages Standalone / Replication / Cluster
+  topologies + Backup / Restore via 5 CRDs (Valkey, ValkeyCluster, ValkeyBackup,
+  ValkeyBackupTarget, ValkeyRestore). Self-host catalog (keiailab) — ADR-0137.
+icon:
+  base64data: ""
+  mediatype: ""
+---
+schema: olm.channel
+package: valkey-operator
+name: alpha
+entries:
+  - name: valkey-operator.v1.0.9
+---
+schema: olm.bundle
+image: ghcr.io/keiailab/valkey-operator-bundle:v1.0.9-multiarch
+name: valkey-operator.v1.0.9
+package: valkey-operator
+properties:
+  - type: olm.gvk
+    value:
+      group: cache.keiailab.io
+      kind: Valkey
+      version: v1alpha2
+  - type: olm.gvk
+    value:
+      group: cache.keiailab.io
+      kind: ValkeyCluster
+      version: v1alpha2
+  - type: olm.gvk
+    value:
+      group: cache.keiailab.io
+      kind: ValkeyBackup
+      version: v1alpha2
+  - type: olm.gvk
+    value:
+      group: cache.keiailab.io
+      kind: ValkeyBackupTarget
+      version: v1alpha2
+  - type: olm.gvk
+    value:
+      group: cache.keiailab.io
+      kind: ValkeyRestore
+      version: v1alpha2
+  - type: olm.package
+    value:
+      packageName: valkey-operator
+      version: 1.0.9

@@ -205,9 +205,13 @@ docker-push: ## Push docker image with the manager.
 # - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 # - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
 # To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
+# ADR-0043 (2026-05-19): 멀티아키 빌드 opt-in 활성화 — ARM 노드 도입 + 외부
+# third-party 도입 GA 대비. default amd64 유지 (정책 회귀 위험 0), env override
+# 로 멀티아키 활성. 글로벌 정책 변경은 RFC-0048 (ai-dev/rfcs/) Draft 진입점.
+# 사용: make docker-buildx PLATFORMS=linux/amd64,linux/arm64 IMG=...
 PLATFORMS ?= linux/amd64
 .PHONY: docker-buildx
-docker-buildx: ## Build and push multi-arch image. CLAUDE.md §2: default builder + ldflags 자동 주입.
+docker-buildx: ## Build and push multi-arch image. CLAUDE.md §2: default builder + ldflags 자동 주입. ADR-0043 opt-in 멀티아키.
 	# CLAUDE.md §2 — default builder 만 사용 (커스텀 builder 인스턴스 금지). buildx
 	# default 가 자동 멀티아키 지원. ldflags 자동 주입 (cycle 54 의 docker-build 와
 	# 동일 패턴 — production release 의 핵심 경로).

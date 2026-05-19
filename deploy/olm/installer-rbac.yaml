@@ -1,0 +1,105 @@
+# Installer ServiceAccount RBAC — OLM bundle manifest 적용 권한
+#
+# Refs:
+# - ADR-0137 D3 (selector + leader 분리)
+# - ADR-0133 (operator-controller pod RBAC + automount exception)
+# - INC-0002 (SA token mount cross-repo audit pattern, incident-kb.md §10)
+#
+# 본 ClusterRole 은 *OLM 가 bundle CSV 의 install spec 을 적용할 때* 만 사용.
+# operator runtime 동작 권한은 bundle 안 namespace-scoped Role (data ns 한정).
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: valkey-operator-olm-installer
+  labels:
+    app.kubernetes.io/name: valkey-operator-olm
+    app.kubernetes.io/component: installer
+rules:
+  # CRD 생성 (5 CRD: Valkey, ValkeyCluster, ValkeyBackup, ValkeyBackupTarget, ValkeyRestore)
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ClusterRole / ClusterRoleBinding (operator 가 watch 하는 cluster-wide
+  # resource — events, namespaces, nodes 등)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ValidatingWebhookConfiguration (operator webhook)
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingwebhookconfigurations", "mutatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # cert-manager Certificate (webhook serving cert)
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "issuers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # OLM Operator 가 본 SA 의 권한으로 namespace-scoped resource 도 생성
+  - apiGroups: [""]
+    resources: ["serviceaccounts", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # cache.keiailab.io (operator 의 핵심 CR) — K8s privilege escalation
+  # prevention 대응: installer SA 가 grant 할 권한 = 본인 보유 권한.
+  - apiGroups: ["cache.keiailab.io"]
+    resources: ["valkeys", "valkeyclusters", "valkeybackups", "valkeybackuptargets", "valkeyrestores"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["cache.keiailab.io"]
+    resources: ["valkeys/status", "valkeyclusters/status", "valkeybackups/status", "valkeybackuptargets/status", "valkeyrestores/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["cache.keiailab.io"]
+    resources: ["valkeys/finalizers", "valkeyclusters/finalizers", "valkeybackups/finalizers", "valkeybackuptargets/finalizers", "valkeyrestores/finalizers"]
+    verbs: ["update"]
+
+  # operator runtime 의존성 — events, pods, services, PVC, snapshot, networking
+  - apiGroups: [""]
+    resources: ["pods", "persistentvolumeclaims", "endpoints", "events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots", "volumesnapshotclasses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: valkey-operator-olm-installer
+  labels:
+    app.kubernetes.io/name: valkey-operator-olm
+    app.kubernetes.io/component: installer
+subjects:
+  - kind: ServiceAccount
+    name: valkey-operator-olm-installer
+    namespace: data
+roleRef:
+  kind: ClusterRole
+  name: valkey-operator-olm-installer
+  apiGroup: rbac.authorization.k8s.io

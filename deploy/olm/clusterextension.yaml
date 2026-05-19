@@ -1,0 +1,94 @@
+# OLM v1 ClusterExtension manifest — valkey-operator
+#
+# Refs:
+# - ADR-0137 (infra/bootstrap): valkey-operator OLM v1 ClusterExtension Migration
+#   + cloudpirates 의존성 제거
+# - ADR-0112: 3-operator OLM v1 unification (mongodb + postgres + valkey)
+# - ADR-0113: OLM v1 introduction
+# - ADR-0133: operator-controller pod RBAC + automount exception
+# - INC-0002 (incident-kb.md §10): SA token mount + RBAC + deployment name 분리
+#
+# 라이브 사실 (2026-05-19 verify, RFC-0004 §3):
+# - kubectl context = argos (rename 미완)
+# - Helm release `valkey-operator-prod` (data ns, 9d active, 1/1 ready)
+# - ArgoCD app `platform-data-valkey-operator` (Helm sub-chart 직배포)
+#
+# 비가역 cut-over boundary: 본 manifest apply 는 ADR-0137 D4 7-step runbook
+# (RGW S3 snapshot → Helm scale 0 → ClusterExtension apply → leader lease
+# verify → status verify → Helm uninstall → 48h 모니터링) 의 step 3 만 해당.
+# 사용자 명시 GO 필요.
+
+---
+# Catalog: keiailab self-host operator catalog (mongodb-operator-catalog 정합)
+# 별도 ClusterCatalog 가 catalog image 를 pull 하여 ClusterExtension 가
+# spec.source.catalog.packageName 으로 reference.
+apiVersion: olm.operatorframework.io/v1
+kind: ClusterCatalog
+metadata:
+  name: valkey-operator-catalog
+  labels:
+    app.kubernetes.io/name: valkey-operator-catalog
+    app.kubernetes.io/component: olm-catalog
+    app.kubernetes.io/part-of: valkey-operator
+spec:
+  source:
+    type: Image
+    image:
+      # 라이브 publish (2026-05-19):
+      # - manifest sha256:dfc438eb65f159546377ce4fee87bbb55d6fb4d7398e521ddd85a8a68b26be99
+      # - bundle ref: ghcr.io/keiailab/valkey-operator-bundle:v1.0.9
+      # - operator image (multiarch): ghcr.io/keiailab/valkey-operator:v1.0.13-multiarch
+      # ADR-0137 D1 의 v1.0.13 채택 = bundle CSV regen 후 별 PR (현재 CSV = v1.0.9)
+      ref: ghcr.io/keiailab/valkey-operator-catalog:v1.0.9
+      pollIntervalMinutes: 1440  # 1d, prod 안정성 우선
+
+---
+apiVersion: olm.operatorframework.io/v1
+kind: ClusterExtension
+metadata:
+  name: valkey-operator-olm
+  labels:
+    # ADR-0137 D3: selector 분리 — 라이브 Helm Deployment 의
+    # `app.kubernetes.io/name=valkey-operator-prod` 와 *자연 분리*. immutable
+    # selector 충돌 0. data ns 재사용 (D2).
+    app.kubernetes.io/name: valkey-operator-olm
+    app.kubernetes.io/instance: valkey-operator-olm
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/part-of: keiailab-data-plane
+    app.kubernetes.io/managed-by: olm
+spec:
+  namespace: data  # ADR-0137 D2: install ns = data (재사용)
+  serviceAccount:
+    # ADR-0133 정합: operator-controller pod RBAC + automount exception 의
+    # cluster-wide expansion. SA 가 byte-level 정합 RBAC 보유 (namespace-scoped
+    # Role/RoleBinding 3 file: namespace-rbac + clusterissuer-rbac +
+    # leader-election-rbac). INC-0002 sister 차단.
+    name: valkey-operator-olm-installer
+  source:
+    sourceType: Catalog
+    catalog:
+      packageName: valkey-operator
+      channels:
+        - alpha  # bundle/metadata/annotations.yaml channel = alpha
+      version: ">=1.0.9"  # 현재 catalog FBC = v1.0.9 (bundle CSV baseline)
+      # ADR-0137 D1 v1.0.13 채택 = operator-sdk bundle generate 별 PR 후 갱신
+  install:
+    preflight:
+      crdUpgradeSafety:
+        # Phase 1: enforce — CRD schema 변경 시 OLM 가 자동 검증 차단
+        enforcement: Strict
+
+---
+# ServiceAccount + RBAC (installer SA, OLM 가 본 SA 로 manifest 적용)
+# 본 SA = OLM bundle 적용 권한 (CRD/RBAC/Deployment 생성). runtime SA 는
+# bundle CSV `spec.install.spec.deployments[0].spec.template.spec.serviceAccountName`
+# 가 별도 (`valkey-operator-controller-manager`).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: valkey-operator-olm-installer
+  namespace: data
+  labels:
+    app.kubernetes.io/name: valkey-operator-olm
+    app.kubernetes.io/component: installer
+automountServiceAccountToken: true  # INC-0002 sister 차단 (incident-kb.md §10)
