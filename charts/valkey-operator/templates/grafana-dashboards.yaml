@@ -1,0 +1,16 @@
+{{- if .Values.grafana.dashboards.enabled }}
+{{- range $name, $_ := .Values.grafana.dashboards.panels }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valkey-operator.fullname" $ }}-dashboard-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "valkey-operator.labels" $ | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  {{ $name }}.json: |-
+{{ $.Files.Get (printf "dashboards/%s.json" $name) | indent 4 }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,16 @@
+{
+  "title": "Valkey Replication",
+  "uid": "valkey-replication",
+  "tags": ["valkey", "keiailab"],
+  "schemaVersion": 38,
+  "panels": [
+    {"id": 1, "title": "Replication lag (bytes)", "type": "timeseries",
+     "targets": [{"expr": "valkey_master_repl_offset - on(instance) valkey_slave_repl_offset"}]},
+    {"id": 2, "title": "Connected replicas", "type": "stat",
+     "targets": [{"expr": "valkey_connected_slaves"}]},
+    {"id": 3, "title": "RDB transfer", "type": "timeseries",
+     "targets": [{"expr": "rate(valkey_rdb_changes_since_last_save[5m])"}]},
+    {"id": 4, "title": "AOF rewrite duration", "type": "timeseries",
+     "targets": [{"expr": "valkey_aof_last_rewrite_duration_sec"}]}
+  ]
+}

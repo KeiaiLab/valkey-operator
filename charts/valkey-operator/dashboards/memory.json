@@ -1,0 +1,16 @@
+{
+  "title": "Valkey Memory",
+  "uid": "valkey-memory",
+  "tags": ["valkey", "keiailab"],
+  "schemaVersion": 38,
+  "panels": [
+    {"id": 1, "title": "Memory used (RSS)", "type": "timeseries",
+     "targets": [{"expr": "valkey_memory_used_rss_bytes"}]},
+    {"id": 2, "title": "Memory fragmentation ratio", "type": "stat",
+     "targets": [{"expr": "valkey_memory_used_rss_bytes / valkey_memory_used_bytes"}]},
+    {"id": 3, "title": "Evicted keys per sec", "type": "timeseries",
+     "targets": [{"expr": "rate(valkey_evicted_keys_total[1m])"}]},
+    {"id": 4, "title": "Keys per shard", "type": "timeseries",
+     "targets": [{"expr": "valkey_db_keys", "legendFormat": "{{instance}} db{{db}}"}]}
+  ]
+}
