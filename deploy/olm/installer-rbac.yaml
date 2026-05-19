@@ -52,6 +52,41 @@ rules:
     resources: ["servicemonitors"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
+  # cache.keiailab.io (operator 의 핵심 CR) — K8s privilege escalation
+  # prevention 대응: installer SA 가 grant 할 권한 = 본인 보유 권한.
+  - apiGroups: ["cache.keiailab.io"]
+    resources: ["valkeys", "valkeyclusters", "valkeybackups", "valkeybackuptargets", "valkeyrestores"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["cache.keiailab.io"]
+    resources: ["valkeys/status", "valkeyclusters/status", "valkeybackups/status", "valkeybackuptargets/status", "valkeyrestores/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["cache.keiailab.io"]
+    resources: ["valkeys/finalizers", "valkeyclusters/finalizers", "valkeybackups/finalizers", "valkeybackuptargets/finalizers", "valkeyrestores/finalizers"]
+    verbs: ["update"]
+
+  # operator runtime 의존성 — events, pods, services, PVC, snapshot, networking
+  - apiGroups: [""]
+    resources: ["pods", "persistentvolumeclaims", "endpoints", "events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots", "volumesnapshotclasses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

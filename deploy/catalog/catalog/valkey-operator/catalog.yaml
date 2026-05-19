@@ -17,7 +17,7 @@ entries:
   - name: valkey-operator.v1.0.9
 ---
 schema: olm.bundle
-image: ghcr.io/keiailab/valkey-operator-bundle:v1.0.9
+image: ghcr.io/keiailab/valkey-operator-bundle:v1.0.9-multiarch
 name: valkey-operator.v1.0.9
 package: valkey-operator
 properties:
