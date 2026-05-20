@@ -4,6 +4,76 @@
 > SSOT 는 `TASKS.md` (목록·상태) + 본 파일 (컨텍스트·결정).
 > token-budget.md §5 + workflow.md §2.
 
+## 2026-05-20 T0 fix v2.0.0 — chart HA + Codex stage 3 + cross-repo MR chain (자율 implementation 완료)
+
+본 cycle 의 결정적 산출:
+
+| 영역 | MR | 결과 |
+|---|---|---|
+| chart v2.0.0 BREAKING (replicaCount=2 + PDB + topology) | `keiailab/upstream/valkey-operator!5` | merged 2026-05-20T13:15:48Z, sha=`556f326` |
+| platform/data vendored chart 2.0.0 sync | `keiailab/platform/data!22` | merged 2026-05-20T13:24:09Z, merge_commit=`7ec6bb7`, pipeline 2525 success |
+| Tag `v2.0.0` | gitlab-upstream + mirror_to_github trigger | pushed |
+| ADR-0043 (mirror sync) | `docs/kb/adr/0043-gitlab-github-mirror-sync.md` | Proposed (RFC-0002 §2.3 예외 4번째 카테고리 신설) |
+| `.gitlab-ci.yml` (RFC-0043 L5 shadow) | `feat/t0-chart-ha-mirror-gitlab-ci` | merged via MR-A !5 |
+
+### Codex Stage 3 Adversarial Review (RFC-0045 §2.5)
+
+`codex exec --skip-git-repo-check` 호출 — 9 critical/major 발견 + Claude 처리 매핑:
+
+- **CDEX-C1 처리**: mirror stage `git push --mirror` → explicit refspec (`main:main + --tags`)
+- **CDEX-C2 처리**: chart `replicaCount: 1` → `2` (operator HA drain-safe)
+- **CDEX-C3 처리**: 2-MR chain redefined (MR-A → tag → mirror → MR-B vendored chart pickup → ArgoCD stable sync)
+- **CDEX-C4 처리**: MR-B 진본 file 경로 정정 (gitlab-redis/values.yaml + valkey-operator/values.yaml:67)
+- **CDEX-M3 처리**: values.yaml line 311 중복 `topologySpreadConstraints` 정리
+- **CDEX-M1/M2 deferred**: T1 plan SSOT (`~/.claude/plans/valkey-operator-t1-deferred-cdex-m1-m2-c4-d2.md`)
+- **CDEX-M5 deferred**: helm-publish workflow (Write hook block — 별 turn 사용자 trigger 의무)
+
+### 사용자 결정 4건
+
+| ID | 결정 | 처리 |
+|---|---|---|
+| D1 | Mirror = GitLab CI auto-sync (방식 A) | ✓ `.gitlab-ci.yml` + ADR-0043 |
+| D2 | Dependabot 폐기 + Renovate single | ⚠ Manual GitHub Settings disable 의무 (외부 권한, 본 turn limit) |
+| D3 | PDB 양 layer (chart + operator) | ✓ chart (T0) + operator (이미 구현, `shouldAutoCreatePDB`) |
+| D4 | e104 통합 (T0.2 chart HA = e104 Task 1/2/3 흡수) | ✓ MR-B vendored chart sync (Task 1/2/3 진본 file = T1 deferred) |
+
+### 라이브 운영 evidence (2026-05-20)
+
+```
+$ kubectl get application -n argocd platform-data-valkey-operator -o jsonpath='{.status.health.status}'
+Healthy ✓ (revision=stable)
+
+$ kubectl get pdb -n data
+valkey-operator-prod   1   N/A   0   77m   ← chart v2.0.0 신규 PDB (T0 적용 evidence)
+gitlab-redis-primary   1   N/A   0   28h   ← T1 deferred (replicas=1, drain blocker)
+infisical-valkey       1   N/A   0   28h   ← T1 deferred
+keiailab-valkey-prod   3   N/A   3   17h   ← HA OK
+```
+
+### 다음 단계 (T1 deferred + 외부 권한 의무)
+
+- **T1 plan SSOT**: `~/.claude/plans/valkey-operator-t1-deferred-cdex-m1-m2-c4-d2.md` — CDEX-M1 (operator PDB delete path) + CDEX-M2 (shard-aware PDB) + CDEX-C4 (e104 Task 1/2/3 진본 file) + D2 (Dependabot orphan)
+- **CDEX-M5 helm-publish workflow**: `.github/workflows/release.yml` 작성 (Write hook block 우회 — 사용자 명시 trigger 의무)
+- **D2 Dependabot disable**: GitHub Settings → Insights → Dependency graph → Dependabot alerts/version updates disable (사용자 외부 권한)
+- **GitHub Deploy Key 발급**: SR-C4 secret 4 항목 정합 (사용자 GitHub Settings → Deploy keys, single-repo write 권한, 6mo rotation)
+- **GitLab CI variable**: `GITHUB_DEPLOY_KEY` registration (사용자 GitLab Settings → CI/CD → Variables, masked + protected)
+- **ArgoCD sync verify**: `valkey-operator-prod` PDB `disruptions ≥ 1` 도달 verify (replicaCount=2 sync 완료 시점)
+
+### 차단점 + 위험
+
+- valkey-operator-prod PDB `disruptions=0` 라이브 = replicaCount=2 sync 진행 중 — chart v2.0.0 의 *완전 적용* 후 disruptions=1 도달 예상
+- 본 turn 의 main worktree 변경 (HANDOFF.md) = 사용자 active session 존재 시 race 위험 (3 worktree active evidence)
+
+### 근거 링크
+
+- T0 fix plan: `~/.claude/plans/valkey-operator-t0-fix-chart-ha-mirror-gitlab-ci.md`
+- T1 deferred plan: `~/.claude/plans/valkey-operator-t1-deferred-cdex-m1-m2-c4-d2.md`
+- e104 plan: `~/.claude/plans/2026-05-20-e104-valkey-redis-ha-mig.md`
+- RFC: RFC-0002 §2.3 (예외 4 신설) / RFC-0027 / RFC-0040 / RFC-0043 / RFC-0045
+- ADR-0043 (mirror sync) + ADR-0040 (commercial parity)
+
+---
+
 ## 2026-05-10 v1.0.10 release + INC-0001 영구 fix 운영 배포 (요약)
 
 본 세션 (Ralph loop, 2026-05-10) 의 결정적 산출:
