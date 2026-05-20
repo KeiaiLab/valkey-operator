@@ -5,7 +5,13 @@ Copyright 2026 Keiailab.
 package controller
 
 import (
+	"context"
+
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	policyv1 "k8s.io/api/policy/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // shouldAutoCreatePDB — HA default 정책. ADR-0040 commercial parity.
@@ -23,4 +29,32 @@ func shouldAutoCreatePDB(spec *cachev1alpha1.PodDisruptionBudgetSpec, replicas i
 		return replicas >= 2
 	}
 	return spec.Enabled
+}
+
+// EnsurePDBDeleted — CDEX-M1 fix (Codex stage 3 finding, ai-dev `cleanup-supercycle-2026-05-21` plan defer 5).
+//
+// shouldAutoCreatePDB=false 시 *기존 PDB 가 cluster 에 잔존* 하면 삭제 보장 (spec ↔ cluster state 동기화).
+// mongodb-operator `reconcilePDB` (`mongodb_controller.go:313` sister pattern) 정합.
+//
+// 트리거 사고: spec.Enabled=true 로 PDB 자동 생성 후 사용자가 spec.Enabled=false 로 변경 시
+// 기존 PDB 가 orphan 으로 잔존 → drain blocker.
+//
+// 동작:
+//
+//	PDB 존재 → Delete (success path)
+//	PDB 없음 → nil (idempotent, 첫 reconcile / 이미 cleanup 후 등)
+//	기타 error → caller 에 전달 (caller 가 applyErrorCondition wrap)
+func EnsurePDBDeleted(ctx context.Context, c client.Client, name, namespace string) error {
+	pdb := &policyv1.PodDisruptionBudget{}
+	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, pdb)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := c.Delete(ctx, pdb); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
