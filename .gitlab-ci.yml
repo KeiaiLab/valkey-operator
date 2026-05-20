@@ -1,0 +1,57 @@
+# RFC-0043 L5 GitLab CI 라이브 게이트 — shadow phase 활성
+# SSOT: keiailab/services/ai-dev/templates/gitlab/.gitlab-ci.yml (ref=stable 진본)
+# 13 repo 표준 include 패턴 (RFC-0035 §D3 + RFC-0043 §D5)
+#
+# T0 fix plan: ~/.claude/plans/valkey-operator-t0-fix-chart-ha-mirror-gitlab-ci.md
+# Codex CDEX-C1 처리: mirror_to_github stage = explicit refspec (--mirror 금지)
+# 사용자 결정 D1: GitLab → GitHub auto-sync (RFC-0002 §2.3 예외 4번째 카테고리 신설)
+#
+# 라이브 evidence (2026-05-20 pipeline 2517/2518 fix):
+#   - ref: main → stable (SSOT 진본)
+#   - stages: SSOT 6 stages 정합 (lint typecheck test validate audit governance) + mirror 추가
+#   - STACK_TAGS: "go,helm" → "helm" (go = SSOT 미지원)
+
+include:
+  - project: 'keiailab/services/ai-dev'
+    file: '/templates/gitlab/.gitlab-ci.yml'
+    ref: stable
+
+variables:
+  STACK_TAGS: "helm"
+
+stages:
+  - lint
+  - typecheck
+  - test
+  - validate
+  - audit
+  - governance
+  - mirror
+
+# CDEX-C1 처리: --mirror 금지. explicit refspec only.
+# main + tag 만 GitHub 진본 동기. gh-pages / dependabot / feature branch 모두 GitHub 측 무손실.
+# 사용자 결정 D1 방식 A 채택 (GitLab CI 가 진본 트리거).
+mirror_to_github:
+  stage: mirror
+  image: alpine:3.20
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: on_success
+  before_script:
+    - apk add --no-cache git openssh
+    - eval $(ssh-agent -s)
+    - echo "$GITHUB_DEPLOY_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+  script:
+    # SR-C4 secret 4 항목 codify (ADR-0043 본문 정합):
+    # (a) GITHUB_DEPLOY_KEY = GitLab CI variable masked + protected branch only
+    # (b) GitHub Deploy Key scope = single repo write (PAT 대신, repo 한정 권한)
+    # (c) rotation 6개월 + audit log (GitHub Deploy Key list 확인)
+    # (d) compromise 시 immediate revoke + git history rewrite (GitHub side)
+    - git remote add github git@github.com:keiailab/valkey-operator.git
+    - git fetch --tags
+    - git push github refs/heads/main:refs/heads/main
+    - git push github --tags
+  retry:
+    max: 1
+    when: runner_system_failure
