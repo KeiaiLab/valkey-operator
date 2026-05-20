@@ -258,12 +258,15 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// 7. PDB — HA default: replicas >= 2 + PDB 미명시 시 auto-create (minAvailable=N-1).
-	//    명시적 opt-out: Spec.PodDisruptionBudget = {Enabled: false}.
+	//    명시적 opt-out: Spec.PodDisruptionBudget = {Enabled: false} → 기존 PDB cleanup.
+	//    CDEX-M1 (Codex stage 3 finding): false 시 *기존 PDB 삭제* 의무 (mongodb_controller.go:313 sister).
 	if shouldAutoCreatePDB(v.Spec.PodDisruptionBudget, desiredReplicas(v)) {
 		pdb := resources.BuildPDB(v.Name, v.Namespace, desiredReplicas(v), v.Spec.PodDisruptionBudget)
 		if err := applyPDB(ctx, r.Client, r.Scheme, v, pdb); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "PDB", err, r.Recorder)
 		}
+	} else if err := EnsurePDBDeleted(ctx, r.Client, v.Name, v.Namespace); err != nil {
+		return applyErrorCondition(ctx, r.Client, v, "PDB", err, r.Recorder)
 	}
 	if v.Spec.NetworkPolicy != nil && v.Spec.NetworkPolicy.Enabled {
 		np := resources.BuildNetworkPolicy(v.Name, v.Namespace, false, v.Spec.NetworkPolicy)
