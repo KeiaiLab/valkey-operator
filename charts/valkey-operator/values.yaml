@@ -2,8 +2,10 @@
 # Valkey Operator Helm Chart Values
 # This is a YAML-formatted file.
 
-# -- Number of operator replicas
-replicaCount: 1
+# -- Number of operator replicas (v2.0.0 BREAKING — operator HA default, Codex CDEX-C2)
+# T0 fix plan §사용자 결정 D3/replicaCount=2: PDB default-on + replicaCount=2 = operator drain-safe
+# Opt-out: --set replicaCount=1 + --set podDisruptionBudget.enabled=false (single-node dev cluster)
+replicaCount: 2
 
 # Operator image configuration
 image:
@@ -97,7 +99,16 @@ affinity:
                 - linux
 
 # -- Topology spread constraints for operator pod scheduling
-topologySpreadConstraints: []
+# v2.0.0 BREAKING (T0 fix Codex CDEX-M3/M4): zone-based DoNotSchedule default
+# selector matchLabels = single label (release-safe). multi-release per namespace 시 override 의무.
+# Codex CDEX-M3 처리: line 311 중복 삭제 (이전 값 [] 가 silent override 했음)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: valkey-operator
 
 # -- Priority class name for operator pod (e.g., system-cluster-critical)
 priorityClassName: ""
@@ -296,16 +307,16 @@ networkPolicy:
   egress: []
 
 # Pod Disruption Budget configuration
+# v2.0.0 BREAKING (T0 fix Codex CDEX-C2): operator HA default-on
+# 기존 user upgrade path: docs/upgrade-v1-to-v2.md 참조
+# Opt-out: --set podDisruptionBudget.enabled=false (single-replica dev env)
 podDisruptionBudget:
   # -- Enable PodDisruptionBudget
-  enabled: false
-  # -- Minimum available pods
+  enabled: true
+  # -- Minimum available pods (replicaCount=2 + minAvailable=1 = allowed disruptions=1)
   minAvailable: 1
   # -- Maximum unavailable pods
   maxUnavailable: ""
 
 # Priority class configuration
 priorityClassName: ""
-
-# Topology spread constraints
-topologySpreadConstraints: []

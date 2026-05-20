@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-20
+
+### BREAKING CHANGES
+
+- **chart `replicaCount`**: 기본값 `1` → `2` (operator HA default)
+- **chart `podDisruptionBudget.enabled`**: 기본값 `false` → `true`
+- **chart `topologySpreadConstraints`**: 기본값 `[]` → `[zone-based DoNotSchedule]` (line 99 중복 + line 311 정리)
+
+기존 user 가 명시적으로 disable 하지 않은 경우 — minor upgrade 시 PDB resource + topology constraint *자동 생성*. 자세한 영향 + opt-out 절차는 `docs/upgrade-v1-to-v2.md` 참조.
+
+### Added
+
+- `.gitlab-ci.yml` 신설 (RFC-0043 L5 라이브 게이트 + Codex CDEX-C1 explicit refspec mirror stage).
+- ADR-NNNN: GitLab → GitHub Mirror Auto-Sync (RFC-0002 §2.3 예외 4번째 카테고리 신설, 사용자 결정 D1).
+- `docs/upgrade-v1-to-v2.md`: chart v1.x → v2.0.0 마이그레이션 가이드.
+
+### Changed
+
+- chart breaking 정책: e104 cordon SPOF root cause + Codex stage 3 adversarial review 9 critical/major 처리 매핑 통합 (~/.claude/plans/valkey-operator-t0-fix-chart-ha-mirror-gitlab-ci.md).
+
+### Opt-out
+
+기존 v1.x.x deployment 의 *기존 동작 유지*:
+
+```bash
+helm upgrade <release> valkey-operator/valkey-operator \
+  --version 2.0.0 \
+  --set replicaCount=1 \
+  --set podDisruptionBudget.enabled=false \
+  --set topologySpreadConstraints=null
+```
+
 ## [1.0.10] - 2026-05-10
 
 ### Added
