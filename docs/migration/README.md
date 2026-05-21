@@ -28,6 +28,6 @@
 
 ## Refs
 
-- [ROADMAP.md](../../ROADMAP.md)
+- [ROADMAP.md](../ROADMAP.md)
 - [ADR-0015](../kb/adr/0015-valkeyrestore-init-container-pattern.md) (restore via init container)
 - [ADR-0016](../kb/adr/0016-valkeybackuptarget-crd-external-storage.md) (ValkeyBackupTarget S3 abstraction)

@@ -146,7 +146,7 @@ Chart 也发布到
 | 贡献指南 | [CONTRIBUTING.md](.github/CONTRIBUTING.md) |
 | 安全策略 + artifact 验证 | [SECURITY.md](.github/SECURITY.md) |
 | 项目治理 | [GOVERNANCE.md](.github/GOVERNANCE.md) |
-| 采用者 | [ADOPTERS.md](ADOPTERS.md) |
+| 采用者 | [ADOPTERS.md](docs/ADOPTERS.md) |
 
 ## 生产就绪 (Production readiness)
 

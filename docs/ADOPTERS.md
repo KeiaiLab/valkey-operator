@@ -7,7 +7,7 @@
 
 # Adopters of valkey-operator
 
-> 한국어 버전: [ADOPTERS.ko.md](ADOPTERS.ko.md)
+> 한국어 버전: [ADOPTERS.ko.md](../ADOPTERS.ko.md)
 
 This document is the **public** list of organizations and projects
 that run or evaluate `keiailab/valkey-operator`. Self-registration is
@@ -40,7 +40,7 @@ Open a PR that appends a row to one of the tables above:
 ```
 
 If you would rather be listed anonymously, reach out via the security
-contact in [SECURITY.md](.github/SECURITY.md) and a maintainer will register
+contact in [SECURITY.md](../.github/SECURITY.md) and a maintainer will register
 an organization-anonymized row on your behalf.
 
 ## CNCF Sandbox reference

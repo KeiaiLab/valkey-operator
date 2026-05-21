@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator
 
-> 한국어 버전: [ROADMAP.ko.md](ROADMAP.ko.md)
+> 한국어 버전: [ROADMAP.ko.md](../ROADMAP.ko.md)
 
 This roadmap tracks progress as a **verifiable feature checklist**,
 not a calendar of deadlines. Time-based deadlines are intentionally
@@ -133,10 +133,10 @@ file used to confirm the checkbox.
   alignment (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
 - [x] **GitHub Actions release pipeline restored** (ADR-0045) —
   scoped deviation from RFC-0002 for externally-facing OSS repos;
-  see [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md)
+  see [ADR-0045](kb/adr/0045-restore-github-actions-for-oss-ci.md)
 - [x] **SLSA-3 provenance + cosign keyless signing** for the image,
   Helm chart, and SBOM (ADR-0046) — verification commands in
-  [SECURITY.md](.github/SECURITY.md). Active from v1.0.13.
+  [SECURITY.md](../.github/SECURITY.md). Active from v1.0.13.
 - [ ] **Production cluster adoption**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application registration

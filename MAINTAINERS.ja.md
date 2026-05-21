@@ -7,7 +7,7 @@
 
 # メンテナー
 
-> English version: [MAINTAINERS.md](MAINTAINERS.md)
+> English version: [MAINTAINERS.md](docs/MAINTAINERS.md)
 
 本ドキュメントは `keiailab/valkey-operator` に対する意思決定権限を持つメンテナーを追跡します。
 

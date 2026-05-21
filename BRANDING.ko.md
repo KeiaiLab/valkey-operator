@@ -7,7 +7,7 @@
 
 # Branding Guide — `valkey-operator` (한국어)
 
-> English: [BRANDING.md](BRANDING.md) — canonical / 정본
+> English: [BRANDING.md](docs/BRANDING.md) — canonical / 정본
 
 > keiailab operator 패밀리의 시각 정체성, 보이스, 톤 정의.
 

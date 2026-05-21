@@ -120,7 +120,7 @@ pre-push:
         fi
         # README.md + CHANGELOG.md + docs/*.md 만 검사 (외부 링크 timeout 보호: 짧은 timeout).
         fail=0
-        for f in README.md CHANGELOG.md $(find docs -name '*.md' 2>/dev/null); do
+        for f in README.md docs/CHANGELOG.md $(find docs -name '*.md' 2>/dev/null); do
           [ -f "$f" ] || continue
           markdown-link-check -q "$f" || fail=1
         done

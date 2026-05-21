@@ -29,7 +29,7 @@
 
 # 문서/거버넌스
 /docs/                      @keiailab/maintainers
-/CHANGELOG.md               @keiailab/maintainers
+/docs/CHANGELOG.md               @keiailab/maintainers
 /README.md                  @keiailab/maintainers
 /SECURITY.md                @keiailab/maintainers
 /CONTRIBUTING.md            @keiailab/maintainers

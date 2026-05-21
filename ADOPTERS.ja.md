@@ -7,7 +7,7 @@
 
 # valkey-operator の Adopters
 
-> English version: [ADOPTERS.md](ADOPTERS.md)
+> English version: [ADOPTERS.md](docs/ADOPTERS.md)
 
 本ドキュメントは `keiailab/valkey-operator` を稼働または評価している組織・プロジェクトの **public** リストです。自己登録を歓迎します — 行を追加する PR をオープンしてください。
 
