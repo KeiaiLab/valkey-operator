@@ -61,6 +61,7 @@
 | [0050](0050-audit-augmentation.md) | Audit Augmentation — postgres 패턴 cp (lefthook 3종 + helm-publish + UPGRADING, audit P1-11/12/13 + OP-2 + OP-10 ✅) | Accepted | 2026-05-21 |
 | [0051](0051-multi-arch-build-enablement.md) | 멀티아키 빌드 opt-in 활성화 — `PLATFORMS` env override (default amd64 유지, ARM 노드 도입 + 외부 GA 대비, RFC-0048 sister) — renumbered from duplicate 0043 (cloudpirates kept 0043) | Proposed | 2026-05-19 |
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable baseline 인정 (audit ❌ 0 충족, CLAUDE.md §7 v3.x-stable 조건) | Accepted | 2026-05-21 |
+| [0053](0053-root-md-documentation-policy.md) | Root `.md` 문서 정책 + 도구 의존 예외 (PR-D 시리즈 정당화) | Accepted | 2026-05-21 |
 
 ## 작성 가이드
 
