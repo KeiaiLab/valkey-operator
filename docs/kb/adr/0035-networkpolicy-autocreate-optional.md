@@ -8,7 +8,7 @@
 ## Context
 
 ArtifactHub Helm 차트 비교 분석 (Plan §1 Phase 1) 결과 외부 두 redis
-Helm 차트 (Bitnami v25.5.2, Cloudpirates v0.27.6) 모두 NetworkPolicy
+Helm 차트 (외부 chart (Helm 기준)) 모두 NetworkPolicy
 *opt-in* + cluster-wide policy engine (Calico / Cilium / Antrea) 와의
 *공존* 패턴 채택. valkey-operator 의 ADR-0057 은 *operator 자동 생성
 강제* — 외부 NP 관리 사용자에게 *충돌* 가능.
@@ -43,8 +43,8 @@ Helm 차트 (Bitnami v25.5.2, Cloudpirates v0.27.6) 모두 NetworkPolicy
 
 ### Positive
 
-- 외부 NP 관리 사용자 (Calico / Cilium / Antrea) 시나리오 지원 — Bitnami
-  / Cloudpirates 와 동등 유연성.
+- 외부 NP 관리 사용자 (Calico / Cilium / Antrea) 시나리오 지원 — 외부 chart
+  / 외부 chart 와 동등 유연성.
 - default=true 유지로 ADR-0057 의 *secure-by-default* 철학 보존.
 - v1alpha1 사용자 무중단 (AutoCreate nil 시 true 처리).
 
@@ -57,7 +57,7 @@ Helm 차트 (Bitnami v25.5.2, Cloudpirates v0.27.6) 모두 NetworkPolicy
 ### Trade-offs
 
 - *Enabled 와 의미 분리* (본 ADR) vs *Enabled 단일 토글* — 후자는
-  Bitnami 패턴이지만 *운영 책임* 모호. 본 ADR 의 분리가 *명시 의미*.
+  외부 chart 패턴이지만 *운영 책임* 모호. 본 ADR 의 분리가 *명시 의미*.
 
 ## Alternatives Considered
 
@@ -78,5 +78,5 @@ Helm 차트 (Bitnami v25.5.2, Cloudpirates v0.27.6) 모두 NetworkPolicy
 - ADR-0057 (NetworkPolicy 자동생성 강제 — 본 ADR 이 의미 분리, supersede
   아님 단 *opt-out path* 추가).
 - ADR-0034 (Auth Optional v1alpha2 — 동일 패턴 cross-PR).
-- 외부 비교: Bitnami v25.5.2 / Cloudpirates v0.27.6 의 NetworkPolicy opt-in.
+- 외부 비교: 외부 chart (Helm 기준) 의 NetworkPolicy opt-in.
 - 후속 PR-A3.1.2: controller reconcile 분기.
