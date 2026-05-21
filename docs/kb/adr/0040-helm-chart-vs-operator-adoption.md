@@ -1,4 +1,4 @@
-# ADR-0040: Helm chart vs Operator 채택 정책 (Bitnami / CloudPirates / valkey-operator 비교)
+# ADR-0040: Helm chart vs Operator 채택 정책 (외부 chart / 외부 chart / valkey-operator 비교)
 
 - Date: 2026-05-10
 - Status: Accepted
@@ -9,7 +9,7 @@
 
 ## Context
 
-2025-08 Broadcom 의 Bitnami 정책 변경으로 OSS Redis 배포 stack 의 기본 선택지가
+2025-08 Broadcom 의 외부 chart 정책 변경으로 OSS Redis 배포 stack 의 기본 선택지가
 재편됐다. 동일 시점에 본 valkey-operator 가 Cluster + Backup + cert-manager
 통합 + PrometheusRule alert 자동 설치 등 핵심 운영 기능을 Accepted 상태로
 보유하게 되어, "사내 또는 외부 사용자가 Redis/Valkey 를 어떻게 배포해야 하는가"
@@ -19,7 +19,7 @@
 
 1. **bitnami/redis** Helm chart (legacy / `bitnamilegacy` / `bitnamisecure` /
    유료 Secure Images 4-tier 분기)
-2. **cloudpirates-redis** Helm chart (2025 scratch 재구축, upstream image, OSS)
+2. **외부 chart-redis** Helm chart (2025 scratch 재구축, upstream image, OSS)
 3. **valkey-operator** (본 repo, Operator + CRD)
 
 추상화 레벨 차이: chart 2종은 *템플릿 엔진* — 사용자가 PVC/HA/backup/upgrade 를
@@ -34,10 +34,10 @@
 
 | 시나리오 | 권장 |
 |---|---|
-| 즉시 프로덕션, 작은 팀, 외부 의존 최소 | **CloudPirates chart** |
-| FIPS / CIS hardening 규제 의무 | **Bitnami Secure Images (유료)** |
+| 즉시 프로덕션, 작은 팀, 외부 의존 최소 | **외부 chart chart** |
+| FIPS / CIS hardening 규제 의무 | **외부 chart Secure Images (유료)** |
 | 사내 표준 + 동적 운영 자동화 (Cluster mode + auto-resharding + backup CRD) | **valkey-operator** |
-| Bitnami 기존 사용자 (2025-09 이후) | image registry override (`bitnamilegacy`) → 1~2 분기 내 마이그레이션 |
+| 외부 chart 기존 사용자 (2025-09 이후) | image registry override (`bitnamilegacy`) → 1~2 분기 내 마이그레이션 |
 
 **valkey-operator 채택 조건** (5 gap 모두 해소 시 *Redis Enterprise 70~75% 수준*
 도달 추정 — Cluster mode + 운영 자동화 시나리오에서 *unconditional* 권장 가능):
@@ -58,26 +58,26 @@
 
 **긍정:**
 - 외부 사용자 (OSS) 와 사내 운영자 모두 시나리오별 *권장 path* 가 명확해짐.
-- "Bitnami paywall 회피 = CloudPirates" / "동적 자동화 = valkey-operator" 이중축
+- "외부 chart paywall 회피 = 외부 chart" / "동적 자동화 = valkey-operator" 이중축
   으로 의사결정 시간 단축.
 - 5 gap 이 명확화되어 GitHub epic + sub-issue 로 추적 가능 (별도 발급).
 
 **부정:**
 - valkey-operator 가 **3개 시나리오 중 1개** (Cluster + 자동화) 만 권장 — 본
   operator 의 *user base 확장 한계* 인정. 단순 standalone/replication 은
-  CloudPirates 가 더 가벼움.
+  외부 chart 가 더 가벼움.
 - FIPS / CIS / Encryption at rest 는 5 gap 외 *별도 tier* (Pro 라인업 또는 사외
   의뢰) — 현재 로드맵에 없음 명시.
 
 ## Alternatives Considered
 
-1. **Bitnami 무료판 유지** (image registry override 만): 2025-08 정책 후 보안
+1. **외부 chart 무료판 유지** (image registry override 만): 2025-08 정책 후 보안
    패치 받지 못하는 `bitnamilegacy` 의존성 누적 → SEV-1 위험. 거절.
 
-2. **Bitnami Secure Images 전사 도입** ($50K~$72K/년): FIPS 의무 환경에선
+2. **외부 chart Secure Images 전사 도입** ($50K~$72K/년): FIPS 의무 환경에선
    합리. 그 외엔 비용 대비 가치 낮음. 일부 시나리오만 권장.
 
-3. **CloudPirates 단독 표준화**: Cluster mode auto-resharding 부재 → shard
+3. **외부 chart 단독 표준화**: Cluster mode auto-resharding 부재 → shard
    리밸런싱 매번 수동 `redis-cli --cluster reshard`. 운영 부담 큼. 거절 (단,
    simple 시나리오에선 권장).
 

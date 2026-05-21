@@ -16,7 +16,7 @@ plans/ethereal-fluttering-wand 에서 ADR-0018 슬롯 *예약* 만 했고 실
 구현 deferred. 본 ADR 은 *정식 결정* 보존 + controller 구현을 PR-B8.2
 별 PR 로 분리.
 
-ArtifactHub 비교 분석 (Plan §1 Phase 1) 결과 *Bitnami / Cloudpirates 도
+ArtifactHub 비교 분석 (Plan §1 Phase 1) 결과 *외부 chart 도
 auto-resharding 미지원* (수동 redis-cli MIGRATE 필요). 본 결정 implementation
 시 valkey-operator 가 *4-repo 중 유일* 한 auto-resharding 보유 — 차별점.
 
@@ -49,7 +49,7 @@ auto-resharding 미지원* (수동 redis-cli MIGRATE 필요). 본 결정 impleme
 ### Positive
 
 - valkey-operator 가 *4-repo 중 유일한 auto-resharding* 보유 — Plan §1
-  Phase 1 Gap F 해소. Bitnami / Cloudpirates 와의 차별점.
+  Phase 1 Gap F 해소. 외부 chart 와의 차별점.
 - HPA (ADR-0027 deferred) 의 prerequisite 충족.
 - 사용자 운영 부담 감소 — `kubectl scale valkeycluster --shards=5` 만으로
   완료.

@@ -8,8 +8,8 @@
 
 ## Context
 
-ArtifactHub 비교 분석 결과 외부 두 redis Helm 차트 (Bitnami v25.5.2,
-Cloudpirates v0.27.6) 모두 `auth.enabled` 토글을 기본값 true 로 노출.
+ArtifactHub 비교 분석 결과 외부 두 redis Helm 차트 (외부 chart,
+외부 chart) 모두 `auth.enabled` 토글을 기본값 true 로 노출.
 사용자가 외부 인증 (Istio mTLS, sidecar proxy auth, network-level isolated
 namespace) 사용 시 명시적으로 비활성화 가능.
 
@@ -57,7 +57,7 @@ Phase 1 분석에서 이는 valkey-operator 의 *secure-by-default* 철학과
 ### Positive
 
 - 외부 인증 시나리오 (Istio mTLS, sidecar) 사용자가 명시적으로 `auth.required=false`
-  로 활성화 가능 — Bitnami / Cloudpirates 와 동등 유연성.
+  로 활성화 가능 — 외부 chart 와 동등 유연성.
 - default=true 유지로 v1alpha1 ADR-0013 의 *secure-by-default* 철학 보존.
 - v1alpha2 신규 (vs v1alpha1 동작 변경) 로 기존 사용자 무중단 — 명시적
   마이그레이션 경로 제공.
@@ -106,7 +106,7 @@ Phase 1 분석에서 이는 valkey-operator 의 *secure-by-default* 철학과
 - ADR-0013 (supersede 대상): Auth.Enabled 사실상 항상 enabled.
 - ADR-0026 (deferred 회복): Conversion Webhook 의 deferred 결정 재검토.
 - Plan §2 D1 (사용자 결정 1: Auth optional, v1alpha2 + conversion webhook).
-- Phase 1 비교: Bitnami v25.5.2 / Cloudpirates v0.27.6 의 `auth.enabled` 토글 패턴.
+- Phase 1 비교: 외부 chart (Helm 기준) 의 `auth.enabled` 토글 패턴.
 - 글로벌 표준: `standards/adr.md §3` (Nygard 5섹션).
 - v1alpha2 type module 위치: `api/v1alpha2/`.
 - doc.go: PR-A2.1 anatomy + PR-A2.2 후속 작업 안내.

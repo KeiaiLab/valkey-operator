@@ -7,13 +7,13 @@
 
 ## Context
 
-ArtifactHub 비교 (Plan §1 Phase 1) 결과 Bitnami redis v25.5.2 가
+ArtifactHub 비교 (Plan §1 Phase 1) 결과 외부 chart redis v25.5.2 가
 *Redis Stack* 의 RediSearch / RedisBloom / RedisJSON / RedisTimeSeries
 module 을 chart 에서 활성 — 사용자 시나리오 (전문 검색, vector embedding,
 JSON document 등) 차별점.
 
 라이선스 호환성:
-- Bitnami Redis Stack module: **RSALv2 / SSPL** — Valkey 의 BSD-3 license
+- 외부 chart Redis Stack module: **RSALv2 / SSPL** — Valkey 의 BSD-3 license
   와 *영구 호환 불가* (Linux Foundation Valkey 의 *vanilla BSD only* 정책).
 - Valkey 공식 module: BSD — `valkey-search` (8.1+, GA), `valkey-json`,
   `valkey-bloom` 진행 중.
@@ -38,7 +38,7 @@ module* (사용자 책임) 두 path 보존.
    요구 시 webhook 거부. Sonatype Trust Score 검증 권장 (custom module 의
    supply chain 보증).
 
-4. **Bitnami Redis Stack module *영구 미지원***: RSALv2/SSPL 라이선스
+4. **외부 chart Redis Stack module *영구 미지원***: RSALv2/SSPL 라이선스
    호환 불가. 사용자가 RediSearch 필요 시 *external Redis Stack
    인스턴스* 사용 권장 (별도 운영).
 
@@ -52,7 +52,7 @@ module* (사용자 책임) 두 path 보존.
 
 ### Positive
 
-- Valkey 8.1+ 의 native module (search/json/bloom) 활용 path — Bitnami
+- Valkey 8.1+ 의 native module (search/json/bloom) 활용 path — 외부 chart
   Redis Stack 사용자 *부분 마이그레이션* 가능 (search 만 이전).
 - 라이선스 호환성 명시 — Linux Foundation Valkey 정책 + 사용자 운영
   매뉴얼 정합.
@@ -66,15 +66,15 @@ module* (사용자 책임) 두 path 보존.
 
 ### Trade-offs
 
-- *Valkey 공식 only* (본 ADR) vs *Bitnami Redis Stack 호환 layer* — 후자는
+- *Valkey 공식 only* (본 ADR) vs *외부 chart Redis Stack 호환 layer* — 후자는
   라이선스 영구 호환 불가. 본 ADR 의 *공식 only* 가 정합.
 
 ## Alternatives Considered
 
 1. **Module 미지원** — 거부.
-   - Plan §1 Phase 1 Gap D 미해소. Bitnami / Cloudpirates 와의 차별점 부재.
+   - Plan §1 Phase 1 Gap D 미해소. 외부 chart 와의 차별점 부재.
 
-2. **Bitnami Redis Stack module 직접 호환 layer** — 거부.
+2. **외부 chart Redis Stack module 직접 호환 layer** — 거부.
    - RSALv2/SSPL 라이선스 — Valkey BSD-3 와 *영구 호환 불가*.
 
 3. **module 을 별도 CRD (ValkeyModule)** — 거부.
@@ -84,6 +84,6 @@ module* (사용자 책임) 두 path 보존.
 
 - Plan §2 D9 (Sprint C PR-C6).
 - ADR-0036 (PSS Restricted Optional) — module image 보안 정합.
-- 외부 비교: Bitnami v25.5.2 의 Redis Stack module (RSALv2/SSPL — 호환 불가).
+- 외부 비교: 외부 chart 의 Redis Stack module (RSALv2/SSPL — 호환 불가).
 - Valkey module ecosystem: <https://valkey.io/topics/modules.html>
 - 후속 PR-C6.2: controller statefulset.go init container mount + e2e.

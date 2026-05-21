@@ -8,7 +8,7 @@
 ## Context
 
 ArtifactHub Helm 차트 비교 (Plan §1 Phase 1) 결과 외부 두 redis Helm
-차트 (Bitnami v25.5.2, Cloudpirates v0.27.6) 모두 PodSecurityContext
+차트 (외부 chart (Helm 기준)) 모두 PodSecurityContext
 *opt-in restricted* + 사용자 *override* 허용. valkey-operator v1alpha1
 은 *PSA restricted 강제* — 외부 PSA policy (Kyverno / Gatekeeper /
 custom admission controller) 사용자에게 *충돌* 가능.
@@ -49,7 +49,7 @@ custom admission controller) 사용자에게 *충돌* 가능.
 ### Positive
 
 - 외부 PSA policy 사용자 (Kyverno / Gatekeeper / custom admission)
-  시나리오 지원 — Bitnami / Cloudpirates 동등 유연성.
+  시나리오 지원 — 외부 chart 동등 유연성.
 - default=true 유지로 v1alpha1 secure-by-default 보존.
 - v1alpha1 사용자 무중단 (PodSecurityRestricted nil 시 true).
 
@@ -86,6 +86,6 @@ custom admission controller) 사용자에게 *충돌* 가능.
 - Plan §2 D3 (사용자 결정 1: PSS optional, default true).
 - ADR-0034 (Auth Optional v1alpha2) / ADR-0035 (NetworkPolicy.AutoCreate)
   와 동일 패턴 — 3종 보안 토글 cross-PR.
-- 외부 비교: Bitnami v25.5.2 / Cloudpirates v0.27.6 의 PodSecurityContext opt-in.
+- 외부 비교: 외부 chart (Helm 기준) 의 PodSecurityContext opt-in.
 - K8s Pod Security Standards: <https://kubernetes.io/docs/concepts/security/pod-security-standards/>
 - 후속 PR-A3.2.2: controller statefulset.go 분기.

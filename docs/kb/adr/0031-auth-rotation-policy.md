@@ -8,7 +8,7 @@
 ## Context
 
 ArtifactHub 비교 분석 (Plan §1 Phase 1) 결과 *3 차트 모두 password rotation
-미지원* (Bitnami / Cloudpirates / valkey-operator). 사용자 시나리오:
+미지원* (외부 chart / valkey-operator). 사용자 시나리오:
 - 외부 Secret manager (ESO + OpenBao / SealedSecrets) 가 주기적으로 Secret
   rotate.
 - Secret 변경 시 *operator 가 무중단 valkey CONFIG SET requirepass 발행*
