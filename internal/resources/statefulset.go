@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/keiailab/operator-commons/pkg/security"
+	commonstopology "github.com/keiailab/operator-commons/pkg/topology"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -233,10 +234,11 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	}
 	// HA out-of-box default: Spec.Pod.TopologySpreadConstraints 미명시 + replicas >= 2
 	// 시 zone + node 2-축 spread 자동 주입. 단일 노드/zone 장애에 의한 동시 장애 방지.
-	// MaxSkew=1, ScheduleAnyway (강제 not-Schedulable 회피).
-	if len(podSpec.TopologySpreadConstraints) == 0 && p.Replicas >= 2 {
-		podSpec.TopologySpreadConstraints = defaultTopologySpread(selector)
-	}
+	// MaxSkew=1, ScheduleAnyway (강제 not-Schedulable 회피). commons pkg/topology
+	// 의 Defaulted 가 본 로직을 보존 (default WithMinReplicas(2)).
+	podSpec.TopologySpreadConstraints = commonstopology.Defaulted(
+		podSpec.TopologySpreadConstraints, p.Replicas, selector,
+	)
 
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -271,30 +273,6 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{dataPVC}
 	}
 	return sts
-}
-
-// defaultTopologySpread — Spec.Pod.TopologySpreadConstraints 미명시 + replicas >= 2
-// 시 자동 주입되는 zone + node 2-축 spread. ScheduleAnyway 로 강제 unschedulable
-// 회피 (single-zone cluster 환경 호환).
-//
-// MaxSkew=1: 동일 zone/node 에 +1 이상 몰리는 것 방지.
-// 사용자가 Spec.Pod.TopologySpreadConstraints 명시하면 그쪽이 우선 (override).
-func defaultTopologySpread(selector map[string]string) []corev1.TopologySpreadConstraint {
-	labelSelector := &metav1.LabelSelector{MatchLabels: selector}
-	return []corev1.TopologySpreadConstraint{
-		{
-			MaxSkew:           1,
-			TopologyKey:       "topology.kubernetes.io/zone",
-			WhenUnsatisfiable: corev1.ScheduleAnyway,
-			LabelSelector:     labelSelector,
-		},
-		{
-			MaxSkew:           1,
-			TopologyKey:       "kubernetes.io/hostname",
-			WhenUnsatisfiable: corev1.ScheduleAnyway,
-			LabelSelector:     labelSelector,
-		},
-	}
 }
 
 // AnnotationAuthSecretHash — pod template annotation 키. AuthSecret rotation

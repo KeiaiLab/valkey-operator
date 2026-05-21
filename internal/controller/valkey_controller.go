@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
+	commonspvc "github.com/keiailab/operator-commons/pkg/pvc"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -232,7 +233,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// 6.5 PVC online expansion — STS VCT 가 immutable 이므로 기존 PVC 직접 patch.
 	// webhook 에서 size 감소는 reject. 증가만 도달.
 	if !v.Spec.Storage.Ephemeral && v.Spec.Storage.ExistingClaim == "" {
-		if err := expandDataPVCs(ctx, r.Client, v.Namespace, v.Name, v.Spec.Storage.Size); err != nil {
+		if err := commonspvc.ExpandDataPVCs(ctx, r.Client, v.Namespace, []string{v.Name}, v.Spec.Storage.Size); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "PVCResize", err, r.Recorder)
 		}
 	}

@@ -56,6 +56,7 @@
 | [0044](0044-artifacthub-signed-official-trust-badges.md) | Artifact Hub trust badges — Signed mandatory, Official external review | Accepted | 2026-05-12 |
 | [0045](0045-restore-github-actions-for-oss-ci.md) | Restore GitHub Actions workflows for OSS CI (scoped deviation from RFC-0002) | Accepted | 2026-05-12 |
 | [0046](0046-slsa3-cosign-supply-chain.md) | SLSA-3 provenance + cosign keyless signing for release artifacts (image + chart + SBOM) | Accepted | 2026-05-12 |
+| [0049](0049-sprint-1-commons-pvc-topology-adoption.md) | Sprint 1 — operator-commons pkg/pvc + pkg/topology 채택 (-322 LOC, valkey 2 callsite + statefulset inline 교체) | Accepted | 2026-05-21 |
 
 ## 작성 가이드
 
