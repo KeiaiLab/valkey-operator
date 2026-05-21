@@ -130,11 +130,10 @@
 - [x] **SLSA-3 provenance + cosign keyless signing** 应用于镜像、
   Helm chart 与 SBOM (ADR-0046) — 验证命令见
   [SECURITY.md](SECURITY.md)。自 v1.0.13 起生效。
-- [ ] **argos 集群部署**
+- [ ] **生产集群采用**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application 注册
-  - [ ] 将 `argos-platform-data/valkey` 从
-    plain StatefulSet 迁移至 operator
+  - [ ] 将生产 Valkey 工作负载从 plain StatefulSet 迁移至 operator
   - Verify: ArgoCD Synced/Healthy 且
     `kubectl get valkey/valkeycluster -A`
 - [x] **迁移手册 (Migration runbook)** — plain StatefulSet → ValkeyCluster CR (PR #136)

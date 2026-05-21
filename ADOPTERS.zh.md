@@ -17,7 +17,7 @@
 
 | 用户 | 组件 | 使用方式 | 初始版本 | 当前版本 | 列入日期 |
 |---|---|---|---|---|---|
-| **argos-platform-data** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | argos 的缓存与 pub/sub 层。6-pod ValkeyCluster, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted。 | v1.0.0 | v1.0.3 | 2026-05-07 |
+| **内部生产集群** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | 内部生产工作负载的缓存与 pub/sub 层。6-pod ValkeyCluster, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted。 | v1.0.0 | v1.0.3 | 2026-05-07 |
 
 ## 评估者 (Evaluators)
 

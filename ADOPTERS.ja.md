@@ -17,7 +17,7 @@ production グレードの SLA を伴って `valkey-operator` を本番稼働さ
 
 | ユーザー | コンポーネント | 利用パターン | 初版 | 現バージョン | 掲載日 |
 |---|---|---|---|---|---|
-| **argos-platform-data** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | argos のキャッシュおよび pub/sub レイヤー。6-pod ValkeyCluster、`cluster_state=ok`、ServiceMonitor + alert-rules.yaml + PodSecurity restricted。 | v1.0.0 | v1.0.3 | 2026-05-07 |
+| **社内本番クラスタ** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | 社内本番ワークロードのキャッシュおよび pub/sub レイヤー。6-pod ValkeyCluster、`cluster_state=ok`、ServiceMonitor + alert-rules.yaml + PodSecurity restricted。 | v1.0.0 | v1.0.3 | 2026-05-07 |
 
 ## Evaluators
 

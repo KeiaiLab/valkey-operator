@@ -108,13 +108,12 @@ Full list: `docs/kb/adr/INDEX.md`.
 ## Roadmap status
 
 - Done: 31 items (Cluster mode + backup/restore + HPA/PDB/NP + version-upgrade + Valkey 9.x + API evolution + webhook admission + Helm + SLSA-3 + ServiceMonitor + OpenSSF)
-- Pending: 38 items (argos deploy + migration runbook + smoke test + Grafana + OTel + SBOM + 9.x feature follow-up + multi-cluster federation + cross-region replication + online schema-less migration + weighted replica routing + controller v2 + CRD v1 graduation)
-- Plan to 100%: `~/.claude/plans/2026-05-14-4-operators-100pct/P-C.md`
+- Pending: 38 items (production cluster adoption + migration runbook + smoke test + Grafana + OTel + SBOM + 9.x feature follow-up + multi-cluster federation + cross-region replication + online schema-less migration + weighted replica routing + controller v2 + CRD v1 graduation)
 
 ## Non-goals
 
 - ❌ Embedded Redis (we serve Valkey — license-compatible BSD-3 fork)
-- ❌ Bitnami valkey chart embedding (we implement natively)
+- ❌ Third-party Valkey chart embedding (we implement natively)
 - ❌ Redis Sentinel topology (use 3-shard cluster instead)
 - ❌ Valkey version < 8.0
 

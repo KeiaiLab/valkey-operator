@@ -20,7 +20,7 @@ production-grade SLA.
 
 | User | Component | Usage pattern | First version | Current version | Listed |
 |---|---|---|---|---|---|
-| **argos-platform-data** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | Cache and pub/sub layer for argos. 6-pod ValkeyCluster, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted. | v1.0.0 | v1.0.3 | 2026-05-07 |
+| **Internal production cluster** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + sharded Cluster 3×1) | Cache and pub/sub layer for an internal production workload. 6-pod ValkeyCluster, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted. | v1.0.0 | v1.0.3 | 2026-05-07 |
 
 ## Evaluators
 

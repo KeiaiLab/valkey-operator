@@ -88,10 +88,10 @@
 
 - [x] Helm chart publish — `keiailab.github.io/valkey-operator`
 - [x] 3-repo (mongodb/postgres/valkey) governance 자산 정합 (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
-- [ ] **argos 클러스터 deploy**
+- [ ] **프로덕션 클러스터 채택**
   - [ ] CRD 설치 manifest
   - [ ] ArgoCD application 등록
-  - [ ] 현재 `argos-platform-data/valkey` 가 plain StatefulSet — operator 적용 마이그레이션
+  - [ ] 프로덕션 Valkey 워크로드를 plain StatefulSet 에서 operator 로 마이그레이션
   - Verify: ArgoCD Synced/Healthy + `kubectl get valkey/valkeycluster -A`
 - [ ] **Migration runbook** — plain StatefulSet → ValkeyCluster CR
   - [ ] Zero-downtime 절차 문서화

@@ -137,10 +137,10 @@ file used to confirm the checkbox.
 - [x] **SLSA-3 provenance + cosign keyless signing** for the image,
   Helm chart, and SBOM (ADR-0046) — verification commands in
   [SECURITY.md](SECURITY.md). Active from v1.0.13.
-- [ ] **argos cluster deploy**
+- [ ] **Production cluster adoption**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application registration
-  - [ ] Migrate `argos-platform-data/valkey` from a plain
+  - [ ] Migrate the production Valkey workload from a plain
     StatefulSet to the operator
   - Verify: ArgoCD Synced/Healthy and
     `kubectl get valkey/valkeycluster -A`
