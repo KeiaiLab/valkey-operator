@@ -1,6 +1,10 @@
-# Support
+<p align="center">
+  <b>English</b> |
+  <a href="SUPPORT.ja.md">日本語</a> |
+  <a href="SUPPORT.zh.md">中文</a>
+</p>
 
-> 한국어 사용자: 본 문서의 채널은 영어와 한국어 모두 환영합니다.
+# Support
 
 Thanks for using `valkey-operator`. This page explains where to get
 help.

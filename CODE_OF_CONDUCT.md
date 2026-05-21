@@ -1,3 +1,9 @@
+<p align="center">
+  <b>English</b> |
+  <a href="CODE_OF_CONDUCT.ja.md">日本語</a> |
+  <a href="CODE_OF_CONDUCT.zh.md">中文</a>
+</p>
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge
@@ -62,14 +68,14 @@ For answers to common questions about this code of conduct, see the FAQ at [http
 
 If you experience or witness unacceptable behavior, or have any other concerns, please report it by contacting the project maintainers:
 
-* **GitHub Issues**: https://github.com/eightynine01/mongodb-operator/issues
-* **Email**: [Insert contact email here]
+* **GitHub Security Advisory** (preferred for sensitive reports): https://github.com/keiailab/valkey-operator/security/advisories/new
+* **Email**: `security@keiailab.com` (PGP key in `artifacthub-repo.yml`)
 
 All reports will be handled with discretion and confidentiality. We will respond to your report as soon as possible and take appropriate action.
 
 ---
 
-Copyright 2026 eightynine01
+Copyright 2026 Keiailab.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
