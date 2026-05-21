@@ -1,3 +1,10 @@
+<p align="center">
+  <b>English</b> |
+  <a href="CONTRIBUTING.ko.md">한국어</a> |
+  <a href="CONTRIBUTING.ja.md">日本語</a> |
+  <a href="CONTRIBUTING.zh.md">中文</a>
+</p>
+
 # Contributing
 
 > 한국어 버전: [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)
@@ -153,3 +160,17 @@ Security Advisory and a PGP-signed email address).
 
 This project is Apache License 2.0. By contributing you agree that your
 contribution is distributed under the same license.
+
+---
+
+<p align="center">
+  <b>keiailab operator family</b><br/>
+  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
+  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
+  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
+  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
+</p>
+
+<p align="center">
+  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
+</p>

@@ -1,3 +1,10 @@
+<p align="center">
+  <b>English</b> |
+  <a href="ADOPTERS.ko.md">한국어</a> |
+  <a href="ADOPTERS.ja.md">日本語</a> |
+  <a href="ADOPTERS.zh.md">中文</a>
+</p>
+
 # Adopters of valkey-operator
 
 > 한국어 버전: [ADOPTERS.ko.md](ADOPTERS.ko.md)
@@ -48,3 +55,17 @@ evaluating Valkey, see `ROADMAP.md` → **Phase B (RDB compatibility
 and alternative migration paths)**. Some Redis 8.2.x RDB files cannot
 be restored directly into Valkey 9.0.4; `ValkeyRestore` fails fast in
 that case so operators never wait indefinitely on a silent error.
+
+---
+
+<p align="center">
+  <b>keiailab operator family</b><br/>
+  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
+  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
+  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
+  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
+</p>
+
+<p align="center">
+  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
+</p>

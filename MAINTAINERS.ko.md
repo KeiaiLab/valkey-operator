@@ -1,3 +1,10 @@
+<p align="center">
+  <a href="MAINTAINERS.md">English</a> |
+  <b>한국어</b> |
+  <a href="MAINTAINERS.ja.md">日本語</a> |
+  <a href="MAINTAINERS.zh.md">中文</a>
+</p>
+
 # Maintainers (한국어)
 
 > English: [MAINTAINERS.md](MAINTAINERS.md) — canonical / 정본
@@ -39,3 +46,17 @@ GitHub team `@keiailab/maintainers`이 본 프로젝트의 모든 영역에 대�
 ## Emeritus
 
 (아직 없음)
+
+---
+
+<p align="center">
+  <b>keiailab operator family</b><br/>
+  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
+  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
+  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
+  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
+</p>
+
+<p align="center">
+  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
+</p>
