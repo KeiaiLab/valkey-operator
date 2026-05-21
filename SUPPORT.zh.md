@@ -1,5 +1,6 @@
 <p align="center">
   <a href="SUPPORT.md">English</a> |
+  <a href="SUPPORT.ko.md">한국어</a> |
   <a href="SUPPORT.ja.md">日本語</a> |
   <b>中文</b>
 </p>
