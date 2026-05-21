@@ -261,7 +261,7 @@ extraVolumeMounts: []
 extraVolumes: []
 
 # -- Helm release 와 함께 배포할 추가 Kubernetes manifest 목록.
-# CloudPirates valkey chart 의 extraObjects 와 같은 운영 escape hatch.
+# 일반적인 chart 의 extraObjects 패턴과 동등한 운영 escape hatch.
 # CRD 가 직접 소유하지 않는 TCPRoute, NetworkPolicy, SecretProviderClass 등은
 # 여기서 명시하고 GitOps 로 추적한다.
 extraObjects: []
