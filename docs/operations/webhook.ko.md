@@ -79,7 +79,7 @@ K8s `apierrors.NewInvalid` accumulate-errors 형식 — 복수 invariant 위반 
 
 ```
 Error from server (Invalid): admission webhook "vvalkeycluster-v1alpha1.kb.io"
-denied the request: ValkeyCluster.cache.keiailab.io "argos-valkey" is invalid:
+denied the request: ValkeyCluster.cache.keiailab.io "my-valkey" is invalid:
 [spec.tls: TLS.CertManager and TLS.CustomCert are mutually exclusive — choose one,
 spec.storage.size: storage.size must be >= 1Gi — RDB snapshot + AOF data dir floor]
 ```

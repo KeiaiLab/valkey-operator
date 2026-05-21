@@ -130,12 +130,12 @@
 - [x] **SLSA-3 provenance + cosign keyless signing** をイメージ、
   Helm chart、SBOM に対して適用 (ADR-0046) — 検証コマンドは
   [SECURITY.md](SECURITY.md) を参照。v1.0.13 から有効。
-- [ ] **argos cluster deploy**
+- [ ] **本番クラスタへの導入**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application 登録
-  - [ ] `argos-platform-data/valkey` を
-    plain StatefulSet から operator にマイグレーション
-  - Verify: ArgoCD Synced/Healthy + 
+  - [ ] 本番 Valkey ワークロードを plain StatefulSet から operator に
+    マイグレーション
+  - Verify: ArgoCD Synced/Healthy +
     `kubectl get valkey/valkeycluster -A`
 - [x] **Migration runbook** — plain StatefulSet → ValkeyCluster CR (PR #136)
   - [x] zero-downtime 手順のドキュメント化 — `docs/migration/zero-downtime.md` (PR #136)

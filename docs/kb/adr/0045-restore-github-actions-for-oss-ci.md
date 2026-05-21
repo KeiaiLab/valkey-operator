@@ -68,8 +68,7 @@ In addition, enable `required_status_checks` on `main` for at least:
 - `trivy-image`
 
 This is a **scoped deviation** from RFC-0002, *not* a reversal. Internal
-infrastructure repositories (`force-*`, `argos-*`, `keiailab/platform/*`)
-remain bound by RFC-0002 §1.
+infrastructure repositories remain bound by RFC-0002 §1.
 
 ## Scope of the deviation
 

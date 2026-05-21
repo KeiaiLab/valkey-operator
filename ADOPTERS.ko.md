@@ -18,7 +18,7 @@
 
 | 사용자 | 컴포넌트 | 사용 패턴 | 시작 버전 | 현재 버전 | 등재 일자 |
 |---|---|---|---|---|---|
-| **argos-platform-data** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + Cluster sharded 3×1) | argos 의 캐시 / pub-sub 레이어. ValkeyCluster 6 pod, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted. | v1.0.0 | v1.0.3 | 2026-05-07 |
+| **내부 운영 클러스터** ([keiailab](https://github.com/keiailab)) | Valkey 9.0.4 (Standalone + Cluster sharded 3×1) | 내부 운영 워크로드의 캐시 / pub-sub 레이어. ValkeyCluster 6 pod, `cluster_state=ok`, ServiceMonitor + alert-rules.yaml + PodSecurity restricted. | v1.0.0 | v1.0.3 | 2026-05-07 |
 
 ## Evaluators
 
