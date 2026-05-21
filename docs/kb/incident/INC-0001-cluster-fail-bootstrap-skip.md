@@ -1,6 +1,6 @@
 # INC-0001: ValkeyCluster cluster_state:fail 상태에서 bootstrap 재실행 안 됨
 
-- Detected: 2026-05-09 14:27 (KST) — production cluster keiailab-valkey-prod, 운영 클러스터 argos
+- Detected: 2026-05-09 14:27 (KST) — production cluster, 운영 클러스터
 - Resolved: 2026-05-10 09:18 (KST)
 - Severity: SEV-2 (단일 cluster 영향, application traffic 미영향 — test data only)
 - Owners: @eightynine01
@@ -9,7 +9,7 @@
 ## Impact
 
 - **사용자 영향**: 0 (cluster 의 keys 가 모두 test data — `test_valkey_br_*`, `test_prod_*`, `test_failover_*`, 6 unique keys × 2 master+replica). production application traffic 미연결 상태였음.
-- **시스템 영향**: ValkeyCluster `keiailab-valkey-prod` (3 shards × 2 = 6 pods, 16384 slots) — 약 19시간 `cluster_state: fail` 상태 stuck.
+- **시스템 영향**: ValkeyCluster (운영 인스턴스) (3 shards × 2 = 6 pods, 16384 slots) — 약 19시간 `cluster_state: fail` 상태 stuck.
 - **재정/법적 영향**: 없음.
 
 ## Timeline
