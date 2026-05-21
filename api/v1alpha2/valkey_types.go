@@ -104,9 +104,8 @@ type ValkeySpec struct {
 	// Modules — Valkey 공식 module 활성화 (Plan §2 D9, ADR-0032).
 	//
 	// 본 spec 은 *Valkey 공식 module 만* preset 으로 인정 (BSD 라이선스
-	// 호환). Bitnami Redis Stack 의 RediSearch/RedisJSON/RedisBloom/
-	// RedisTimeSeries 는 RSALv2/SSPL 라이선스로 *호환 불가* — 본 필드
-	// 미지원.
+	// 호환). 비호환 라이선스 (RSALv2 / SSPL) 의 서드파티 module 패키지는
+	// 본 필드에서 미지원.
 	//
 	// 사용자 커스텀 module 은 ModuleSpec.Image 로 *bring-your-own*
 	// (init container 가 .so 를 emptyDir 로 mount).

@@ -418,7 +418,7 @@ func TestBuildStatefulSet(t *testing.T) {
 			t.Errorf("VolumeClaimTemplate name='data' 기대, got %q", vct.Name)
 		}
 	})
-	t.Run("CloudPirates compatibility pod and storage knobs", func(t *testing.T) {
+	t.Run("External chart compatibility pod and storage knobs", func(t *testing.T) {
 		t.Parallel()
 		rev := int32(7)
 		term := int64(45)
@@ -994,11 +994,11 @@ func TestBuildMetricsService(t *testing.T) {
 // (1) capabilities.drop=[ALL] (2) seccompProfile.type=RuntimeDefault
 // (3) AllowPrivilegeEscalation=false (4) RunAsNonRoot=true.
 //
-// 본 회귀 가드의 motivation: mongodb-operator 의 동일 결함 (4 곳 인라인
-// SecurityContext 의 SeccompProfile 누락) 으로 argos 클러스터에서
-// argos-mongo-cfg StatefulSet pod 가 PodSecurity admission 거부되어
-// 운영 사고 발생 (2026-05-07). valkey-operator 의 restore / upload /
-// download 4 곳 SecurityContext 도 동일 패턴 위반 — fix 적용 + 본 가드.
+// 본 회귀 가드의 motivation: sibling operator 의 동일 결함 (4 곳 인라인
+// SecurityContext 의 SeccompProfile 누락) 으로 운영 클러스터에서
+// StatefulSet pod 가 PodSecurity admission 거부되어 운영 사고 발생
+// (2026-05-07). valkey-operator 의 restore / upload / download 4 곳
+// SecurityContext 도 동일 패턴 위반 — fix 적용 + 본 가드.
 func TestPodSecurityRestrictedHelper(t *testing.T) {
 	sc := buildRestrictedContainerSecurityContext()
 	if sc == nil {

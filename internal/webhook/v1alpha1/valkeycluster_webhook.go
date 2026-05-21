@@ -302,10 +302,10 @@ func validateStorageMode(path *field.Path, s cachev1alpha1.StorageSpec) field.Er
 //
 // Why: 사용자가 명시한 StorageClassName 은 K8s 가 *동일 이름의 StorageClass*
 // 리소스를 lookup 한다. 잘못된 이름 (대문자 / 언더스코어 / 길이 초과 등) 은
-// 즉시 PVC binding 실패로 이어져 STS pod 가 Pending 영구 정지된다. argos
-// 클러스터의 default class `ceph-rbd` 처럼 RBD 계열 이름은 모두 DNS-1123
-// subdomain 규칙을 따른다 — webhook 에서 사전 reject 하면 PVC 단계까지 가지
-// 않고 즉시 사용자 피드백 가능.
+// 즉시 PVC binding 실패로 이어져 STS pod 가 Pending 영구 정지된다.
+// 일반적인 storage class 이름 (RBD 계열 포함) 은 모두 DNS-1123 subdomain
+// 규칙을 따른다 — webhook 에서 사전 reject 하면 PVC 단계까지 가지 않고
+// 즉시 사용자 피드백 가능.
 //
 // 정책: zero (unset) → cluster default class 사용 → 통과. non-empty →
 // DNS-1123 subdomain (lowercase alphanumeric / '-' / '.', 253자 이하) 검증.
