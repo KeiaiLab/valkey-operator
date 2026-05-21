@@ -7,7 +7,7 @@
 
 # ガバナンス
 
-> English version: [GOVERNANCE.md](.github/GOVERNANCE.md)
+> English version: [GOVERNANCE.md](../../../.github/GOVERNANCE.md)
 
 本ドキュメントは `keiailab/valkey-operator` における意思決定方法を定義します。
 
@@ -43,7 +43,7 @@
 
 ## セキュリティ判断
 
-CVE レポートおよび secrets / auth モデルへの変更は、まず [SECURITY.md](.github/SECURITY.md) のプライベートチャネルで処理します。public な合意は patch リリースが ship された後に行われます。
+CVE レポートおよび secrets / auth モデルへの変更は、まず [SECURITY.md](../../../.github/SECURITY.md) のプライベートチャネルで処理します。public な合意は patch リリースが ship された後に行われます。
 
 ## リリース判断
 

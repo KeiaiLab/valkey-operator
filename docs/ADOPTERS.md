@@ -7,7 +7,7 @@
 
 # Adopters of valkey-operator
 
-> 한국어 버전: [ADOPTERS.ko.md](../ADOPTERS.ko.md)
+> 한국어 버전: [ADOPTERS.ko.md](i18n/ko/ADOPTERS.md)
 
 This document is the **public** list of organizations and projects
 that run or evaluate `keiailab/valkey-operator`. Self-registration is

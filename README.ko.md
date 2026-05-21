@@ -139,10 +139,10 @@ helm install valkey-operator valkey-operator/valkey-operator \
 | 운영 runbook (한국어) | [docs/operations/runbook.ko.md](docs/operations/runbook.ko.md) |
 | 릴리즈 사전 검증 체크리스트 (한국어) | [docs/operations/release-checklist.ko.md](docs/operations/release-checklist.ko.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |
-| Contributing (한국어) | [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md) |
-| 보안 정책 + artifact 검증 (한국어) | [SECURITY.ko.md](SECURITY.ko.md) |
-| 프로젝트 거버넌스 (한국어) | [GOVERNANCE.ko.md](GOVERNANCE.ko.md) |
-| Adopters (한국어) | [ADOPTERS.ko.md](ADOPTERS.ko.md) |
+| Contributing (한국어) | [CONTRIBUTING.ko.md](docs/i18n/ko/CONTRIBUTING.md) |
+| 보안 정책 + artifact 검증 (한국어) | [SECURITY.ko.md](docs/i18n/ko/SECURITY.md) |
+| 프로젝트 거버넌스 (한국어) | [GOVERNANCE.ko.md](docs/i18n/ko/GOVERNANCE.md) |
+| Adopters (한국어) | [ADOPTERS.ko.md](docs/i18n/ko/ADOPTERS.md) |
 
 ## Production readiness
 
@@ -220,7 +220,7 @@ make undeploy
 
 ## Contributing
 
-[CONTRIBUTING.ko.md](CONTRIBUTING.ko.md) 참조. 외부 기여 환영 — non-trivial
+[CONTRIBUTING.ko.md](docs/i18n/ko/CONTRIBUTING.md) 참조. 외부 기여 환영 — non-trivial
 변경은 코드 작성 전 issue 를 먼저 열어 API surface 정합을 맞춰주세요.
 
 `make help` 로 모든 Makefile target 확인. 배경 자료:
@@ -228,7 +228,7 @@ make undeploy
 
 ## 취약점 보고
 
-공개 issue 를 **열지 마세요**. [SECURITY.ko.md](SECURITY.ko.md) 의 비공개
+공개 issue 를 **열지 마세요**. [SECURITY.ko.md](docs/i18n/ko/SECURITY.md) 의 비공개
 채널 사용 — GitHub Security Advisory 또는 `security@keiailab.com`
 (`artifacthub-repo.yml` 의 PGP key).
 

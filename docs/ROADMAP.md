@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator
 
-> 한국어 버전: [ROADMAP.ko.md](../ROADMAP.ko.md)
+> 한국어 버전: [ROADMAP.ko.md](i18n/ko/ROADMAP.md)
 
 This roadmap tracks progress as a **verifiable feature checklist**,
 not a calendar of deadlines. Time-based deadlines are intentionally

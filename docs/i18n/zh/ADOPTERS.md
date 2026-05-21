@@ -7,7 +7,7 @@
 
 # valkey-operator 的采用者 (Adopters)
 
-> English version: [ADOPTERS.md](docs/ADOPTERS.md)
+> English version: [ADOPTERS.md](../../ADOPTERS.md)
 
 本文档是 `keiailab/valkey-operator` 在生产环境运行或正在评估的组织和项目的 **公开** 名单。欢迎自助注册 — 提交 PR 追加一行即可。
 
@@ -35,7 +35,7 @@
 | **<组织或项目>** ([profile](<URL>)) | <组件 + 拓扑 (topology)> | <使用方式> | <初始版本> | <当前版本> | <YYYY-MM-DD> |
 ```
 
-如果您希望以匿名方式被列出,请通过 [SECURITY.md](.github/SECURITY.md) 中的安全联系方式与我们联系,维护者将代为登记一行匿名化的组织信息。
+如果您希望以匿名方式被列出,请通过 [SECURITY.md](../../../.github/SECURITY.md) 中的安全联系方式与我们联系,维护者将代为登记一行匿名化的组织信息。
 
 ## CNCF Sandbox 引用
 

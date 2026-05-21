@@ -7,7 +7,7 @@
 
 # Adopters of valkey-operator (한국어)
 
-> English: [ADOPTERS.md](docs/ADOPTERS.md) — canonical / 정본
+> English: [ADOPTERS.md](../../ADOPTERS.md) — canonical / 정본
 
 
 본 문서는 `keiailab/valkey-operator` 를 운영 환경 또는 평가 환경에서 사용하는 조직/프로젝트의 *공개* 목록입니다. 자가 등록을 환영합니다 — PR 로 row 를 추가해주세요.

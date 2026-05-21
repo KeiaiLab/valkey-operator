@@ -7,7 +7,7 @@
 
 # Security Policy
 
-> 한국어 버전: [SECURITY.ko.md](../SECURITY.ko.md)
+> 한국어 버전: [SECURITY.ko.md](../docs/i18n/ko/SECURITY.md)
 
 ## Reporting a vulnerability
 

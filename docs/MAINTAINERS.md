@@ -7,7 +7,7 @@
 
 # Maintainers
 
-> 한국어 버전: [MAINTAINERS.ko.md](../MAINTAINERS.ko.md)
+> 한국어 버전: [MAINTAINERS.ko.md](i18n/ko/MAINTAINERS.md)
 
 This document tracks the maintainers who hold decision-making
 authority over `keiailab/valkey-operator`.
