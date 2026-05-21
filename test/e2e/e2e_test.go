@@ -563,7 +563,7 @@ spec:
           rm -f /source/dump.rdb
           redis-server --dir /source --dbfilename dump.rdb --daemonize yes --save "" --appendonly no --protected-mode no
           for i in $(seq 1 30); do redis-cli ping >/dev/null 2>&1 && break || sleep 1; done
-          redis-cli set test_migration_20260507 bitnami_appversion_redis_821
+          redis-cli set test_migration_20260507 external_chart_appversion_redis_821
           redis-cli bgsave
           for i in $(seq 1 60); do test -s /source/dump.rdb && break; sleep 1; done
           test -s /source/dump.rdb
