@@ -10,7 +10,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/keiailab/valkey-operator/badge)](https://scorecard.dev/viewer/?uri=github.com/keiailab/valkey-operator)
 [![GitHub Discussions](https://img.shields.io/github/discussions/keiailab/valkey-operator?label=discussions&logo=github)](https://github.com/keiailab/valkey-operator/discussions)
 
-> 한국어 README: [README.ko.md](README.ko.md)
+> **English** | [한국어](README.ko.md) | [日本語](README.ja.md) (placeholder) | [中文](README.zh.md) (placeholder)
 
 A Kubebuilder-based Kubernetes operator for [Valkey](https://valkey.io/)
 (the BSD-3 fork of Redis). One controller manages three operational
@@ -234,3 +234,16 @@ Licensed under the Apache License, Version 2.0
 (<http://www.apache.org/licenses/LICENSE-2.0>). Distributed on an
 "AS IS" basis, without warranties or conditions of any kind. See the
 [LICENSE](LICENSE) file for the full text.
+
+---
+
+<p align="center">
+  <b>keiailab operator family</b><br/>
+  <a href="https://github.com/keiailab/operator-commons">operator-commons</a> ·
+  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
+  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
+  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
+  <a href="https://github.com/keiailab/forgewise">forgewise</a>
+</p>
+
+<p align="center">© 2026 keiailab · Apache-2.0 · <a href="https://keiailab.com">keiailab.com</a></p>
