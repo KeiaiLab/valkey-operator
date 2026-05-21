@@ -18,7 +18,7 @@
 | **보안 취약점을 발견한 것 같습니다.** | **공개 issue 를 열지 마세요.** [SECURITY.md](.github/SECURITY.md) — GitHub Security Advisory 또는 `security@keiailab.com` (PGP 서명) 사용. |
 | "이게 X 처럼 동작하는 게 맞나요?" 또는 "Y 는 어떻게 설정하나요?" 류의 질문이 있습니다. | [GitHub Discussions](https://github.com/keiailab/valkey-operator/discussions). 검색 가능하며 향후 운영자들에게 색인됩니다. |
 | 버그를 발견했습니다 — 문서와 다르게 동작합니다. | **Bug report** 템플릿을 사용해 [issue 를 여세요](https://github.com/keiailab/valkey-operator/issues/new/choose). |
-| 기능 추가 또는 동작 변경을 원합니다. | **Feature request** 템플릿을 사용해 [issue 를 여세요](https://github.com/keiailab/valkey-operator/issues/new/choose). 이미 계획되어 있는지 [ROADMAP.md](ROADMAP.md) 를 먼저 확인하세요. |
+| 기능 추가 또는 동작 변경을 원합니다. | **Feature request** 템플릿을 사용해 [issue 를 여세요](https://github.com/keiailab/valkey-operator/issues/new/choose). 이미 계획되어 있는지 [ROADMAP.md](docs/ROADMAP.md) 를 먼저 확인하세요. |
 | "이건 FAQ 에 있어야 한다" 류의 질문이 있습니다. | **Question** 템플릿을 사용해 [issue 를 여세요](https://github.com/keiailab/valkey-operator/issues/new/choose). |
 | Prometheus 알람에 걸려서 MTTR 절차가 필요합니다. | [`docs/operations/runbook.md`](docs/operations/runbook.md) §9 (모든 알람의 `runbook_url` annotation 이 여기를 가리킵니다). |
 | 알람은 없지만 이상한 동작이 보입니다. | [`docs/operations/troubleshooting.md`](docs/operations/troubleshooting.md) — 증상 → 원인 → 진단 → 조치 흐름도. |

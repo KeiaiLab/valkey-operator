@@ -154,7 +154,7 @@ README 의 shield.io badge 순서 (좌→우):
 
 ## 11. License & Attribution
 
-- License: [Apache-2.0](LICENSE)
+- License: [Apache-2.0](../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: see [NOTICE](NOTICE) (if applicable)
 

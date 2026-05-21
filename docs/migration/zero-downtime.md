@@ -106,6 +106,6 @@ PASS 기준: client 10/10 PONG + 0 connection drop.
 
 ## Refs
 
-- [ROADMAP.md](../../ROADMAP.md) — Migration runbook 진척
+- [ROADMAP.md](../ROADMAP.md) — Migration runbook 진척
 - [ADR-0015](../kb/adr/0015-valkeyrestore-init-container-pattern.md) (restore via init container)
 - [ADR-0016](../kb/adr/0016-valkeybackuptarget-crd-external-storage.md) (ValkeyBackupTarget S3 abstraction)

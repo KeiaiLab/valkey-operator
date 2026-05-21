@@ -46,16 +46,16 @@
 | タスク | 開始点 |
 |---|---|
 | Kubernetes 上に `valkey-operator` を展開 | [README.md](../README.md) Quickstart セクション |
-| アーキテクチャを読む | [ARCHITECTURE.md](../ARCHITECTURE.md) |
+| アーキテクチャを読む | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | issue または機能リクエスト | https://github.com/keiailab/valkey-operator/issues |
 | デザインまたはロードマップを議論 | https://github.com/keiailab/valkey-operator/discussions |
 | コードをコントリビュート | [CONTRIBUTING.md](../.github/CONTRIBUTING.md) |
 | セキュリティ問題を報告 | [SECURITY.md](../.github/SECURITY.md) |
-| ブランド・ボイスを学ぶ | [BRANDING.md](../BRANDING.md) |
-| adopter / 利用者の追跡 | [ADOPTERS.md](../ADOPTERS.md) |
-| メンテナーを探す | [MAINTAINERS.md](../MAINTAINERS.md) |
+| ブランド・ボイスを学ぶ | [BRANDING.md](BRANDING.md) |
+| adopter / 利用者の追跡 | [ADOPTERS.md](ADOPTERS.md) |
+| メンテナーを探す | [MAINTAINERS.md](MAINTAINERS.md) |
 | ガバナンスモデルを確認 | [GOVERNANCE.md](../.github/GOVERNANCE.md) |
-| 今後の作業を確認 | [ROADMAP.md](../ROADMAP.md) |
+| 今後の作業を確認 | [ROADMAP.md](ROADMAP.md) |
 
 ## ファミリー間互換性 (operator-commons)
 

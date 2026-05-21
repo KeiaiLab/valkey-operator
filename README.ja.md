@@ -148,7 +148,7 @@ Chart は
 | コントリビューション | [CONTRIBUTING.md](.github/CONTRIBUTING.md) |
 | セキュリティポリシー + artifact 検証 | [SECURITY.md](.github/SECURITY.md) |
 | プロジェクトガバナンス | [GOVERNANCE.md](.github/GOVERNANCE.md) |
-| 採用者 | [ADOPTERS.md](ADOPTERS.md) |
+| 採用者 | [ADOPTERS.md](docs/ADOPTERS.md) |
 
 ## プロダクションレディネス
 

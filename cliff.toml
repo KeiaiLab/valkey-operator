@@ -1,4 +1,4 @@
-# git-cliff configuration — Conventional Commits → CHANGELOG.md.
+# git-cliff configuration — Conventional Commits → docs/CHANGELOG.md.
 # https://git-cliff.org/docs/configuration
 
 [changelog]

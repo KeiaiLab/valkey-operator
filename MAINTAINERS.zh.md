@@ -7,7 +7,7 @@
 
 # 维护者 (Maintainers)
 
-> English version: [MAINTAINERS.md](MAINTAINERS.md)
+> English version: [MAINTAINERS.md](docs/MAINTAINERS.md)
 
 本文档跟踪对 `keiailab/valkey-operator` 拥有决策权的维护者。
 

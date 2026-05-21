@@ -7,7 +7,7 @@
 
 # valkey-operator 的采用者 (Adopters)
 
-> English version: [ADOPTERS.md](ADOPTERS.md)
+> English version: [ADOPTERS.md](docs/ADOPTERS.md)
 
 本文档是 `keiailab/valkey-operator` 在生产环境运行或正在评估的组织和项目的 **公开** 名单。欢迎自助注册 — 提交 PR 追加一行即可。
 

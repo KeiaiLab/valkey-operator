@@ -149,7 +149,7 @@ with the `Signed` trust badge (ADR-0044, ADR-0046).
 | Contributing | [CONTRIBUTING.md](.github/CONTRIBUTING.md) |
 | Security policy + artifact verification | [SECURITY.md](.github/SECURITY.md) |
 | Project governance | [GOVERNANCE.md](.github/GOVERNANCE.md) |
-| Adopters | [ADOPTERS.md](ADOPTERS.md) |
+| Adopters | [ADOPTERS.md](docs/ADOPTERS.md) |
 
 ## Production readiness
 

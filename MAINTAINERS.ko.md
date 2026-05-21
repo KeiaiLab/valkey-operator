@@ -7,7 +7,7 @@
 
 # Maintainers (한국어)
 
-> English: [MAINTAINERS.md](MAINTAINERS.md) — canonical / 정본
+> English: [MAINTAINERS.md](docs/MAINTAINERS.md) — canonical / 정본
 
 
 본 문서는 keiailab/valkey-operator의 의사결정 권한을 가진 메인테이너 명단을 관리합니다.

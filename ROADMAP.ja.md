@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator
 
-> English (canonical / 正本): [ROADMAP.md](ROADMAP.md)
+> English (canonical / 正本): [ROADMAP.md](docs/ROADMAP.md)
 
 本 ROADMAP は *日付の約束ではなく*、検証可能な機能チェックリストとして進捗を追跡します。時間ベースの deadline はプロジェクトの
 [`standards/workflow.md`](https://github.com/keiailab/valkey-operator/blob/main/docs/kb/adr/INDEX.md)

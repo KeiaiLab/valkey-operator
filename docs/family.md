@@ -46,16 +46,16 @@ All four projects converge on the same operational primitives:
 | Task | Entry point |
 |---|---|
 | Deploy `valkey-operator` on Kubernetes | [README.md](../README.md) Quickstart section |
-| Read the architecture | [ARCHITECTURE.md](../ARCHITECTURE.md) |
+| Read the architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | File an issue or feature request | https://github.com/keiailab/valkey-operator/issues |
 | Discuss design or roadmap | https://github.com/keiailab/valkey-operator/discussions |
 | Contribute code | [CONTRIBUTING.md](../.github/CONTRIBUTING.md) |
 | Report a security issue | [SECURITY.md](../.github/SECURITY.md) |
-| Learn the brand / voice | [BRANDING.md](../BRANDING.md) |
-| Track adopters / who uses this | [ADOPTERS.md](../ADOPTERS.md) |
-| Find maintainers | [MAINTAINERS.md](../MAINTAINERS.md) |
+| Learn the brand / voice | [BRANDING.md](BRANDING.md) |
+| Track adopters / who uses this | [ADOPTERS.md](ADOPTERS.md) |
+| Find maintainers | [MAINTAINERS.md](MAINTAINERS.md) |
 | Review governance model | [GOVERNANCE.md](../.github/GOVERNANCE.md) |
-| Check upcoming work | [ROADMAP.md](../ROADMAP.md) |
+| Check upcoming work | [ROADMAP.md](ROADMAP.md) |
 
 ## Cross-family compatibility (operator-commons)
 

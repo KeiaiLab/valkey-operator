@@ -9,7 +9,7 @@
 #   1. tag 형식 검증 (vMAJOR.MINOR.PATCH).
 #   2. working tree clean 검증.
 #   3. lefthook pre-push 동등 (lint + test) 통과 확인.
-#   4. CHANGELOG.md 갱신 (git-cliff 가 설치되어 있으면).
+#   4. docs/CHANGELOG.md 갱신 (git-cliff 가 설치되어 있으면).
 #   5. version commit + tag.
 #   6. 멀티아키 이미지 빌드 + push (docker-buildx, $PLATFORMS).
 #   7. install.yaml 생성 (dist/install.yaml).
@@ -61,9 +61,9 @@ echo "✓ lint + test PASS"
 
 # 4. CHANGELOG (git-cliff 가 있을 때만).
 if command -v git-cliff >/dev/null 2>&1; then
-  echo "==> Updating CHANGELOG.md (git-cliff)"
-  git-cliff --tag "$VERSION" --output CHANGELOG.md
-  git add CHANGELOG.md
+  echo "==> Updating docs/CHANGELOG.md (git-cliff)"
+  git-cliff --tag "$VERSION" --output docs/CHANGELOG.md
+  git add docs/CHANGELOG.md
   git commit -m "chore(release): CHANGELOG for $VERSION" || true
 else
   echo "WARN: git-cliff not installed — skip CHANGELOG. brew install git-cliff" >&2
@@ -124,9 +124,9 @@ git tag -a "$VERSION" -m "Release $VERSION"
   echo
   echo "## Changes"
   echo
-  if [[ -f CHANGELOG.md ]]; then
+  if [[ -f docs/CHANGELOG.md ]]; then
     # 첫 # ${VERSION} section 추출
-    awk "/^## /${VERSION}/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md || echo "(see CHANGELOG.md)"
+    awk "/^## /${VERSION}/{flag=1; next} /^## /{flag=0} flag" docs/CHANGELOG.md || echo "(see docs/CHANGELOG.md)"
   else
     echo "(see git log)"
   fi

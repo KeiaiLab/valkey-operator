@@ -475,7 +475,7 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 		git-cliff --strip all --tag "$(VERSION)" --unreleased > "/tmp/release-notes-$(VERSION).md" 2>/dev/null && \
 			NOTES_FLAG="--notes-file /tmp/release-notes-$(VERSION).md"; \
 	else \
-		NOTES_FLAG="--notes \"Release $(VERSION). 변경 내역은 CHANGELOG.md 참조.\""; \
+		NOTES_FLAG="--notes \"Release $(VERSION). 변경 내역은 docs/CHANGELOG.md 참조.\""; \
 	fi; \
 	SBOM_ASSET=""; \
 	if command -v syft >/dev/null 2>&1; then \

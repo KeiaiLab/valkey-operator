@@ -11,7 +11,7 @@
 #   2. trivy HIGH/CRITICAL scan (--ignore-unfixed)
 #   3. cosign sign SBOM + attach to release
 #
-# Refs: ROADMAP.md L164-166 'Image SBOM (SPDX) + trivy ... shared script'
+# Refs: docs/ROADMAP.md L164-166 'Image SBOM (SPDX) + trivy ... shared script'
 #       (P-C.7.1 + C.7.2 + C.7.3)
 
 set -euo pipefail

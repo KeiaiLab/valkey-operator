@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator
 
-> English (canonical / 正本): [ROADMAP.md](ROADMAP.md)
+> English (canonical / 正本): [ROADMAP.md](docs/ROADMAP.md)
 
 本路线图 (Roadmap) *并非日期承诺*,而是以可验证的功能清单方式跟踪进展。基于时间的 deadline 按照项目的
 [`standards/workflow.md`](https://github.com/keiailab/valkey-operator/blob/main/docs/kb/adr/INDEX.md)

@@ -18,7 +18,7 @@
 | **セキュリティ脆弱性を発見したと思われる場合。** | **public な issue を開かないでください。** [SECURITY.md](.github/SECURITY.md) を参照 — GitHub Security Advisory または `security@keiailab.com` (PGP 署名) を利用してください。 |
 | 「これは X のように動作するのが正しいのか?」「Y はどのように設定するか?」といった質問。 | [GitHub Discussions](https://github.com/keiailab/valkey-operator/discussions)。検索可能で、将来の運用者にもインデックスされます。 |
 | バグを発見した — ドキュメントと異なる挙動。 | **Bug report** テンプレートで [issue を作成](https://github.com/keiailab/valkey-operator/issues/new/choose) してください。 |
-| 機能追加や挙動の変更を希望する。 | **Feature request** テンプレートで [issue を作成](https://github.com/keiailab/valkey-operator/issues/new/choose) してください。すでに計画済みかどうか [ROADMAP.md](ROADMAP.md) を先に確認してください。 |
+| 機能追加や挙動の変更を希望する。 | **Feature request** テンプレートで [issue を作成](https://github.com/keiailab/valkey-operator/issues/new/choose) してください。すでに計画済みかどうか [ROADMAP.md](docs/ROADMAP.md) を先に確認してください。 |
 | 「これは FAQ に入れるべき」という質問。 | **Question** テンプレートで [issue を作成](https://github.com/keiailab/valkey-operator/issues/new/choose) してください。 |
 | Prometheus アラートに遭遇し、MTTR 手順が必要な場合。 | [`docs/operations/runbook.md`](docs/operations/runbook.md) §9 (各アラートの `runbook_url` アノテーションがここを指します)。 |
 | アラートは出ていないが挙動がおかしい場合。 | [`docs/operations/troubleshooting.md`](docs/operations/troubleshooting.md) — 症状 → 原因 → 診断 → 対処のフローチャート。 |
