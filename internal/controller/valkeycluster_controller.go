@@ -273,14 +273,46 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// 7. PDB — HA default (auto-create when replicas >= 2 + PDB 미명시).
-	//    CDEX-M1 (Codex stage 3 finding): false 시 *기존 PDB 삭제* 의무 (mongodb_controller.go:313 sister).
+	//    CDEX-M1: shouldAutoCreatePDB=false 시 *기존 PDB 삭제* 의무 (mongodb_controller.go:313 sister).
+	//    CDEX-M2 (2026-05-21): spec.PodDisruptionBudget.PerShard=true 시 shard 별 PDB 생성
+	//                          (cluster-wide PDB 대신). drain 시 모든 shard primary 동시 evict 차단.
 	if shouldAutoCreatePDB(vc.Spec.PodDisruptionBudget, totalReplicas) {
-		pdb := resources.BuildPDB(vc.Name, vc.Namespace, totalReplicas, vc.Spec.PodDisruptionBudget)
-		if err := commonsapply.PDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
+		perShard := vc.Spec.PodDisruptionBudget != nil && vc.Spec.PodDisruptionBudget.PerShard
+		if perShard {
+			// CDEX-M2 per-shard PDB loop. shardReplicas = 1 primary + ReplicasPerShard.
+			shardReplicas := int32(1) + vc.Spec.ReplicasPerShard
+			for i := 0; i < int(vc.Spec.Shards); i++ {
+				pdb := resources.BuildShardPDB(vc.Name, vc.Namespace, i, shardReplicas, vc.Spec.PodDisruptionBudget)
+				if err := commonsapply.PDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
+					return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
+				}
+			}
+			// cluster-wide PDB orphan cleanup (PerShard 전환 시 기존 cluster-wide PDB 삭제).
+			if err := EnsurePDBDeleted(ctx, r.Client, vc.Name, vc.Namespace); err != nil {
+				return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
+			}
+		} else {
+			pdb := resources.BuildPDB(vc.Name, vc.Namespace, totalReplicas, vc.Spec.PodDisruptionBudget)
+			if err := commonsapply.PDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
+				return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
+			}
+			// CDEX-M2 sister: per-shard PDB orphan cleanup (cluster-wide 전환 시).
+			for i := 0; i < int(vc.Spec.Shards); i++ {
+				if err := EnsurePDBDeleted(ctx, r.Client, resources.ShardPDBName(vc.Name, i), vc.Namespace); err != nil {
+					return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
+				}
+			}
+		}
+	} else {
+		// PDB 미명시: cluster-wide + 모든 shard PDB cleanup.
+		if err := EnsurePDBDeleted(ctx, r.Client, vc.Name, vc.Namespace); err != nil {
 			return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
 		}
-	} else if err := EnsurePDBDeleted(ctx, r.Client, vc.Name, vc.Namespace); err != nil {
-		return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
+		for i := 0; i < int(vc.Spec.Shards); i++ {
+			if err := EnsurePDBDeleted(ctx, r.Client, resources.ShardPDBName(vc.Name, i), vc.Namespace); err != nil {
+				return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
+			}
+		}
 	}
 	if vc.Spec.NetworkPolicy != nil && vc.Spec.NetworkPolicy.Enabled {
 		np := resources.BuildNetworkPolicy(vc.Name, vc.Namespace, true, vc.Spec.NetworkPolicy)
