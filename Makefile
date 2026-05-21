@@ -180,8 +180,8 @@ build: manifests generate fmt vet ## Build manager binary. VERSION 환경변수�
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go
 
-# If you wish to build the manager image targeting other platforms you can use the --platform flag.
-# (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
+# ADR-0051 (멀티아키 opt-in): default amd64 유지. ARM 노드 도입 시
+# `make docker-buildx PLATFORMS=<plat-list>` 사용 (본 target 은 amd64 fixed).
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager (linux/amd64, default builder). VERSION 환경변수로 ldflags 주입.
@@ -208,10 +208,10 @@ docker-push: ## Push docker image with the manager.
 # - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 # - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
 # To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
-# ADR-0043 (2026-05-19): 멀티아키 빌드 opt-in 활성화 — ARM 노드 도입 + 외부
+# ADR-0051 (2026-05-19): 멀티아키 빌드 opt-in 활성화 — ARM 노드 도입 + 외부
 # third-party 도입 GA 대비. default amd64 유지 (정책 회귀 위험 0), env override
 # 로 멀티아키 활성. 글로벌 정책 변경은 RFC-0048 (ai-dev/rfcs/) Draft 진입점.
-# 사용: make docker-buildx PLATFORMS=linux/amd64,linux/arm64 IMG=...
+# 사용 예: make docker-buildx PLATFORMS="<plat-list>" IMG=...
 PLATFORMS ?= linux/amd64
 .PHONY: docker-buildx
 docker-buildx: ## Build and push multi-arch image. CLAUDE.md §2: default builder + ldflags 자동 주입. ADR-0043 opt-in 멀티아키.
