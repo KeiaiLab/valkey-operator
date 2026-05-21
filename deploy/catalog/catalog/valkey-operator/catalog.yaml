@@ -5,7 +5,7 @@ defaultChannel: alpha
 description: |
   Kubernetes operator for Valkey — manages Standalone / Replication / Cluster
   topologies + Backup / Restore via 5 CRDs (Valkey, ValkeyCluster, ValkeyBackup,
-  ValkeyBackupTarget, ValkeyRestore). Self-host catalog (keiailab) — ADR-0137.
+  ValkeyBackupTarget, ValkeyRestore). keiailab self-host catalog.
 icon:
   base64data: ""
   mediatype: ""

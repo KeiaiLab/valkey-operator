@@ -1,12 +1,8 @@
 # Installer ServiceAccount RBAC — OLM bundle manifest 적용 권한
 #
-# Refs:
-# - ADR-0137 D3 (selector + leader 분리)
-# - ADR-0133 (operator-controller pod RBAC + automount exception)
-# - INC-0002 (SA token mount cross-repo audit pattern, incident-kb.md §10)
-#
 # 본 ClusterRole 은 *OLM 가 bundle CSV 의 install spec 을 적용할 때* 만 사용.
-# operator runtime 동작 권한은 bundle 안 namespace-scoped Role (data ns 한정).
+# operator runtime 동작 권한은 bundle 안 namespace-scoped Role
+# (valkey-operator-system ns 한정).
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -98,7 +94,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: valkey-operator-olm-installer
-    namespace: data
+    namespace: valkey-operator-system
 roleRef:
   kind: ClusterRole
   name: valkey-operator-olm-installer

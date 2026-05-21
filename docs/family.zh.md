@@ -36,10 +36,10 @@
 
 ## 不做的事 (What we do NOT do)
 
-- ❌ **嵌入或封装 upstream operator** (PGO、CloudNativePG、MongoDB Community Operator、Sentinel) — license-clean,无 copyleft 义务
-- ❌ **使用 GitHub Actions 作为 release gate** — local 4-layer + GitLab CI L5 (见 RFC-0002、RFC-0043)
-- ❌ **基于时间的 roadmap deadline** — 功能 checklist + 完成度百分比 (见 `standards/roadmap.md §1.1`)
-- ❌ **Bitnami chart / image** — registry deprecation 风险,Broadcom 收购 (见 ADR-0136 / ADR-0057)
+- ❌ **嵌入或封装 third-party operator** — license-clean,无 copyleft 义务
+- ❌ **使用 GitHub Actions 作为 release gate** — 本地 4-layer hook 系统 (见 RFC-0002)
+- ❌ **基于时间的 roadmap deadline** — 功能 checklist + 完成度百分比
+- ❌ **供应商锁定容器镜像** — 仅使用 keiailab-published Apache-2.0 镜像
 
 ## 从哪里开始
 

@@ -1,8 +1,4 @@
-# File-Based Catalog image for valkey-operator.
-#
-# Refs:
-# - ADR-0137 (infra/bootstrap): valkey-operator OLM v1 ClusterExtension Migration
-# - mongodb-operator/deploy/catalog/Dockerfile (정합 패턴)
+# File-Based Catalog (FBC) image for valkey-operator.
 #
 # OLM CatalogSource (image: ghcr.io/keiailab/valkey-operator-catalog:vX.Y.Z) 가
 # 본 image 를 pull. gRPC server `opm serve /configs` 가 OLM resolver 에 stream.
