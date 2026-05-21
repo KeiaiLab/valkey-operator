@@ -35,6 +35,10 @@ spec:
   autoFailover: true                       # primary 장애 시 자동 promote (ADR-0017)
   # podDisruptionBudget:                   # PR #49 — replicas>=2 시 자동 생성 (default-on)
   #   enabled: false                       # 명시적 opt-out
+  #   perShard: true                       # CDEX-M2 (MR !8) — shard 별 PDB 생성
+  #                                        # (cluster-wide PDB 대신, drain 시 모든 shard primary 동시 evict 차단)
+  #                                        # selector: valkey.keiailab.io/shard=<idx>
+  #                                        # 운영 가이드: docs/operations/pdb-per-shard.md
   monitoring:
     enabled: true
   # slowLog:                               # PR #45 — slowlog-log-slower-than directive 주입
