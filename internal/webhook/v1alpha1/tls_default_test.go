@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	"testing"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -100,7 +102,7 @@ func TestValkeyDefault_TLSIntentNormalizesEnabled(t *testing.T) {
 		},
 	}
 	d := &ValkeyCustomDefaulter{}
-	if err := d.Default(nil, v); err != nil {
+	if err := d.Default(context.TODO(), v); err != nil {
 		t.Fatalf("Default: %v", err)
 	}
 	if !v.Spec.TLS.Enabled {
@@ -122,7 +124,7 @@ func TestValkeyDefault_TLSExplicitDisabledRespected(t *testing.T) {
 		},
 	}
 	d := &ValkeyCustomDefaulter{}
-	if err := d.Default(nil, v); err != nil {
+	if err := d.Default(context.TODO(), v); err != nil {
 		t.Fatalf("Default: %v", err)
 	}
 	if v.Spec.TLS != nil {
@@ -141,7 +143,7 @@ func TestValkeyClusterDefault_TLSIntentNormalizesEnabled(t *testing.T) {
 		},
 	}
 	d := &ValkeyClusterCustomDefaulter{}
-	if err := d.Default(nil, vc); err != nil {
+	if err := d.Default(context.TODO(), vc); err != nil {
 		t.Fatalf("Default: %v", err)
 	}
 	if !vc.Spec.TLS.Enabled {
