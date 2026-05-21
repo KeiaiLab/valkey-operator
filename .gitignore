@@ -34,3 +34,7 @@ dist/
 
 # Ralph loop state (local-only)
 .claude/ralph-loop.local.md
+
+# Claude Code session artifacts (broad pattern, Codex Major #6 정합)
+.claude/
+.claude-flow/
