@@ -33,12 +33,10 @@ and has no Korean copy).
 | [post-merge-cleanup.md](post-merge-cleanup.md) | Local-branch hygiene after squash-merge. |
 | [artifacthub-trust.md](artifacthub-trust.md) | Artifact Hub `Signed` and `Official` trust badge operational procedure. |
 
-## Migration & comparison
+## Migration
 
 | Document | Purpose |
 |---|---|
-| [cloudpirates-valkey-compatibility.md](cloudpirates-valkey-compatibility.md) | CloudPirates valkey `0.20.2` chart `values` → valkey-operator CRD mapping. |
-| [commercial-parity-status.md](commercial-parity-status.md) | ADR-0040 commercial-parity status: core HA, observability, security, ops, tests, gaps. |
 | [sentinel-migration.md](sentinel-migration.md) | Sentinel → valkey-operator Replication-mode migration runbook (ADR-0017 backstop). |
 
 ## Cross-cutting references

@@ -2,26 +2,22 @@
 
 > 한국어 버전: [sentinel-migration.ko.md](sentinel-migration.ko.md)
 
-> Companion to Plan §4 PR-C7 (rejected) — the **external-user
-> migration path** for ADR-0017 (Replication Mode Failover), which
-> declined to ship Sentinel mode.
+> The **external-user migration path** for ADR-0017 (Replication
+> Mode Failover), which declined to ship Sentinel mode.
 
 ## Background
 
-The ArtifactHub comparison (Plan §1 Phase 1) showed that both the
-Bitnami Redis chart (v25.5.2) and the CloudPirates Redis chart
-(v0.27.6) explicitly support **Sentinel HA**. valkey-operator
-deliberately declined Sentinel (ADR-0017) and provides equivalent
-availability through **Replication mode + AutoFailover**
-(operator-managed leader election + STS rollout + selection of the
-replica with the largest `master_repl_offset`).
+valkey-operator deliberately declined Sentinel (ADR-0017) and
+provides equivalent availability through **Replication mode +
+AutoFailover** (operator-managed leader election + STS rollout +
+selection of the replica with the largest `master_repl_offset`).
 
 This runbook is the operator guide for migrating an **existing
-Sentinel deployment** onto valkey-operator.
+Sentinel-based Redis/Valkey deployment** onto valkey-operator.
 
 ## Availability equivalence
 
-| Dimension | Sentinel (Bitnami / CloudPirates) | valkey-operator Replication + AutoFailover |
+| Dimension | Sentinel HA (existing) | valkey-operator Replication + AutoFailover |
 |---|---|---|
 | Failover decision | Sentinel quorum vote | Operator leader election + ADR-0017 largest `master_repl_offset` |
 | No-data-loss guarantee | Sentinel `min-replicas-to-write` guard | Equivalent setting in Replication mode via `additionalConfig` |
@@ -97,8 +93,8 @@ spec:
 
 ```bash
 # 1. Dump RDB on the Sentinel-side master
-kubectl -n <ns> exec -it <bitnami-master> -- redis-cli BGSAVE
-kubectl -n <ns> cp <bitnami-master>:/data/dump.rdb /tmp/migration.rdb
+kubectl -n <ns> exec -it <sentinel-master-pod> -- redis-cli BGSAVE
+kubectl -n <ns> cp <sentinel-master-pod>:/data/dump.rdb /tmp/migration.rdb
 
 # 2. Restore via ValkeyRestore (ADR-0015 init-container pattern)
 kubectl -n data create configmap migration-rdb --from-file=dump.rdb=/tmp/migration.rdb
@@ -116,9 +112,8 @@ spec:
 EOF
 ```
 
-> ⚠️ Bitnami Redis 8.2.x → Valkey 9.0.4 RDB compatibility was
-> verified incompatible on 2026-05-07 (RDB format version 12,
-> see HANDOFF.md). **Option B is recommended.**
+> ⚠️ Redis 8.2.x → Valkey 9.0.4 RDB compatibility was verified
+> incompatible (RDB format version 12). **Option B is recommended.**
 
 #### Option B: Online key copy (minimal downtime)
 
@@ -127,11 +122,11 @@ EOF
 # redis-shake / redis-port.
 # Example: redis-shake (online sync, dual-write capable)
 
-# 1. valkey-shake config (source = Bitnami master, target = valkey-operator primary)
+# 1. valkey-shake config (source = existing Sentinel master, target = valkey-operator primary)
 cat > shake.toml <<EOF
 [source]
 type = "standalone"
-address = "<bitnami-master-svc>:6379"
+address = "<sentinel-master-svc>:6379"
 password = "<old-password>"
 
 [target]
@@ -181,11 +176,11 @@ libraries do this transparently.
 kubectl -n data port-forward svc/my-cache 6379:6379
 redis-cli ping  # PONG
 
-# 2. Delete the Sentinel + Bitnami master/replica instances
-helm uninstall <bitnami-release> -n <ns>
+# 2. Delete the existing Sentinel master/replica/sentinel instances
+helm uninstall <existing-release> -n <ns>
 
 # 3. PVC cleanup (after a clean shutdown)
-kubectl -n <ns> delete pvc -l app.kubernetes.io/instance=<bitnami-release>
+kubectl -n <ns> delete pvc -l app.kubernetes.io/instance=<existing-release>
 ```
 
 ## Operational verification checklist
@@ -208,8 +203,3 @@ kubectl -n <ns> delete pvc -l app.kubernetes.io/instance=<bitnami-release>
 - ADR-0006 — `ScalePolicy.Deliberate=false` default (auto failover
   ON).
 - ADR-0015 — `ValkeyRestore` Init Container-based RDB load.
-- Plan §1 Phase 1 — Bitnami v25.5.2 / CloudPirates v0.27.6
-  comparison; Sentinel availability equivalence.
-- External tools:
-  - redis-shake: <https://github.com/tair-opensource/RedisShake>
-  - valkey-cli MIGRATE: <https://valkey.io/commands/migrate/>

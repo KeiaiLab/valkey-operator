@@ -3,23 +3,21 @@
 > English: [sentinel-migration.md](sentinel-migration.md) — canonical / 정본
 
 
-> Plan §4 PR-C7 거부 보강 — ADR-0017 (Replication Mode Failover) 의
-> Sentinel 거절 결정에 대한 *외부 사용자 마이그레이션 path*.
+> ADR-0017 (Replication Mode Failover) 의 Sentinel 거절 결정에 대한 *외부
+> 사용자 마이그레이션 path*.
 
 ## 배경
 
-ArtifactHub 비교 분석 결과 (Plan §1 Phase 1) Bitnami redis v25.5.2 +
-Cloudpirates redis v0.27.6 모두 *Sentinel HA* 를 명시 지원. valkey-operator
-는 ADR-0017 거절 — 동등 가용성을 *Replication mode + AutoFailover*
-(operator-managed leader-elect + STS rollout + largest master_repl_offset
-선출) 로 제공.
+valkey-operator 는 ADR-0017 거절 — 동등 가용성을 *Replication mode +
+AutoFailover* (operator-managed leader-elect + STS rollout + largest
+master_repl_offset 선출) 로 제공.
 
-본 runbook 은 *기존 Sentinel 인프라* 에서 valkey-operator 로 이전하는
-운영자 가이드.
+본 runbook 은 *기존 Sentinel 기반 Redis/Valkey 인프라* 에서 valkey-operator
+로 이전하는 운영자 가이드.
 
 ## 가용성 동등성
 
-| 측면 | Sentinel (Bitnami / Cloudpirates) | valkey-operator Replication + AutoFailover |
+| 측면 | Sentinel HA (기존) | valkey-operator Replication + AutoFailover |
 |---|---|---|
 | failover 결정 | sentinel quorum 투표 | operator leader-elect + ADR-0017 largest `master_repl_offset` |
 | 데이터 무손실 보장 | sentinel `min-replicas-to-write` 가드 | replication mode 에서 `min-replicas-to-write` 동등 설정 가능 (`additionalConfig`) |
@@ -93,8 +91,8 @@ spec:
 
 ```bash
 # 1. Sentinel 측 master 에서 RDB dump
-kubectl -n <ns> exec -it <bitnami-master> -- redis-cli BGSAVE
-kubectl -n <ns> cp <bitnami-master>:/data/dump.rdb /tmp/migration.rdb
+kubectl -n <ns> exec -it <sentinel-master-pod> -- redis-cli BGSAVE
+kubectl -n <ns> cp <sentinel-master-pod>:/data/dump.rdb /tmp/migration.rdb
 
 # 2. ValkeyRestore CR 로 복구 (ADR-0015 init-container 패턴)
 kubectl -n data create configmap migration-rdb --from-file=dump.rdb=/tmp/migration.rdb
@@ -112,9 +110,8 @@ spec:
 EOF
 ```
 
-> ⚠️ Bitnami Redis 8.2.x → Valkey 9.0.4 RDB 호환성: 2026-05-07 검증 결과
-> *호환 불가* (RDB format version 12, valkey-operator HANDOFF.md 인용).
-> 옵션 B 권장.
+> ⚠️ Redis 8.2.x → Valkey 9.0.4 RDB 호환성 검증 결과 *호환 불가*
+> (RDB format version 12). 옵션 B 권장.
 
 #### 옵션 B: 온라인 key copy (downtime 최소화)
 
@@ -122,11 +119,11 @@ EOF
 # valkey-cli MIGRATE 또는 사용자 측 redis-shake / redis-port 도구
 # 예: redis-shake (online sync, dual-write 가능)
 
-# 1. valkey-shake config (source: bitnami master, target: valkey-operator primary)
+# 1. valkey-shake config (source: 기존 Sentinel master, target: valkey-operator primary)
 cat > shake.toml <<EOF
 [source]
 type = "standalone"
-address = "<bitnami-master-svc>:6379"
+address = "<sentinel-master-svc>:6379"
 password = "<old-password>"
 
 [target]
@@ -173,11 +170,11 @@ failover 시 valkey-operator 가 Service endpoint 를 새 primary 로 자동
 kubectl -n data port-forward svc/my-cache 6379:6379
 redis-cli ping  # PONG
 
-# 2. Sentinel + Bitnami master/replica 인스턴스 삭제
-helm uninstall <bitnami-release> -n <ns>
+# 2. 기존 Sentinel master/replica/sentinel 인스턴스 삭제
+helm uninstall <existing-release> -n <ns>
 
 # 3. PVC cleanup (정상 종료 확인 후)
-kubectl -n <ns> delete pvc -l app.kubernetes.io/instance=<bitnami-release>
+kubectl -n <ns> delete pvc -l app.kubernetes.io/instance=<existing-release>
 ```
 
 ## 운영 검증 체크리스트
@@ -193,7 +190,3 @@ kubectl -n <ns> delete pvc -l app.kubernetes.io/instance=<bitnami-release>
 - ADR-0017: Replication Mode Failover — Replica with Largest `master_repl_offset` (Sentinel 거절 근거).
 - ADR-0006: ScalePolicy.Deliberate=false 기본값 (auto failover 활성).
 - ADR-0015: ValkeyRestore — Init Container 기반 RDB 로드.
-- Plan §1 Phase 1: Bitnami v25.5.2 / Cloudpirates v0.27.6 비교 — Sentinel 가용성 동등성.
-- 외부 도구:
-  - redis-shake: <https://github.com/tair-opensource/RedisShake>
-  - valkey-cli MIGRATE: <https://valkey.io/commands/migrate/>

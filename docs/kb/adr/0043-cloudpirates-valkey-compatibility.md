@@ -1,7 +1,7 @@
 # ADR-0043: CloudPirates valkey 0.20.2 호환 정책
 
 - Date: 2026-05-12
-- Status: Accepted
+- Status: Deprecated (2026-05-21 — 추적 문서 archive)
 - Authors: @eightynine01
 
 ## Context
@@ -91,4 +91,9 @@ CloudPirates chart 의 운영 유효 기능을 다음 방식으로 수용한다.
 
 ## Status
 
-Accepted. 구현 추적 문서: `docs/operations/cloudpirates-valkey-compatibility.md`.
+Deprecated (2026-05-21). 본 ADR 이 도출한 CRD 확장 (digest imageRef,
+storage knobs, service ipFamilies, pod metadata/probes/env,
+externalReplica, revisionHistoryLimit, chart extraObjects) 은 *모두 GA*
+되어 현재 CRD 정의에 포함되어 있다. 외부 chart 호환 매핑 문서는 사용자
+대면 콘텐츠에서 외부 서비스 참조를 정리하는 과정에서 *제거* 되었다.
+의사결정 자체는 history 로 본 ADR 에 보존된다.
