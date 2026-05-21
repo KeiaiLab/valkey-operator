@@ -31,7 +31,8 @@
       "matchDepTypes": ["indirect"],
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": false,
-      "prPriority": 1
+      "prPriority": 1,
+      "postUpdateOptions": ["gomodTidy"]
     },
     {
       "description": "Go direct dependencies — major 는 별 PR + manual review.",
@@ -40,7 +41,8 @@
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "prPriority": 5,
-      "labels": ["dependencies", "major"]
+      "labels": ["dependencies", "major"],
+      "postUpdateOptions": ["gomodTidy"]
     },
     {
       "description": "k8s.io/* + sigs.k8s.io/* — group 단위로 (이전 마이너 버전 깨짐 방지).",
@@ -72,8 +74,5 @@
     "**/bin/**",
     "**/dist/**",
     "**/charts/*/crds/**"
-  ],
-  "go": {
-    "postUpdateOptions": ["gomodTidy"]
-  }
+  ]
 }
