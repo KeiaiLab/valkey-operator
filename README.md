@@ -142,8 +142,8 @@ with the `Signed` trust badge (ADR-0044, ADR-0046).
 
 | Topic | Where |
 |---|---|
-| Detailed Korean walkthrough | [README.ko.md](README.ko.md) |
-| Runbook (Backup, Restore, Scaling, Upgrade, Emergency) | [docs/operations/runbook.md](docs/operations/runbook.md) |
+| Documentation hub (all docs) | [docs/README.md](docs/README.md) |
+| Operations runbook | [docs/operations/runbook.md](docs/operations/runbook.md) |
 | Release pre-flight checklist | [docs/operations/release-checklist.md](docs/operations/release-checklist.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
