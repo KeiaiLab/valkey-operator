@@ -310,3 +310,19 @@ podDisruptionBudget:
   minAvailable: 1
   # -- Maximum unavailable pods
   maxUnavailable: ""
+
+# Grafana dashboard ConfigMaps (sidecar discovery pattern).
+# grafana.dashboards.enabled=true 시 templates/grafana-dashboards.yaml 가
+# `grafana_dashboard=1` 라벨이 부여된 ConfigMap N건을 생성한다.
+# Grafana sidecar (kiwigrid/k8s-sidecar) 가 이 라벨로 dashboard 를 자동 import.
+# `panels` 의 key 는 charts/valkey-operator/dashboards/<name>.json 과 1:1 매핑.
+grafana:
+  dashboards:
+    # -- Enable Grafana dashboard ConfigMap generation.
+    enabled: false
+    # -- Dashboards to publish (key = dashboards/<name>.json basename).
+    panels:
+      cluster-overview: {}
+      latency: {}
+      memory: {}
+      replication: {}
