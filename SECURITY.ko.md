@@ -1,3 +1,10 @@
+<p align="center">
+  <a href="SECURITY.md">English</a> |
+  <b>한국어</b> |
+  <a href="SECURITY.ja.md">日本語</a> |
+  <a href="SECURITY.zh.md">中文</a>
+</p>
+
 # Security Policy (한국어)
 
 > English: [SECURITY.md](SECURITY.md) — canonical / 정본
@@ -130,3 +137,17 @@ exact build that produced the image.
 - 영어: [README.md → "Known limitations"](README.md#known-limitations)
 - 한국어: [README.ko.md → "잠재적 운영 이슈"](README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
 - 그 외: GitHub Issues label `security`.
+
+---
+
+<p align="center">
+  <b>keiailab operator family</b><br/>
+  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
+  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
+  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
+  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
+</p>
+
+<p align="center">
+  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
+</p>
