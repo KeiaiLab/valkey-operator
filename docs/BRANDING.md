@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="BRANDING.ko.md">한국어</a> |
-  <a href="BRANDING.ja.md">日本語</a> |
-  <a href="BRANDING.zh.md">中文</a>
+  <a href="i18n/ko/BRANDING.md">한국어</a> |
+  <a href="i18n/ja/BRANDING.md">日本語</a> |
+  <a href="i18n/zh/BRANDING.md">中文</a>
 </p>
 
 # Branding Guide — `valkey-operator`

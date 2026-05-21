@@ -1,5 +1,10 @@
 # Changelog
 
+> Historical record of all notable changes. Single-language (mixed
+> English + Korean entries reflecting the commit-time tone). For
+> localized release-notes summaries, see the per-release GitHub Release
+> page.
+
 본 프로젝트의 모든 주요 변경은 본 파일에 기록된다.
 형식: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 버저닝: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

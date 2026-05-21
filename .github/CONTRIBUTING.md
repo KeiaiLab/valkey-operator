@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="CONTRIBUTING.ko.md">한국어</a> |
-  <a href="CONTRIBUTING.ja.md">日本語</a> |
-  <a href="CONTRIBUTING.zh.md">中文</a>
+  <a href="../docs/i18n/ko/CONTRIBUTING.md">한국어</a> |
+  <a href="../docs/i18n/ja/CONTRIBUTING.md">日本語</a> |
+  <a href="../docs/i18n/zh/CONTRIBUTING.md">中文</a>
 </p>
 
 # Contributing

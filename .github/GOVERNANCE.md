@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="GOVERNANCE.ko.md">한국어</a> |
-  <a href="GOVERNANCE.ja.md">日本語</a> |
-  <a href="GOVERNANCE.zh.md">中文</a>
+  <a href="../docs/i18n/ko/GOVERNANCE.md">한국어</a> |
+  <a href="../docs/i18n/ja/GOVERNANCE.md">日本語</a> |
+  <a href="../docs/i18n/zh/GOVERNANCE.md">中文</a>
 </p>
 
 # Governance

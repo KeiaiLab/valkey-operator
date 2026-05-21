@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="ADOPTERS.ko.md">한국어</a> |
-  <a href="ADOPTERS.ja.md">日本語</a> |
-  <a href="ADOPTERS.zh.md">中文</a>
+  <a href="i18n/ko/ADOPTERS.md">한국어</a> |
+  <a href="i18n/ja/ADOPTERS.md">日本語</a> |
+  <a href="i18n/zh/ADOPTERS.md">中文</a>
 </p>
 
 # Adopters of valkey-operator
