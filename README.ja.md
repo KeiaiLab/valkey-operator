@@ -141,7 +141,7 @@ Chart は
 
 | トピック | 場所 |
 |---|---|
-| 詳細な韓国語ウォークスルー | [README.ko.md](README.ko.md) |
+| ドキュメント hub (全ドキュメント) | [docs/README.md](docs/README.md) |
 | Runbook (バックアップ、リストア、スケーリング、アップグレード、緊急対応) | [docs/operations/runbook.md](docs/operations/runbook.md) |
 | リリース前チェックリスト | [docs/operations/release-checklist.md](docs/operations/release-checklist.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |

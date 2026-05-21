@@ -139,7 +139,7 @@ Chart 也发布到
 
 | 主题 | 位置 |
 |---|---|
-| 详细的韩语 walkthrough | [README.ko.md](README.ko.md) |
+| 文档中心 (所有文档) | [docs/README.md](docs/README.md) |
 | Runbook (备份、恢复、扩缩、升级、应急) | [docs/operations/runbook.md](docs/operations/runbook.md) |
 | Release 预检清单 | [docs/operations/release-checklist.md](docs/operations/release-checklist.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |
