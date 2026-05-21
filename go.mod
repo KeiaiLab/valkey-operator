@@ -7,7 +7,7 @@ toolchain go1.26.3
 require (
 	cloud.google.com/go/storage v1.62.2
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.7.0
 	github.com/keiailab/operator-commons v0.7.0
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/onsi/ginkgo/v2 v2.28.3
