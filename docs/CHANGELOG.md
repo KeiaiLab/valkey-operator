@@ -173,7 +173,7 @@
 
 ### Fixed
 
-- `monitoring.exporter.resources` 가 metrics sidecar 까지 reconcile 안 됨 (cycle 21 stop hook 15차, argos 통합, 1eb6faf):
+- `monitoring.exporter.resources` 가 metrics sidecar 까지 reconcile 안 됨 (운영 통합 시점, 1eb6faf):
   - `STSParams.ExporterResources corev1.ResourceRequirements` 신규 필드 (internal/resources/statefulset.go).
   - `BuildStatefulSet` 의 metrics container 가 `p.ExporterResources` 적용.
   - Valkey + ValkeyCluster controller 가 `exporterResources(spec.Monitoring)` helper 로 전달.
@@ -250,7 +250,7 @@
 - **Runtime P0 — restricted PodSecurity 네임스페이스에서 Valkey Pod 생성 실패** (`internal/resources/statefulset.go`):
   Valkey StatefulSet 컨테이너가 `allowPrivilegeEscalation=false`,
   `capabilities.drop=[ALL]`, `seccompProfile.type=RuntimeDefault` 기본값을 갖지 않아
-  argos `data-staging` 네임스페이스에서 Pod 생성이 금지됐다. 기본 Valkey 컨테이너와
+  `data-staging` 네임스페이스에서 Pod 생성이 금지됐다. 기본 Valkey 컨테이너와
   metrics sidecar에 restricted SecurityContext를 주입했다.
 
 ## [0.1.0-alpha.4] - 2026-05-07
@@ -288,20 +288,20 @@
 
 ## [0.1.0-alpha.2] - 2026-05-07
 
-ADR-0057 Phase A1 (argos 클러스터 사전 배포) 진행 중 발견된 chart RBAC 결함 fix.
+ADR-0057 Phase A1 (운영 클러스터 사전 배포) 진행 중 발견된 chart RBAC 결함 fix.
 
 ### Fixed
 - **chart RBAC P0 — `features.{cluster,backup}.enabled=false` 시 informer startup 실패** (`charts/valkey-operator/templates/clusterrole.yaml`):
   이전 chart 가 `features.cluster.enabled` / `features.backup.enabled` 조건부로 `valkeyclusters` / `valkeybackups` / `valkeybackuptargets` / `valkeyrestores` RBAC 부여 — 그러나 operator manager (`cmd/main.go`) 는 *항상* 모든 controller 등록 → flag=false 시 informer 가 `forbidden` 으로 startup 실패. RBAC 와 코드 mismatch 가 production-grade 차단 요인. RBAC 를 *항상 모든 CRD 권한 부여* 로 단순화, feature flag 는 controller 코드 측에서만 처리.
 
-### Verified (argos 클러스터 Phase A1 + A2)
+### Verified (운영 클러스터 Phase A1 + A2)
 - valkey-operator pod 1/1 Running, Certificate/Issuer/ValidatingWebhookConfiguration Ready
 - Valkey CR `valkey-test` (Standalone, valkey 8.1.6, 1Gi ceph-rbd) 1/1 Running
 - SET/GET smoke: `SET phase-a2-smoke "OK-2026-05-07"` → `OK`, `GET` → 정상 round-trip
 - `INFO server`: valkey_version=8.1.6, tcp_port=6379
 
 ### Refs
-- ADR-0057 (argos-infra-bootstrap 43fd542): self-hosted valkey-operator 채택 로드맵
+- ADR-0057 (인프라 부트스트랩 43fd542): self-hosted valkey-operator 채택 로드맵
 - 운영 사고 분석 + Phase A 진행: keiailab/mongodb-operator HANDOFF.md (2026-05-07)
 
 ### Added (GitOps deploy 정합)
