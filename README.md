@@ -16,6 +16,8 @@
   <a href="https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/keiailab-valkey-operator" alt="Artifact Hub"/></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/keiailab/valkey-operator"><img src="https://api.scorecard.dev/projects/github.com/keiailab/valkey-operator/badge" alt="OpenSSF Scorecard"/></a>
   <a href="https://github.com/keiailab/valkey-operator/discussions"><img src="https://img.shields.io/github/discussions/keiailab/valkey-operator?label=discussions&logo=github" alt="GitHub Discussions"/></a>
+  <a href="https://github.com/keiailab/operator-commons/blob/main/docs/quality/audit-history.md"><img src="https://img.shields.io/badge/keiailab-v3.x--stable-success?style=flat-square" alt="keiailab v3.x-stable"/></a>
+  <a href="https://github.com/keiailab/operator-commons/blob/main/scripts/audit-production-grade.sh"><img src="https://img.shields.io/badge/audit-100%25-success?style=flat-square" alt="audit"/></a>
 </p>
 
 <p align="center">
