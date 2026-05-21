@@ -3,10 +3,18 @@
 | 메타 | 값 |
 |---|---|
 | 날짜 | 2026-05-21 |
-| 상태 | Proposed |
+| 상태 | **Accepted** (2026-05-21 사용자 결정 반영 amendment) |
 | 작성자 | keiailab — auto-cycle |
 | 범위 | valkey-operator 만 (postgres / mongodb / commons / forgewise 는 별 spec) |
 | 후속 | `docs/plans/pr-cleanup-and-gha-removal/INDEX.md` (writing-plans 산출) |
+
+## 변경 이력
+
+- **2026-05-21 v1.0**: 초기 작성, Status=Proposed.
+- **2026-05-21 v1.1**: 사용자 결정 4건 반영, Status=Accepted.
+  - RFC-0002 예외: **모두 제거** (helm-publish + release + scorecard + 나머지 11개 = 14개 전체)
+  - PR #157 (multi-arch 거대): **별 cycle 로 분리** (Phase 3 종료 시 close + 후속 spec 분해)
+  - 본 design 의 (1)(2) 결정 사항 해소
 
 ## 1. 배경 (Background)
 
@@ -86,6 +94,7 @@ PR #161 (브랜딩, `MERGEABLE`) 이 `BLOCKED` 인 이유:
 | G5 | 로컬 4계층 = GHA 가 했던 모든 머지 게이트 1:1 대체 (3종 보강) | `lefthook run pre-push` 통과 |
 | G6 | e2e 통과 — kind cluster 에서 install → CR 생성 → reconcile → delete | `make integration-test` 또는 별도 e2e |
 | G7 | Issue #4 (Renovate) 해소 | gh issue close + ADR |
+| G8 | helm-publish + release 대체책 동시 구축 (로컬 스크립트 + Makefile target) | `make release` + `scripts/helm-publish.sh` 통과 |
 
 ### 2.2 Non-Goals
 
@@ -158,13 +167,24 @@ gh api -X PUT repos/keiailab/valkey-operator/branches/main/protection \
 - branch protection 갱신: `required_status_checks.contexts = []`
 - `docs/kb/adr/0048-gha-to-local-4-layer.md` 본문에 *예외 결정* 기록 (helm-publish, release, scorecard 등 각각의 운명)
 
-**RFC-0002 예외 검토 (사용자 결정 필요)**:
-- helm-publish.yml → 예외 ① (GitHub Pages 정적 배포): 보존 검토. 본 spec default = 제거 후 `gh release` 수동 또는 다른 메커니즘.
-- release.yml → 예외 ③ (release tag → GH Release 본문 자동 생성): 보존 검토. 본 spec default = 제거.
-- scorecard.yml → 메타데이터 (보안 스코어). 예외 없음 → 제거.
-- 기타 11개 (ci, codeql, dco, dependency-review, go-licenses, helm-install-test, helm-lint, kube-linter, markdown-link-check, stale, security-scan) → 모두 제거 (로컬 4계층 대체).
+**RFC-0002 결정 (v1.1 사용자 승인)**: **14개 workflow 모두 제거**. 예외 ①(Pages)·③(Release) 도 적용 안 함 — 대신 *로컬 대체책 동시 구축* (Goal G8). RFC-0002 정신 철저 + 단일 외부 SaaS 의존 제거.
+
+**제거 대상 14개**: ci, codeql, dco, dependency-review, go-licenses, helm-install-test, helm-lint, **helm-publish**, kube-linter, markdown-link-check, **release**, scorecard, security-scan, stale.
 
 **관찰 단계**: PR list 재조회 → dependabot/github_actions PR 8개 자동 close 또는 conflict 상태 → 일괄 close.
+
+### Phase 2.5 — helm-publish + release 대체책 (Goal G8)
+
+`helm-publish.yml` + `release.yml` 의 *기능* 을 로컬로 이관:
+
+| GHA 기능 | 로컬 대체 | 산출 |
+|---|---|---|
+| helm chart → gh-pages 자동 push | `scripts/helm-publish.sh` — helm package + gh-pages branch clone + index.yaml 갱신 + push | Makefile `make helm-publish` |
+| GoReleaser (release.yml 의 가장 큰 부분) | `scripts/release.sh` — git tag + goreleaser local + gh release create | Makefile `make release` |
+| GH Release 본문 자동 생성 (git-cliff) | `cliff.toml` (이미 있음) + `scripts/release.sh` 안에서 cliff → release body | Makefile `make release` |
+| 멀티아키 docker build (release.yml 의 일부) | `docker buildx` (default builder, CLAUDE.md §2 단일 amd64 강제, 멀티아키 금지) | Makefile `docker-build` |
+
+대체책은 *수동 trigger* (개발자가 release 시 `make release` 실행). 자동화는 *별 cycle* 에서 cron / local pre-tag hook 으로 후속 검토 가능.
 
 ### Phase 3 — 사람 PR 머지
 
@@ -176,12 +196,10 @@ gh api -X PUT repos/keiailab/valkey-operator/branches/main/protection \
 | 4 | #158 (webhook +491/-19) | rebase + merge | `make integration-test` |
 | — | #157 (거대 +12K/-9K) | **별도 cycle** — close 또는 squash 결정 후 후속 spec | — |
 
-**PR #157 처리 옵션 (사용자 결정 필요 후속)**:
-- (a) 머지: bundle/OLM/multi-arch 작업이 main 에 즉시 통합. 검증 부담 큼.
-- (b) close + 별도 spec: 새 cycle 에서 부분 분해 후 단계 머지.
-- (c) squash-history → 새 PR: 4 commits → 1 commit, 리뷰 부담 ↓.
-
-→ Phase 3 종료 시점에 본 spec 의 *후속 작업* 으로 분리 결정.
+**PR #157 결정 (v1.1 사용자 승인)**: **별 cycle 로 분리** (옵션 b). Phase 3 종료 시:
+- PR #157 자체 close (comment: "별 spec 으로 분해 후 단계 머지 예정 — 본 PR 닫고 후속 spec 작성")
+- 브랜치 `feat/multi-arch-olm-prep` 은 *임시 보존* (`git push origin --delete` 안 함) — 후속 spec 의 작업 기반
+- 후속 spec slug: `multi-arch-olm-prep-decomposition` — bundle / deploy / docs / Makefile 영역별 분해 후 각각 작은 PR
 
 ### Phase 4 — dependabot 처리
 
