@@ -1,4 +1,4 @@
-# ADR-0043: 멀티아키 빌드 opt-in 활성화 (ARM 노드 도입 + 외부 GA 대비)
+# ADR-0051: 멀티아키 빌드 opt-in 활성화 (ARM 노드 도입 + 외부 GA 대비)
 
 - Date: 2026-05-19
 - Status: Proposed
