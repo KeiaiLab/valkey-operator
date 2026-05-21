@@ -1,7 +1,7 @@
 # ADR-0042: Commercial Parity Series 종합 — 23 PR 시리즈 closure
 
 - Date: 2026-05-10
-- Status: Accepted
+- Status: Deprecated (2026-05-21 — 추적 문서 archive)
 - Authors: @eightynine01
 
 ## Context
@@ -108,5 +108,11 @@ ADR-0040 §6 의 enterprise-tier 항목:
 - ADR-0027 (HPA deferred → implemented)
 - Epic #37: closed (5 original gaps)
 - PR #38-#60: 23 atomic merge
-- 외부 분석: `~/.claude/plans/1-https-artifacthub-io-packages-helm-clo-hazy-sketch.md`
-- Status: `docs/operations/commercial-parity-status.md`
+## Deprecation note (2026-05-21)
+
+본 ADR 의 시리즈 결정은 *역사적 기록* 으로 보존된다. 추적 문서
+(`docs/operations/commercial-parity-status.md`) 는 외부 서비스 비교
+중심으로 작성되어 *제거* 되었다. 본 ADR 의 PR 매트릭스와 영역별 평가는
+당시 시점의 도달도를 기록한 history 이며, 현재 사용자 대면 commercial
+parity 메시지는 README + runbook + ADR-0040 (의사결정 근거) 으로 충분
+하다.

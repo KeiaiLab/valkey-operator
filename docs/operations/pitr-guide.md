@@ -2,9 +2,9 @@
 
 > 한국어 버전: [pitr-guide.ko.md](pitr-guide.ko.md)
 
-PITR was the single largest gap on the ADR-0040 commercial-parity
-checklist. This document covers the **phase 1** guide (API +
-webhook) plus the entry path to **phase 2** (reconciler dispatch).
+PITR was the single largest gap on the ADR-0040 parity checklist.
+This document covers the **phase 1** guide (API + webhook) plus the
+entry path to **phase 2** (reconciler dispatch).
 
 ## Current status (as of 2026-05-10)
 
