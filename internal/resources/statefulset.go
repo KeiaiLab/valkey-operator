@@ -18,6 +18,7 @@ package resources
 import (
 	"fmt"
 	"maps"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/keiailab/operator-commons/pkg/probes"
 	"github.com/keiailab/operator-commons/pkg/security"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -123,20 +125,20 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 				{Name: "data", MountPath: DataDir},
 				{Name: "config", MountPath: ConfigMapMountPath},
 			}, tlsVolumeMounts(p.TLSSecretName)...),
-			LivenessProbe: &corev1.Probe{
-				ProbeHandler:        corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: append([]string{"sh"}, pingArgs...)}},
-				InitialDelaySeconds: 20,
-				PeriodSeconds:       10,
-				TimeoutSeconds:      5,
-				FailureThreshold:    3,
-			},
-			ReadinessProbe: &corev1.Probe{
-				ProbeHandler:        corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: append([]string{"sh"}, pingArgs...)}},
-				InitialDelaySeconds: 5,
-				PeriodSeconds:       5,
-				TimeoutSeconds:      3,
-				FailureThreshold:    3,
-			},
+			LivenessProbe: probes.New().
+				Exec(append([]string{"sh"}, pingArgs...)...).
+				InitialDelay(20 * time.Second).
+				Period(10 * time.Second).
+				Timeout(5 * time.Second).
+				FailureThreshold(3).
+				Build(),
+			ReadinessProbe: probes.New().
+				Exec(append([]string{"sh"}, pingArgs...)...).
+				InitialDelay(5 * time.Second).
+				Period(5 * time.Second).
+				Timeout(3 * time.Second).
+				FailureThreshold(3).
+				Build(),
 		},
 	}
 	if p.Pod != nil && len(p.Pod.ExtraEnv) > 0 {
