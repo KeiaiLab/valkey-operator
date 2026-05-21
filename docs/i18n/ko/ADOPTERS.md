@@ -22,7 +22,7 @@
 
 ## Evaluators
 
-POC / 평가 / Bitnami redis-cluster 마이그레이션 검토 사용자.
+POC / 평가 / 외부 redis-cluster chart 마이그레이션 검토 사용자.
 
 | 사용자 | 단계 | 비고 |
 |---|---|---|
@@ -42,9 +42,9 @@ PR 을 열어 위 표에 한 row 추가:
 
 본 ADOPTERS 목록은 CNCF graduation criteria 의 "≥1 public adopter" 요구사항을 충족하기 위한 공개 reference 로도 활용됩니다.
 
-## Bitnami redis-cluster Migration
+## 외부 redis-cluster chart 마이그레이션
 
-Bitnami redis-cluster (Redis 7.x/8.x) 사용자가 Valkey 로 migration 검토 시 ROADMAP.md 의 *Phase B (RDB 호환성 / 대안 마이그레이션 경로)* 섹션 참조. 일부 Redis 8.2.x RDB 는 Valkey 9.0.4 직접 restore 불가 — `ValkeyRestore` 가 fail-fast 처리하므로 운영자가 무한 대기하지 않음.
+외부 redis-cluster chart (Redis 7.x/8.x) 사용자가 Valkey 로 migration 검토 시 ROADMAP.md 의 *Phase B (RDB 호환성 / 대안 마이그레이션 경로)* 섹션 참조. 일부 Redis 8.2.x RDB 는 Valkey 9.0.4 직접 restore 불가 — `ValkeyRestore` 가 fail-fast 처리하므로 운영자가 무한 대기하지 않음.
 
 ---
 
