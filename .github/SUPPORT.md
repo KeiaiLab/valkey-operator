@@ -17,16 +17,16 @@ help.
 | **You think you found a security vulnerability.** | **Do not open a public issue.** Use [SECURITY.md](SECURITY.md) — GitHub Security Advisory or `security@keiailab.com` (PGP signed). |
 | You have an "is this supposed to work like X?" or "how do I configure Y?" question. | [GitHub Discussions](https://github.com/keiailab/valkey-operator/discussions). Searchable and indexed by future operators. |
 | You found a bug — something behaves differently from the docs. | [Open an issue](https://github.com/keiailab/valkey-operator/issues/new/choose) using the **Bug report** template. |
-| You want a feature added or behaviour changed. | [Open an issue](https://github.com/keiailab/valkey-operator/issues/new/choose) using the **Feature request** template. Check [ROADMAP.md](ROADMAP.md) first to see if it's already planned. |
+| You want a feature added or behaviour changed. | [Open an issue](https://github.com/keiailab/valkey-operator/issues/new/choose) using the **Feature request** template. Check [ROADMAP.md](../ROADMAP.md) first to see if it's already planned. |
 | You have a "this should be in the FAQ" question. | [Open an issue](https://github.com/keiailab/valkey-operator/issues/new/choose) using the **Question** template. |
-| You're hitting a Prometheus alert and need the MTTR procedure. | [`docs/operations/runbook.md`](docs/operations/runbook.md) §9 (every alert's `runbook_url` annotation points there). |
-| You're seeing odd behaviour but no alert. | [`docs/operations/troubleshooting.md`](docs/operations/troubleshooting.md) — symptom → cause → diagnostic → remediation flowchart. |
+| You're hitting a Prometheus alert and need the MTTR procedure. | [`docs/operations/runbook.md`](../docs/operations/runbook.md) §9 (every alert's `runbook_url` annotation points there). |
+| You're seeing odd behaviour but no alert. | [`docs/operations/troubleshooting.md`](../docs/operations/troubleshooting.md) — symptom → cause → diagnostic → remediation flowchart. |
 | You want to contribute code or docs. | [CONTRIBUTING.md](CONTRIBUTING.md). |
 
 ## Before opening an issue, please
 
 1. Search [existing issues](https://github.com/keiailab/valkey-operator/issues?q=is%3Aissue) and [Discussions](https://github.com/keiailab/valkey-operator/discussions) — your question may already be answered.
-2. Try the [troubleshooting flowchart](docs/operations/troubleshooting.md).
+2. Try the [troubleshooting flowchart](../docs/operations/troubleshooting.md).
 3. Have the following ready in your report:
    - `valkey-operator` version (`kubectl get deploy -n valkey-operator-system -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'`)
    - Kubernetes version (`kubectl version`)

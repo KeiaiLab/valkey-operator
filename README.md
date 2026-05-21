@@ -136,7 +136,7 @@ with the `Signed` trust badge (ADR-0044, ADR-0046).
   ServiceMonitor auto-generation.
 - **Supply chain.** SBOM (syft SPDX) + Trivy scan + cosign keyless
   signing + SLSA-3 provenance starting with v1.0.13 (ADR-0046).
-  See [SECURITY.md](SECURITY.md) for verification commands.
+  See [SECURITY.md](.github/SECURITY.md) for verification commands.
 
 ## Documentation
 
@@ -146,9 +146,9 @@ with the `Signed` trust badge (ADR-0044, ADR-0046).
 | Operations runbook | [docs/operations/runbook.md](docs/operations/runbook.md) |
 | Release pre-flight checklist | [docs/operations/release-checklist.md](docs/operations/release-checklist.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |
-| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Security policy + artifact verification | [SECURITY.md](SECURITY.md) |
-| Project governance | [GOVERNANCE.md](GOVERNANCE.md) |
+| Contributing | [CONTRIBUTING.md](.github/CONTRIBUTING.md) |
+| Security policy + artifact verification | [SECURITY.md](.github/SECURITY.md) |
+| Project governance | [GOVERNANCE.md](.github/GOVERNANCE.md) |
 | Adopters | [ADOPTERS.md](ADOPTERS.md) |
 
 ## Production readiness
@@ -230,7 +230,7 @@ make undeploy
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). External contributions are
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md). External contributions are
 welcome; please open an issue first for any non-trivial change so we
 can align on the API surface before you write code.
 
@@ -240,7 +240,7 @@ Run `make help` to see every Makefile target. Background reading:
 ## Reporting vulnerabilities
 
 Do **not** open a public issue. Use the private channels in
-[SECURITY.md](SECURITY.md) — GitHub Security Advisory or
+[SECURITY.md](.github/SECURITY.md) — GitHub Security Advisory or
 `security@keiailab.com` (PGP key in `artifacthub-repo.yml`).
 
 ## License

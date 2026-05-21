@@ -129,7 +129,7 @@
   详见 [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md)
 - [x] **SLSA-3 provenance + cosign keyless signing** 应用于镜像、
   Helm chart 与 SBOM (ADR-0046) — 验证命令见
-  [SECURITY.md](SECURITY.md)。自 v1.0.13 起生效。
+  [SECURITY.md](.github/SECURITY.md)。自 v1.0.13 起生效。
 - [ ] **生产集群采用**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application 注册

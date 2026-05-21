@@ -7,7 +7,7 @@
 
 # 贡献 (Contributing)
 
-> 英文版: [CONTRIBUTING.md](CONTRIBUTING.md) — canonical / 正本
+> 英文版: [CONTRIBUTING.md](.github/CONTRIBUTING.md) — canonical / 正本
 
 感谢您对 `valkey-operator` 的关注。本文档介绍 PR 流程、如何运行测试,以及在何种情况下需要编写 Architecture Decision Record (ADR)。
 
@@ -149,7 +149,7 @@ Alternatives Considered / Status)。在同一 commit 中更新
 ## 安全问题 (Security issues)
 
 请**不要**为漏洞 (vulnerability) 开公开 issue。请参阅
-[SECURITY.md](SECURITY.md) 获取非公开报告渠道 (GitHub Security
+[SECURITY.md](.github/SECURITY.md) 获取非公开报告渠道 (GitHub Security
 Advisory 与一个 PGP 签名邮箱地址)。
 
 ## 许可证 (License)

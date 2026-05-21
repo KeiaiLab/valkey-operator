@@ -135,7 +135,7 @@ Chart は
   Prometheus アラートルール、ServiceMonitor 自動生成。
 - **サプライチェーン。** v1.0.13 以降、SBOM (syft SPDX) + Trivy スキャン
   + cosign keyless 署名 + SLSA-3 provenance (ADR-0046)。検証コマンド
-  については [SECURITY.md](SECURITY.md) 参照。
+  については [SECURITY.md](.github/SECURITY.md) 参照。
 
 ## ドキュメント
 
@@ -145,9 +145,9 @@ Chart は
 | Runbook (バックアップ、リストア、スケーリング、アップグレード、緊急対応) | [docs/operations/runbook.md](docs/operations/runbook.md) |
 | リリース前チェックリスト | [docs/operations/release-checklist.md](docs/operations/release-checklist.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |
-| コントリビューション | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| セキュリティポリシー + artifact 検証 | [SECURITY.md](SECURITY.md) |
-| プロジェクトガバナンス | [GOVERNANCE.md](GOVERNANCE.md) |
+| コントリビューション | [CONTRIBUTING.md](.github/CONTRIBUTING.md) |
+| セキュリティポリシー + artifact 検証 | [SECURITY.md](.github/SECURITY.md) |
+| プロジェクトガバナンス | [GOVERNANCE.md](.github/GOVERNANCE.md) |
 | 採用者 | [ADOPTERS.md](ADOPTERS.md) |
 
 ## プロダクションレディネス
@@ -231,7 +231,7 @@ make undeploy
 
 ## コントリビューション
 
-[CONTRIBUTING.md](CONTRIBUTING.md) 参照。外部コントリビューション
+[CONTRIBUTING.md](.github/CONTRIBUTING.md) 参照。外部コントリビューション
 歓迎。非自明な変更については、コードを書く前に API 表面の合意を
 取るため、まず issue を立ててください。
 
@@ -240,7 +240,7 @@ make undeploy
 
 ## 脆弱性報告
 
-公開 issue を**開かないで**ください。[SECURITY.md](SECURITY.md) の
+公開 issue を**開かないで**ください。[SECURITY.md](.github/SECURITY.md) の
 プライベートチャネル — GitHub Security Advisory または
 `security@keiailab.com` (PGP key は `artifacthub-repo.yml`) を
 ご利用ください。

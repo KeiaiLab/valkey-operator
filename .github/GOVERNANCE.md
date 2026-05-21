@@ -7,7 +7,7 @@
 
 # Governance
 
-> 한국어 버전: [GOVERNANCE.ko.md](GOVERNANCE.ko.md)
+> 한국어 버전: [GOVERNANCE.ko.md](../GOVERNANCE.ko.md)
 
 This document defines how decisions are made in
 `keiailab/valkey-operator`.

@@ -49,12 +49,12 @@
 | 阅读架构 (architecture) | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | 提交 issue 或功能请求 | https://github.com/keiailab/valkey-operator/issues |
 | 讨论设计或 roadmap | https://github.com/keiailab/valkey-operator/discussions |
-| 贡献代码 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
-| 报告安全问题 | [SECURITY.md](../SECURITY.md) |
+| 贡献代码 | [CONTRIBUTING.md](../.github/CONTRIBUTING.md) |
+| 报告安全问题 | [SECURITY.md](../.github/SECURITY.md) |
 | 学习品牌 (brand) / voice | [BRANDING.md](../BRANDING.md) |
 | 跟踪 adopter / 使用者 | [ADOPTERS.md](../ADOPTERS.md) |
 | 查找 maintainer | [MAINTAINERS.md](../MAINTAINERS.md) |
-| 审查治理 (governance) 模型 | [GOVERNANCE.md](../GOVERNANCE.md) |
+| 审查治理 (governance) 模型 | [GOVERNANCE.md](../.github/GOVERNANCE.md) |
 | 查看即将的工作 | [ROADMAP.md](../ROADMAP.md) |
 
 ## Family 间兼容性 (operator-commons)

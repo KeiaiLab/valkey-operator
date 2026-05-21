@@ -88,7 +88,7 @@ Run command: `go test ./internal/observability/`
       GitHub Releases and `gh-pages`.
 - [ ] **cosign keyless signature** on the container image, Helm
       chart, and SBOM (ADR-0046, v1.0.13+). Verification recipes in
-      [SECURITY.md](../../SECURITY.md#verifying-release-artifacts-signed-releases--v1013).
+      [SECURITY.md](../../.github/SECURITY.md#verifying-release-artifacts-signed-releases--v1013).
 - [ ] **SLSA-3 provenance** attached to the image via
       `slsa-framework/slsa-github-generator` (ADR-0046).
 - [ ] `bash scripts/release-smoke-test.sh` — 8 stages: chart asset,

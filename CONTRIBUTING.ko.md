@@ -7,7 +7,7 @@
 
 # Contributing (한국어)
 
-> English: [CONTRIBUTING.md](CONTRIBUTING.md) — canonical / 정본
+> English: [CONTRIBUTING.md](.github/CONTRIBUTING.md) — canonical / 정본
 
 valkey-operator 에 기여해 주셔서 감사합니다. 본 문서는 PR 절차, 테스트
 실행, 디자인 결정 추적 (ADR) 의 개요입니다.

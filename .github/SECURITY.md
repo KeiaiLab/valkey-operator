@@ -7,7 +7,7 @@
 
 # Security Policy
 
-> 한국어 버전: [SECURITY.ko.md](SECURITY.ko.md)
+> 한국어 버전: [SECURITY.ko.md](../SECURITY.ko.md)
 
 ## Reporting a vulnerability
 
@@ -147,8 +147,8 @@ exact build that produced the image.
 
 ## Known limitations
 
-- English: [README.md → "Known limitations"](README.md#known-limitations)
-- Korean: [README.ko.md → "잠재적 운영 이슈"](README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
+- English: [README.md → "Known limitations"](../README.md#known-limitations)
+- Korean: [README.ko.md → "잠재적 운영 이슈"](../README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
 - See also: GitHub Issues with the `security` label.
 
 ---

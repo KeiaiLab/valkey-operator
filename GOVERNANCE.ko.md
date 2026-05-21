@@ -7,7 +7,7 @@
 
 # Governance (한국어)
 
-> English: [GOVERNANCE.md](GOVERNANCE.md) — canonical / 정본
+> English: [GOVERNANCE.md](.github/GOVERNANCE.md) — canonical / 정본
 
 
 본 문서는 keiailab/valkey-operator 프로젝트의 의사결정 절차를 정의합니다.
@@ -41,7 +41,7 @@
 
 ## 보안 결정
 
-CVE 보고, 시크릿/인증 모델 변경은 [SECURITY.md](SECURITY.md) 절차에 따라 비공개 채널에서 우선 처리한 뒤, 패치 릴리스 후 공개 합의를 거칩니다.
+CVE 보고, 시크릿/인증 모델 변경은 [SECURITY.md](.github/SECURITY.md) 절차에 따라 비공개 채널에서 우선 처리한 뒤, 패치 릴리스 후 공개 합의를 거칩니다.
 
 ## 릴리스 결정
 

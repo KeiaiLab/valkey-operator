@@ -7,7 +7,7 @@
 
 # セキュリティポリシー
 
-> 英語版: [SECURITY.md](SECURITY.md) — canonical / 正本
+> 英語版: [SECURITY.md](.github/SECURITY.md) — canonical / 正本
 
 ## 脆弱性の報告
 

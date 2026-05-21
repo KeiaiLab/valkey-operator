@@ -133,7 +133,7 @@ Chart 也发布到
   Prometheus 告警规则、ServiceMonitor 自动生成。
 - **供应链 (Supply chain)。** 自 v1.0.13 起 SBOM (syft SPDX) +
   Trivy 扫描 + cosign keyless 签名 + SLSA-3 provenance (ADR-0046)。
-  验证命令见 [SECURITY.md](SECURITY.md)。
+  验证命令见 [SECURITY.md](.github/SECURITY.md)。
 
 ## 文档
 
@@ -143,9 +143,9 @@ Chart 也发布到
 | Runbook (备份、恢复、扩缩、升级、应急) | [docs/operations/runbook.md](docs/operations/runbook.md) |
 | Release 预检清单 | [docs/operations/release-checklist.md](docs/operations/release-checklist.md) |
 | Architecture Decision Records | [docs/kb/adr/INDEX.md](docs/kb/adr/INDEX.md) |
-| 贡献指南 | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| 安全策略 + artifact 验证 | [SECURITY.md](SECURITY.md) |
-| 项目治理 | [GOVERNANCE.md](GOVERNANCE.md) |
+| 贡献指南 | [CONTRIBUTING.md](.github/CONTRIBUTING.md) |
+| 安全策略 + artifact 验证 | [SECURITY.md](.github/SECURITY.md) |
+| 项目治理 | [GOVERNANCE.md](.github/GOVERNANCE.md) |
 | 采用者 | [ADOPTERS.md](ADOPTERS.md) |
 
 ## 生产就绪 (Production readiness)
@@ -224,7 +224,7 @@ make undeploy
 
 ## 贡献
 
-参见 [CONTRIBUTING.md](CONTRIBUTING.md)。欢迎外部贡献。对于非平凡的
+参见 [CONTRIBUTING.md](.github/CONTRIBUTING.md)。欢迎外部贡献。对于非平凡的
 变更,请先 open issue 以便在编写代码前就 API 表面达成一致。
 
 `make help` 可查看所有 Makefile target。背景阅读:
@@ -232,7 +232,7 @@ make undeploy
 
 ## 漏洞报告
 
-请**不要**开公开 issue。使用 [SECURITY.md](SECURITY.md) 的私密渠道 —
+请**不要**开公开 issue。使用 [SECURITY.md](.github/SECURITY.md) 的私密渠道 —
 GitHub Security Advisory 或 `security@keiailab.com` (PGP key 在
 `artifacthub-repo.yml`)。
 

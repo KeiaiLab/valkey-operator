@@ -49,12 +49,12 @@
 | 아키텍처 읽기 | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | issue 또는 기능 요청 | https://github.com/keiailab/valkey-operator/issues |
 | 디자인 또는 로드맵 논의 | https://github.com/keiailab/valkey-operator/discussions |
-| 코드 기여 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
-| 보안 이슈 보고 | [SECURITY.md](../SECURITY.md) |
+| 코드 기여 | [CONTRIBUTING.md](../.github/CONTRIBUTING.md) |
+| 보안 이슈 보고 | [SECURITY.md](../.github/SECURITY.md) |
 | 브랜드 / 보이스 학습 | [BRANDING.md](../BRANDING.md) |
 | adopter / 사용자 추적 | [ADOPTERS.md](../ADOPTERS.md) |
 | maintainer 찾기 | [MAINTAINERS.md](../MAINTAINERS.md) |
-| 거버넌스 모델 검토 | [GOVERNANCE.md](../GOVERNANCE.md) |
+| 거버넌스 모델 검토 | [GOVERNANCE.md](../.github/GOVERNANCE.md) |
 | 향후 작업 확인 | [ROADMAP.md](../ROADMAP.md) |
 
 ## 패밀리 간 호환성 (operator-commons)

@@ -129,7 +129,7 @@ helm install valkey-operator valkey-operator/valkey-operator \
   미설정 시 zero overhead), Prometheus 알람 규칙, ServiceMonitor 자동 생성.
 - **공급망.** SBOM (syft SPDX) + Trivy 스캔 + cosign keyless 서명 +
   SLSA-3 provenance — v1.0.13 부터 적용 (ADR-0046).
-  검증 명령은 [SECURITY.md](SECURITY.md) 참조.
+  검증 명령은 [SECURITY.md](.github/SECURITY.md) 참조.
 
 ## 문서
 

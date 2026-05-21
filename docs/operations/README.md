@@ -43,7 +43,7 @@ and has no Korean copy).
 
 - Architecture decisions: [`docs/kb/adr/INDEX.md`](../kb/adr/INDEX.md)
 - Incident history: [`docs/kb/incident/`](../kb/incident/)
-- Release verification commands: [`SECURITY.md → "Verifying release artifacts"`](../../SECURITY.md#verifying-release-artifacts-signed-releases--v1013)
+- Release verification commands: [`SECURITY.md → "Verifying release artifacts"`](../../.github/SECURITY.md#verifying-release-artifacts-signed-releases--v1013)
 - Roadmap (project direction): [`ROADMAP.md`](../../ROADMAP.md)
 
 ## i18n status

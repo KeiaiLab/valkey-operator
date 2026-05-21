@@ -49,12 +49,12 @@
 | アーキテクチャを読む | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | issue または機能リクエスト | https://github.com/keiailab/valkey-operator/issues |
 | デザインまたはロードマップを議論 | https://github.com/keiailab/valkey-operator/discussions |
-| コードをコントリビュート | [CONTRIBUTING.md](../CONTRIBUTING.md) |
-| セキュリティ問題を報告 | [SECURITY.md](../SECURITY.md) |
+| コードをコントリビュート | [CONTRIBUTING.md](../.github/CONTRIBUTING.md) |
+| セキュリティ問題を報告 | [SECURITY.md](../.github/SECURITY.md) |
 | ブランド・ボイスを学ぶ | [BRANDING.md](../BRANDING.md) |
 | adopter / 利用者の追跡 | [ADOPTERS.md](../ADOPTERS.md) |
 | メンテナーを探す | [MAINTAINERS.md](../MAINTAINERS.md) |
-| ガバナンスモデルを確認 | [GOVERNANCE.md](../GOVERNANCE.md) |
+| ガバナンスモデルを確認 | [GOVERNANCE.md](../.github/GOVERNANCE.md) |
 | 今後の作業を確認 | [ROADMAP.md](../ROADMAP.md) |
 
 ## ファミリー間互換性 (operator-commons)

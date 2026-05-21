@@ -50,6 +50,19 @@
 | [Incident KB](kb/incident/INDEX.md) | Postmortem-lite records (blameless) |
 | [Dependency change log](kb/deps/2026-05.md) | go.mod / go.sum diff history |
 
+## Community health
+
+GitHub-detected community health files live in `.github/` per ADR-0053
+(root `.md` policy + tool-dependency exception):
+
+| Document | Path |
+|---|---|
+| Contributing guidelines | [.github/CONTRIBUTING.md](../.github/CONTRIBUTING.md) |
+| Code of Conduct | [.github/CODE_OF_CONDUCT.md](../.github/CODE_OF_CONDUCT.md) |
+| Security policy + artifact verification | [.github/SECURITY.md](../.github/SECURITY.md) |
+| Support resources | [.github/SUPPORT.md](../.github/SUPPORT.md) |
+| Project governance | [.github/GOVERNANCE.md](../.github/GOVERNANCE.md) |
+
 ## Operator family
 
 [keiailab operator family](family.md) — postgres-operator · mongodb-operator ·
