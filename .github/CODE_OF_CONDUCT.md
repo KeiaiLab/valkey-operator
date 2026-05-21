@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="CODE_OF_CONDUCT.ko.md">한국어</a> |
-  <a href="CODE_OF_CONDUCT.ja.md">日本語</a> |
-  <a href="CODE_OF_CONDUCT.zh.md">中文</a>
+  <a href="../docs/i18n/ko/CODE_OF_CONDUCT.md">한국어</a> |
+  <a href="../docs/i18n/ja/CODE_OF_CONDUCT.md">日本語</a> |
+  <a href="../docs/i18n/zh/CODE_OF_CONDUCT.md">中文</a>
 </p>
 
 # Contributor Covenant Code of Conduct

@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="ROADMAP.ko.md">한국어</a> |
-  <a href="ROADMAP.ja.md">日本語</a> |
-  <a href="ROADMAP.zh.md">中文</a>
+  <a href="i18n/ko/ROADMAP.md">한국어</a> |
+  <a href="i18n/ja/ROADMAP.md">日本語</a> |
+  <a href="i18n/zh/ROADMAP.md">中文</a>
 </p>
 
 # ROADMAP — valkey-operator

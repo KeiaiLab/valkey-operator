@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="SECURITY.ko.md">한국어</a> |
-  <a href="SECURITY.ja.md">日本語</a> |
-  <a href="SECURITY.zh.md">中文</a>
+  <a href="../docs/i18n/ko/SECURITY.md">한국어</a> |
+  <a href="../docs/i18n/ja/SECURITY.md">日本語</a> |
+  <a href="../docs/i18n/zh/SECURITY.md">中文</a>
 </p>
 
 # Security Policy

@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="MAINTAINERS.ko.md">한국어</a> |
-  <a href="MAINTAINERS.ja.md">日本語</a> |
-  <a href="MAINTAINERS.zh.md">中文</a>
+  <a href="i18n/ko/MAINTAINERS.md">한국어</a> |
+  <a href="i18n/ja/MAINTAINERS.md">日本語</a> |
+  <a href="i18n/zh/MAINTAINERS.md">中文</a>
 </p>
 
 # Maintainers

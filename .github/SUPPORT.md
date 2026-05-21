@@ -1,8 +1,8 @@
 <p align="center">
   <b>English</b> |
-  <a href="SUPPORT.ko.md">한국어</a> |
-  <a href="SUPPORT.ja.md">日本語</a> |
-  <a href="SUPPORT.zh.md">中文</a>
+  <a href="../docs/i18n/ko/SUPPORT.md">한국어</a> |
+  <a href="../docs/i18n/ja/SUPPORT.md">日本語</a> |
+  <a href="../docs/i18n/zh/SUPPORT.md">中文</a>
 </p>
 
 # Support

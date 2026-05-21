@@ -1,3 +1,10 @@
+<p align="center">
+  <b>English</b> |
+  <a href="ARCHITECTURE.ko.md">한국어</a> |
+  <a href="ARCHITECTURE.ja.md">日本語</a> |
+  <a href="ARCHITECTURE.zh.md">中文</a>
+</p>
+
 # ARCHITECTURE — valkey-operator
 
 > Single-page architecture description. Updated when CRD surface / topology / reconcile pattern changes.
