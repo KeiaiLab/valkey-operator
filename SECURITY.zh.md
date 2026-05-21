@@ -7,7 +7,7 @@
 
 # 安全策略 (Security Policy)
 
-> 英文版: [SECURITY.md](SECURITY.md) — canonical / 正本
+> 英文版: [SECURITY.md](.github/SECURITY.md) — canonical / 正本
 
 ## 报告漏洞 (vulnerability)
 

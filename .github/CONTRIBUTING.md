@@ -7,7 +7,7 @@
 
 # Contributing
 
-> 한국어 버전: [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)
+> 한국어 버전: [CONTRIBUTING.ko.md](../CONTRIBUTING.ko.md)
 
 Thanks for your interest in `valkey-operator`. This document describes
 the PR process, how to run the tests, and when an Architecture Decision
@@ -113,7 +113,7 @@ surface == actual behaviour" a build invariant rather than a wish.
 ### Where the gates live
 
 - `internal/observability/*_test.go` — all 33+ SSOT gate tests
-- Inventory: [docs/operations/release-checklist.md §2](docs/operations/release-checklist.md)
+- Inventory: [docs/operations/release-checklist.md §2](../docs/operations/release-checklist.md)
 
 ### Examples of what the gates block (pre-merge)
 

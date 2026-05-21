@@ -7,7 +7,7 @@
 
 # コントリビュート
 
-> 英語版: [CONTRIBUTING.md](CONTRIBUTING.md) — canonical / 正本
+> 英語版: [CONTRIBUTING.md](.github/CONTRIBUTING.md) — canonical / 正本
 
 `valkey-operator` への関心をお寄せいただきありがとうございます。本ドキュメントは PR プロセス、テストの実行方法、Architecture Decision Record (ADR) が必要となる場面について説明します。
 
@@ -153,7 +153,7 @@ Nygard の 5 セクションテンプレート (Context / Decision / Consequence
 
 脆弱性については公開 issue を開かないでください。非公開報告チャネル
 (GitHub Security Advisory および PGP 署名付きメールアドレス) は
-[SECURITY.md](SECURITY.md) を参照してください。
+[SECURITY.md](.github/SECURITY.md) を参照してください。
 
 ## ライセンス
 

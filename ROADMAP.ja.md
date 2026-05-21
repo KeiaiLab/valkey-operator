@@ -129,7 +129,7 @@
   詳細は [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md) を参照
 - [x] **SLSA-3 provenance + cosign keyless signing** をイメージ、
   Helm chart、SBOM に対して適用 (ADR-0046) — 検証コマンドは
-  [SECURITY.md](SECURITY.md) を参照。v1.0.13 から有効。
+  [SECURITY.md](.github/SECURITY.md) を参照。v1.0.13 から有効。
 - [ ] **本番クラスタへの導入**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application 登録

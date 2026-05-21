@@ -136,7 +136,7 @@ file used to confirm the checkbox.
   see [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md)
 - [x] **SLSA-3 provenance + cosign keyless signing** for the image,
   Helm chart, and SBOM (ADR-0046) — verification commands in
-  [SECURITY.md](SECURITY.md). Active from v1.0.13.
+  [SECURITY.md](.github/SECURITY.md). Active from v1.0.13.
 - [ ] **Production cluster adoption**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application registration

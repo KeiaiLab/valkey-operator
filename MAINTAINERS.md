@@ -29,8 +29,8 @@ following for at least six months:
 
 - 20+ merged PRs of meaningful code or documentation
 - 30+ PR reviews with constructive feedback
-- Demonstrated compliance with [GOVERNANCE.md](GOVERNANCE.md) and
-  [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Demonstrated compliance with [GOVERNANCE.md](.github/GOVERNANCE.md) and
+  [CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md)
 - Deep understanding of at least one core area — controller, resource
   builders, restore / backup, cluster sharding, observability, etc.
 
