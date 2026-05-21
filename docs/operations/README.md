@@ -16,6 +16,7 @@ and has no Korean copy).
 | [metrics-glossary.md](metrics-glossary.md) | Every `valkey_cluster_*` metric, its label cardinality, where it is emitted, and which alerts consume it. |
 | [capacity-planning.md](capacity-planning.md) | Sizing guide — memory, replication factor, shard count, p95/p99 latency targets per topology. |
 | [webhook.md](webhook.md) | Admission-webhook architecture, cert-manager certificate path, debugging webhook denials. |
+| [pdb-per-shard.md](pdb-per-shard.md) | Per-shard `PodDisruptionBudget` operations for sharded `ValkeyCluster` — drain scenarios, mode transitions, write-availability guarantees. |
 
 ## Backup, restore, recovery
 
