@@ -21,7 +21,7 @@
 
 ## 评估者 (Evaluators)
 
-概念验证 (PoC)、评估中,以及 Bitnami redis-cluster 迁移候选。
+概念验证 (PoC)、评估中,以及 外部 redis-cluster chart 迁移候选。
 
 | 用户 | 阶段 | 备注 |
 |---|---|---|
@@ -41,9 +41,9 @@
 
 本名单也作为 CNCF graduation 标准 "≥ 1 public adopter" 的公开依据。
 
-## 从 Bitnami redis-cluster 迁移
+## 从外部 redis-cluster chart 迁移
 
-如果您正在运营 Bitnami `redis-cluster` (Redis 7.x / 8.x) 并在评估 Valkey,请参阅 `ROADMAP.md` → **Phase B (RDB 兼容性与替代迁移路径)**。部分 Redis 8.2.x 的 RDB 文件无法直接恢复到 Valkey 9.0.4;在这种情况下 `ValkeyRestore` 会 fail fast,运维方不会在静默错误 (silent error) 中无限等待。
+如果您正在运营 外部 `redis-cluster` chart (Redis 7.x / 8.x) 并在评估 Valkey,请参阅 `ROADMAP.md` → **Phase B (RDB 兼容性与替代迁移路径)**。部分 Redis 8.2.x 的 RDB 文件无法直接恢复到 Valkey 9.0.4;在这种情况下 `ValkeyRestore` 会 fail fast,运维方不会在静默错误 (silent error) 中无限等待。
 
 ---
 

@@ -21,7 +21,7 @@ production グレードの SLA を伴って `valkey-operator` を本番稼働さ
 
 ## Evaluators
 
-PoC、評価中、および Bitnami redis-cluster からの移行候補です。
+PoC、評価中、および 外部 redis-cluster chart からの移行候補です。
 
 | ユーザー | フェーズ | 備考 |
 |---|---|---|
@@ -41,9 +41,9 @@ PoC、評価中、および Bitnami redis-cluster からの移行候補です。
 
 本リストは CNCF graduation 基準である「≥ 1 public adopter」の public 参照としても機能します。
 
-## Bitnami redis-cluster からの移行
+## 外部 redis-cluster chart からの移行
 
-Bitnami `redis-cluster` (Redis 7.x / 8.x) を運用していて Valkey を評価中の場合、`ROADMAP.md` → **Phase B (RDB 互換性と代替移行パス)** を参照してください。一部の Redis 8.2.x RDB ファイルは Valkey 9.0.4 に直接リストアできません。その場合 `ValkeyRestore` は fail-fast で失敗するため、運用者が silent error を無期限に待つことはありません。
+外部 `redis-cluster` chart (Redis 7.x / 8.x) を運用していて Valkey を評価中の場合、`ROADMAP.md` → **Phase B (RDB 互換性と代替移行パス)** を参照してください。一部の Redis 8.2.x RDB ファイルは Valkey 9.0.4 に直接リストアできません。その場合 `ValkeyRestore` は fail-fast で失敗するため、運用者が silent error を無期限に待つことはありません。
 
 ---
 

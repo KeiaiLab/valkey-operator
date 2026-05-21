@@ -24,7 +24,7 @@ production-grade SLA.
 
 ## Evaluators
 
-Proof-of-concept, evaluation, and Bitnami-redis-cluster migration
+Proof-of-concept, evaluation, and external Redis-cluster migration
 candidates.
 
 | User | Stage | Notes |
@@ -48,9 +48,9 @@ an organization-anonymized row on your behalf.
 This list also serves as the public reference for the CNCF graduation
 criterion "≥ 1 public adopter."
 
-## Migrating from Bitnami redis-cluster
+## Migrating from an external Redis-cluster chart
 
-If you operate Bitnami `redis-cluster` (Redis 7.x / 8.x) and are
+If you operate an external `redis-cluster` Helm chart (Redis 7.x / 8.x) and are
 evaluating Valkey, see `ROADMAP.md` → **Phase B (RDB compatibility
 and alternative migration paths)**. Some Redis 8.2.x RDB files cannot
 be restored directly into Valkey 9.0.4; `ValkeyRestore` fails fast in
