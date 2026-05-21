@@ -7,7 +7,7 @@
 
 # 维护者 (Maintainers)
 
-> English version: [MAINTAINERS.md](docs/MAINTAINERS.md)
+> English version: [MAINTAINERS.md](../../MAINTAINERS.md)
 
 本文档跟踪对 `keiailab/valkey-operator` 拥有决策权的维护者。
 
@@ -25,7 +25,7 @@ GitHub team `@keiailab/maintainers` 对项目所有领域拥有 merge 与 approv
 
 - 20+ 条有意义的代码或文档 merged PR
 - 30+ 条带建设性反馈的 PR review
-- 切实遵守 [GOVERNANCE.md](.github/GOVERNANCE.md) 与 [CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md)
+- 切实遵守 [GOVERNANCE.md](../../../.github/GOVERNANCE.md) 与 [CODE_OF_CONDUCT.md](../../../.github/CODE_OF_CONDUCT.md)
 - 对至少一个核心领域有深入理解 — controller、resource builders、restore / backup、cluster sharding、observability 等
 
 ## 新增维护者

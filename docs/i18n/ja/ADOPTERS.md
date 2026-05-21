@@ -7,7 +7,7 @@
 
 # valkey-operator の Adopters
 
-> English version: [ADOPTERS.md](docs/ADOPTERS.md)
+> English version: [ADOPTERS.md](../../ADOPTERS.md)
 
 本ドキュメントは `keiailab/valkey-operator` を稼働または評価している組織・プロジェクトの **public** リストです。自己登録を歓迎します — 行を追加する PR をオープンしてください。
 
@@ -35,7 +35,7 @@ PoC、評価中、および Bitnami redis-cluster からの移行候補です。
 | **<組織またはプロジェクト>** ([profile](<URL>)) | <コンポーネント + トポロジー> | <利用パターン> | <初版> | <現バージョン> | <YYYY-MM-DD> |
 ```
 
-匿名で掲載を希望する場合は [SECURITY.md](.github/SECURITY.md) のセキュリティ連絡先から連絡してください。メンテナーが代理で組織名を匿名化した行を登録します。
+匿名で掲載を希望する場合は [SECURITY.md](../../../.github/SECURITY.md) のセキュリティ連絡先から連絡してください。メンテナーが代理で組織名を匿名化した行を登録します。
 
 ## CNCF Sandbox 参照
 

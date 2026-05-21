@@ -7,7 +7,7 @@
 
 # メンテナー
 
-> English version: [MAINTAINERS.md](docs/MAINTAINERS.md)
+> English version: [MAINTAINERS.md](../../MAINTAINERS.md)
 
 本ドキュメントは `keiailab/valkey-operator` に対する意思決定権限を持つメンテナーを追跡します。
 
@@ -25,7 +25,7 @@ GitHub チーム `@keiailab/maintainers` がプロジェクトのすべての領
 
 - 意味のあるコードまたはドキュメントの merged PR が 20 件以上
 - 建設的フィードバックを伴う PR レビューが 30 件以上
-- [GOVERNANCE.md](.github/GOVERNANCE.md) および [CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md) への遵守実績
+- [GOVERNANCE.md](../../../.github/GOVERNANCE.md) および [CODE_OF_CONDUCT.md](../../../.github/CODE_OF_CONDUCT.md) への遵守実績
 - 少なくとも 1 つのコア領域 — controller、resource builder、restore / backup、cluster sharding、observability 等 — に対する深い理解
 
 ## メンテナーの追加

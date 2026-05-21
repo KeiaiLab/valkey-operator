@@ -7,7 +7,7 @@
 
 # Branding Guide — `valkey-operator` (한국어)
 
-> English: [BRANDING.md](docs/BRANDING.md) — canonical / 정본
+> English: [BRANDING.md](../../BRANDING.md) — canonical / 정본
 
 > keiailab operator 패밀리의 시각 정체성, 보이스, 톤 정의.
 
@@ -156,7 +156,7 @@ README 의 shield.io badge 순서 (좌→우):
 
 ## 11. License & Attribution (라이선스 및 출처 표기)
 
-- License: [Apache-2.0](LICENSE)
+- License: [Apache-2.0](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: [NOTICE](NOTICE) 참조 (해당 시)
 

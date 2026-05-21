@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator
 
-> English (canonical / 正本): [ROADMAP.md](docs/ROADMAP.md)
+> English (canonical / 正本): [ROADMAP.md](../../ROADMAP.md)
 
 本路线图 (Roadmap) *并非日期承诺*,而是以可验证的功能清单方式跟踪进展。基于时间的 deadline 按照项目的
 [`standards/workflow.md`](https://github.com/keiailab/valkey-operator/blob/main/docs/kb/adr/INDEX.md)
@@ -126,10 +126,10 @@
   对齐 (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
 - [x] **GitHub Actions release pipeline 恢复** (ADR-0045) —
   面向外部开源 (OSS) 仓库,对 RFC-0002 的有限范围偏离;
-  详见 [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md)
+  详见 [ADR-0045](../../kb/adr/0045-restore-github-actions-for-oss-ci.md)
 - [x] **SLSA-3 provenance + cosign keyless signing** 应用于镜像、
   Helm chart 与 SBOM (ADR-0046) — 验证命令见
-  [SECURITY.md](.github/SECURITY.md)。自 v1.0.13 起生效。
+  [SECURITY.md](../../../.github/SECURITY.md)。自 v1.0.13 起生效。
 - [ ] **生产集群采用**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application 注册

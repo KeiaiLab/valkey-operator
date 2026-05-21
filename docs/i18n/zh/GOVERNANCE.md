@@ -7,7 +7,7 @@
 
 # 治理 (Governance)
 
-> English version: [GOVERNANCE.md](.github/GOVERNANCE.md)
+> English version: [GOVERNANCE.md](../../../.github/GOVERNANCE.md)
 
 本文档定义了 `keiailab/valkey-operator` 中决策的制定方式。
 
@@ -43,7 +43,7 @@
 
 ## 安全决策
 
-CVE 报告与对 secrets / auth 模型的变更首先通过 [SECURITY.md](.github/SECURITY.md) 中的私有渠道处理。公开共识在 patch release 发布后进行。
+CVE 报告与对 secrets / auth 模型的变更首先通过 [SECURITY.md](../../../.github/SECURITY.md) 中的私有渠道处理。公开共识在 patch release 发布后进行。
 
 ## 发布决策
 

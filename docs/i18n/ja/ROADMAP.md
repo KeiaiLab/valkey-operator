@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator
 
-> English (canonical / 正本): [ROADMAP.md](docs/ROADMAP.md)
+> English (canonical / 正本): [ROADMAP.md](../../ROADMAP.md)
 
 本 ROADMAP は *日付の約束ではなく*、検証可能な機能チェックリストとして進捗を追跡します。時間ベースの deadline はプロジェクトの
 [`standards/workflow.md`](https://github.com/keiailab/valkey-operator/blob/main/docs/kb/adr/INDEX.md)
@@ -126,10 +126,10 @@
   整合 (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
 - [x] **GitHub Actions release pipeline 復元** (ADR-0045) —
   外部公開 OSS リポジトリ向けの RFC-0002 からの scoped 逸脱;
-  詳細は [ADR-0045](docs/kb/adr/0045-restore-github-actions-for-oss-ci.md) を参照
+  詳細は [ADR-0045](../../kb/adr/0045-restore-github-actions-for-oss-ci.md) を参照
 - [x] **SLSA-3 provenance + cosign keyless signing** をイメージ、
   Helm chart、SBOM に対して適用 (ADR-0046) — 検証コマンドは
-  [SECURITY.md](.github/SECURITY.md) を参照。v1.0.13 から有効。
+  [SECURITY.md](../../../.github/SECURITY.md) を参照。v1.0.13 から有効。
 - [ ] **本番クラスタへの導入**
   - [ ] CRD-install manifest
   - [ ] ArgoCD application 登録

@@ -7,7 +7,7 @@
 
 # ROADMAP — valkey-operator (한국어)
 
-> English: [ROADMAP.md](docs/ROADMAP.md) — canonical / 정본
+> English: [ROADMAP.md](../../ROADMAP.md) — canonical / 정본
 
 
 본 ROADMAP 은 *날짜 약속이 아니라* 검증 가능한 기능 체크리스트로 진행을 추적한다. 시간 기반 deadline 은 의도적으로 회피하며 (글로벌 `standards/workflow.md` "시간 기반 로드맵 금지"), 기능 단위로 진행을 추적한다.

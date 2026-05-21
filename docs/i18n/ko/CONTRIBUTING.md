@@ -7,7 +7,7 @@
 
 # Contributing (한국어)
 
-> English: [CONTRIBUTING.md](.github/CONTRIBUTING.md) — canonical / 정본
+> English: [CONTRIBUTING.md](../../../.github/CONTRIBUTING.md) — canonical / 정본
 
 valkey-operator 에 기여해 주셔서 감사합니다. 본 문서는 PR 절차, 테스트
 실행, 디자인 결정 추적 (ADR) 의 개요입니다.
@@ -99,7 +99,7 @@ INDEX 갱신 의무 — `docs/kb/adr/INDEX.md`.
 
 ### 게이트 위치
 - `internal/observability/*_test.go` — 모든 SSOT 게이트 (33+ 함수).
-- 인벤토리: [docs/operations/release-checklist.md §2](docs/operations/release-checklist.md).
+- 인벤토리: [docs/operations/release-checklist.md §2](../../operations/release-checklist.md).
 
 ### 자동 차단 시나리오 (PR 머지 전)
 - 신규 metric → alert-rules.yaml + runbook §9 anchor 동기 강제.

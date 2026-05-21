@@ -7,7 +7,7 @@
 
 # Contributing
 
-> 한국어 버전: [CONTRIBUTING.ko.md](../CONTRIBUTING.ko.md)
+> 한국어 버전: [CONTRIBUTING.ko.md](../docs/i18n/ko/CONTRIBUTING.md)
 
 Thanks for your interest in `valkey-operator`. This document describes
 the PR process, how to run the tests, and when an Architecture Decision
