@@ -12,31 +12,15 @@
 2. 자동 생성된 Namespace 리소스가 prod ns 사전생성 정책과 충돌.
 3. 3 repo 중 mongodb-operator 만 `deploy/overlays/prod/` 진입점을 가져 운영자 인지 부하.
 
-### 현 운영 상태 (2026-05-06 인벤토리, kubectl 직접 조회)
+### 도출 결정
 
-```
-$ kubectl config current-context
-argos
-$ kubectl get ns data prod db
-data    Active   4h55m
-Error from server (NotFound): namespaces "prod" not found
-Error from server (NotFound): namespaces "db" not found
-$ kubectl get application -n argocd platform-data-valkey \
-    -o jsonpath='{.spec.destination.namespace}{" "}{.status.sync.status}{"/"}{.status.health.status}'
-data OutOfSync/Degraded
-$ kubectl get storageclass | grep -E "ceph-rbd|ceph-block"
-ceph-rbd (default)   rook-ceph.rbd.csi.ceph.com
-# ceph-block 부재
-```
-
-<!-- live-verified: 2026-05-06 -->
-
-도출 결정:
-
-- **ns 통합 정책 적용**: argos 2026-05-06 사용자 명시 cycle 으로 5 차트 모두 `data` ns 단일. 본 ADR 의 `kustomization.yaml` 도 `namespace: data` 정합. envName=prod 는 식별자로만 유지.
-- **StorageClass 정합**: `ceph-block` 부재 → `ceph-rbd` (default) 사용. CR sample 의 `storageClassName: ceph-rbd`.
-- **bitnami 운영 사실**: `keiailab/argos-platform-data/valkey` ApplicationSet path 가 **bitnami/valkey 5.6.1** (replication 1+1) 로 운영 중 (OutOfSync/Degraded — 진행 중 변경 흔적). `keiailab/valkey-operator` 는 클러스터 *미배포*.
-- 본 deploy/ 는 *bitnami → keiailab* 마이그레이션 **Day-0 진입점 후보**. 마이그레이션 plan 은 별도 문서 (`docs/migration/bitnami-to-keiailab.md`) 로 분리 — 운영 데이터 영향 (sidekiq, web session) 결정은 사용자 명시 영역.
+- **단일 namespace 정책**: ArgoCD Application 의 `destination.namespace` 가
+  `config/default` 의 `<op>-operator-system` 과 영구 drift 한다. 본 ADR 은
+  `deploy/overlays/prod/kustomization.yaml` 에서 *target namespace 명시* 로
+  drift 0 보장.
+- **StorageClass 외부 결정**: deploy/valkey-cluster.yaml 의
+  `storageClassName` 은 *target 클러스터의 등록 SC* 에 맞춰 운영자가
+  결정한다. 본 ADR 은 SC 이름을 강제하지 않는다.
 
 ## Decision
 
@@ -62,7 +46,8 @@ ValkeyCluster sample 은 production 토폴로지 (sharded 3 shards × 1 replica)
 - ArgoCD path = `deploy/overlays/prod` 고정 → drift 0.
 - `make deploy` 로컬 워크플로 회귀 없음.
 - 3 repo 동일 구조.
-- ValkeyCluster CR 의 sharded 토폴로지가 mongodb-sharded 와 운영 모델 정합 (3 shards).
+- ValkeyCluster CR 의 sharded 토폴로지가 sibling operator family 와 운영
+  모델 정합 (3 shards).
 
 부정:
 - `config/manager/manager.yaml` 의 raw name 이 `system` 인 것에 의존. kubebuilder scaffold 변경 시 patch target 갱신 필요.
@@ -72,4 +57,9 @@ ValkeyCluster sample 은 production 토폴로지 (sharded 3 shards × 1 replica)
 
 1. **config/default 를 ArgoCD source 로** — namespace 강제 변경 + Namespace 자동생성 이슈. 거절.
 2. **manager.yaml 의 Namespace name 을 full name 으로 수동 변경 (mongodb 방식)** — kubebuilder regenerate 호환성 저하. 거절.
-3. **Helm chart (`charts/valkey-operator`) 를 GitOps source 로** — mongodb 의 argos-platform-data umbrella chart 가 이미 이 패턴 (operator chart 를 dependency 로 흡수). 본 ADR 은 그것과 *별개 진입점* 도입을 결정하는 것이며 helm 경로를 부정하지 않는다. ADR-0028 (helm/kustomize parity invariant) 가 *두 진입점이 동일 cluster state 를 산출* 하도록 보장하는 방향으로 후속 작업이 필요하다. 본 ADR 은 진입점 도입에만 한정.
+3. **Helm chart (`charts/valkey-operator`) 를 GitOps source 로** — sibling
+   operator family 의 umbrella chart 패턴 (operator chart 를 dependency 로
+   흡수) 과 호환되며 helm 경로를 부정하지 않는다. ADR-0028
+   (helm/kustomize parity invariant) 가 *두 진입점이 동일 cluster state 를
+   산출* 하도록 보장하는 방향으로 후속 작업이 필요하다. 본 ADR 은
+   kustomize 진입점 도입에만 한정.

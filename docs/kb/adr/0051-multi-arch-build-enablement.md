@@ -3,16 +3,16 @@
 - Date: 2026-05-19
 - Status: Proposed
 - Authors: @phil
-- Refs: GOVERNANCE.md §2.3 (amd64-only 정책), RFC-0048 (ai-dev/rfcs/ Draft, 글로벌 정책 변경 진입점), ADR-0137 (OLM ClusterExtension migration sister)
+- Refs: GOVERNANCE.md §2.3 (amd64-only 정책)
 
 ## Context
 
 valkey-operator 의 `Makefile` `docker-buildx` target 은 *이미* `--platform=$(PLATFORMS)` 인자 기반 멀티아키 빌드 capability 를 보유. Dockerfile 도 `TARGETOS`/`TARGETARCH` ARG 기반 cross-platform 호환. 차단점은 **글로벌 정책 GOVERNANCE.md §2.3** 의 *"linux/amd64. 커스텀 빌더·멀티아키텍처 금지"* 조항.
 
-본 작업 trigger (2026-05-19 cycle):
-- 외부 third-party 도입 시 ARM 노드 (Graviton / Ampere / Apple Silicon CI runner) 호환 필수
-- ADR-0137 (OLM ClusterExtension migration) cut-over 후 *외부 OperatorHub.io 채택 path* 진입 시 멀티아키 manifest 가 정합 baseline
-- 사용자 명시 GO (2026-05-19, /goal hook 직접 지시): "멀티아키텍처 + OLM 배포까지 진행"
+본 작업 trigger:
+- ARM 노드 (Graviton / Ampere / Apple Silicon CI runner) 호환 필수
+- OperatorHub.io 채택 path 진입 시 멀티아키 manifest 가 정합 baseline
+- 사용자 명시 GO (2026-05-19): "멀티아키텍처 + OLM 배포까지 진행"
 
 ## Decision
 
@@ -42,7 +42,8 @@ valkey-operator 의 `Makefile` `docker-buildx` target 은 *이미* `--platform=$
 ## Alternatives Considered
 
 ### A1. 글로벌 RFC-0048 머지 전까지 변경 0 (status quo)
-- 거절: 사용자 명시 GO + 외부 도입 시점 차단점 영구 잔존. ADR-0137 의 OLM 채택 path 와 *진본 정합 부재*.
+- 거절: 사용자 명시 GO + 외부 도입 시점 차단점 영구 잔존. OLM 채택 path 와
+  *진본 정합 부재*.
 
 ### A2. PLATFORMS default 즉시 `linux/amd64,linux/arm64`
 - 거절: GOVERNANCE.md §2.3 *직접 위반*. RFC-0048 Accepted 후 진행.

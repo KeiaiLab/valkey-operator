@@ -36,10 +36,10 @@
 
 ## 하지 않는 것
 
-- ❌ **upstream 오퍼레이터 임베드 또는 wrapping** (PGO, CloudNativePG, MongoDB Community Operator, Sentinel) — license-clean, copyleft 의무 없음
-- ❌ **GitHub Actions 를 release gate 로 사용** — local 4-layer + GitLab CI L5 (RFC-0002, RFC-0043 참조)
-- ❌ **시간 기반 roadmap deadline** — 기능 체크리스트 + 완성도 백분율 (`standards/roadmap.md §1.1` 참조)
-- ❌ **Bitnami chart / image** — registry deprecation 위험, Broadcom 인수 (ADR-0136 / ADR-0057 참조)
+- ❌ **third-party 오퍼레이터 임베드 또는 wrapping** — license-clean, copyleft 의무 없음
+- ❌ **GitHub Actions 를 release gate 로 사용** — 로컬 4-layer hook 시스템 (RFC-0002 참조)
+- ❌ **시간 기반 roadmap deadline** — 기능 체크리스트 + 완성도 백분율
+- ❌ **벤더 종속 컨테이너 이미지** — keiailab-published Apache-2.0 이미지만 사용
 
 ## 어디서 시작하나
 

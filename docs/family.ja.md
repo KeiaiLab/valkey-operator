@@ -36,10 +36,10 @@
 
 ## 行わないこと
 
-- ❌ **upstream Operator の埋め込み・ラッピング** (PGO、CloudNativePG、MongoDB Community Operator、Sentinel) — license-clean、copyleft 義務なし
-- ❌ **GitHub Actions を release gate として使用** — local 4-layer + GitLab CI L5 (RFC-0002、RFC-0043 参照)
-- ❌ **時間ベースの roadmap deadline** — 機能チェックリスト + 完成度パーセンテージ (`standards/roadmap.md §1.1` 参照)
-- ❌ **Bitnami chart / image** — registry deprecation リスク、Broadcom 買収 (ADR-0136 / ADR-0057 参照)
+- ❌ **third-party Operator の埋め込み・ラッピング** — license-clean、copyleft 義務なし
+- ❌ **GitHub Actions を release gate として使用** — ローカル 4-layer hook システム (RFC-0002 参照)
+- ❌ **時間ベースの roadmap deadline** — 機能チェックリスト + 完成度パーセンテージ
+- ❌ **ベンダーロック型コンテナイメージ** — keiailab-published Apache-2.0 イメージのみ使用
 
 ## どこから始めるか
 

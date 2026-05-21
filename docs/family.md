@@ -36,10 +36,10 @@ All four projects converge on the same operational primitives:
 
 ## What we do NOT do
 
-- ❌ **Embed or wrap upstream operators** (PGO, CloudNativePG, MongoDB Community Operator, Sentinel) — license-clean, no copyleft obligations
-- ❌ **GitHub Actions for release gates** — local 4-layer + GitLab CI L5 (see RFC-0002, RFC-0043)
-- ❌ **Time-based roadmap deadlines** — feature checklist + completion percentages (see `standards/roadmap.md §1.1`)
-- ❌ **Bitnami chart / image** — registry deprecation risk, Broadcom acquisition (see ADR-0136 / ADR-0057)
+- ❌ **Embed or wrap third-party operators** — license-clean, no copyleft obligations
+- ❌ **GitHub Actions for release gates** — local 4-layer hook system (see RFC-0002)
+- ❌ **Time-based roadmap deadlines** — feature checklist + completion percentages
+- ❌ **Vendor-locked container images** — keiailab-published Apache-2.0 images only
 
 ## Where to start
 
