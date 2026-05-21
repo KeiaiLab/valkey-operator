@@ -1,5 +1,6 @@
 <p align="center">
   <b>English</b> |
+  <a href="CODE_OF_CONDUCT.ko.md">한국어</a> |
   <a href="CODE_OF_CONDUCT.ja.md">日本語</a> |
   <a href="CODE_OF_CONDUCT.zh.md">中文</a>
 </p>
