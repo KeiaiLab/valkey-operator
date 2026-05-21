@@ -396,10 +396,78 @@ Trigger → Diagnosis → Mitigation → Escalation 순서로 진행.
   어느 단계 (secret / sts / svc / tls / backup) 가 실패하는지 식별.
 - **Mitigation**: §2.1 Phase=Failed CR 절차 적용 (Conditions Reason 분류).
 
-## 8. ADR / RFC 참조
+## 10. Replication 모드 자동 Failover
+
+ADR-0017 (replication failover — replica with largest offset).
+operator 가 failover 결정 소유; Sentinel sidecar 없음.
+
+### 10.1 활성화 조건
+
+- `Spec.Mode == Replication` 이고 `Spec.Replicas > 1`
+- `Spec.AutoFailover == true` (default — `false` 시 비활성)
+
+### 10.2 알고리즘 (7 단계)
+
+1. 현재 primary (`Status.CurrentPrimary` 또는 `<name>-0`) pod ready 검증.
+2. NotReady 30s 미만이면 transient flap 으로 무시.
+3. 모든 replica (primary 제외) 의 `INFO replication` 호출 → offset 추출.
+4. `selectFailoverCandidate` 가 가장 큰 offset replica 선출 (tie 시 ordinal
+   작은 것).
+5. `PromoteToPrimary` 가 후보에게 `REPLICAOF NO ONE` 발행 → 새 primary.
+6. 다른 Ready replica 모두에게 `EnsureReplicaOf <new-primary>` 발행.
+7. `Status.CurrentPrimary` in-memory 갱신; 다음 reconcile 의 status update
+   에 반영.
+
+각 phase 의 OTel span: `Failover/INFO_replication`,
+`Failover/PromoteToPrimary`, `Failover/EnsureReplicaOf_all` (참조
+[`observability/otel.md`](../observability/otel.md)).
+
+### 10.3 비활성화
+
+```yaml
+spec:
+  autoFailover: false   # operator failover 경로 skip; 수동 복구 only
+```
+
+### 10.4 알려진 한계
+
+- **네트워크 분단 시 강력한 split-brain 보장 없음** — 두 primary 발생 가능.
+  완화: 30s NotReady 임계값 + operator leader-elect (단일 replica).
+- **ValkeyCluster 모드는 N/A** — valkey native cluster mode 의
+  `cluster_replica_validity_factor` 가 처리. `ValkeyClusterReconciler` 는
+  의도적으로 failover 에 관여하지 않음.
+- **e2e 자동화 부재** — replication-failover e2e 는 별 cycle.
+
+## 11. 운영 시나리오 실측 검증
+
+릴리즈 검증 과정에서 실측한 운영 시나리오. 각 row 는 live operator 에서
+실행된 시나리오이며 *Behavior* 컬럼은 *관찰된 동작* 을 기록한다.
+
+| 시나리오 | 동작 | 데이터 |
+|---|---|---|
+| primary pod kill (force) | STS 재생성 → operator 가 pod-0 재 promote | PVC 보존 |
+| replica scale up (3→5) | 새 replica 가 자동으로 master link up | — |
+| replica scale down (5→2) | 잉여 pod 정리 | 기존 데이터 유지 |
+| ValkeyCluster shard pod kill | `cluster_state=ok` 유지 (replica 가 즉시 take over) | 모든 슬롯 보존 |
+| TLS+mTLS ValkeyCluster (cert-manager) | `Phase=Running`, `slots=16384`, 데이터 plane SET/GET ✓ | — |
+| TLS+mTLS Valkey Standalone (cert-manager) | `Phase=Running`, ping/set/get on 6380 ✓ | — |
+| TLS+mTLS Valkey Replication (3 replicas) | `master_link_status:up`, write propagation 모든 replica ✓ | — |
+| ValkeyBackup (RDB) | Pending → InProgress → Completed, `/data/dump.rdb` 89 bytes 생성 | — |
+| ValkeyBackup M3.5 (Job-based PVC) | Copying → Completed, `<name>-backup` PVC 에 `dump.rdb` 보존 | TLS 자동 전파 |
+| ValkeyRestore (Standalone PVC) | Mounting → Restoring → Verifying → Completed, init container 가 `/data/dump.rdb` cp | `Status.RestoredKeys` 채움 |
+| ValkeyRestore (`Source.TargetRef` S3) | 임시 PVC + Download Job → 기존 init container 흐름 | cross-cluster restore |
+| ValkeyRestore (ValkeyCluster, ROX) | shard 별 ordinal → `SHARD_IDX` shell 매핑 + per-pod cp | ROX source PVC 필수 |
+| Replication 자동 Failover (ADR-0017) | primary `NotReady` 30s+ → 가장 큰 offset replica `REPLICAOF NO ONE` → `Status.CurrentPrimary` 갱신 | e2e: `test/e2e/failover_test.go` |
+| NetworkPolicy 리소스 생성 | selfPeer + 6379(/16379) ingress + `ownerReferences` | (CNI 의존) |
+| Operator metrics endpoint (HTTPS:8443) | `controller_runtime_*` + `valkey_cluster_*` 노출 | — |
+| Prometheus alert rules | 13 alerts (state / slots / replicas / phase / errors / latency / operator down) | `config/prometheus/alert-rules.yaml` |
+
+## 12. ADR / RFC 참조
 
 - ADR-0010 cert-manager 자동 인식 / ADR-0013 Auth 강제 / ADR-0014 TLS volume mount
 - ADR-0015 Restore Init container 패턴 / ADR-0016 ValkeyBackupTarget
+- ADR-0017 Replication Failover (replica with largest offset)
 - ADR-0022 minio-go / ADR-0023 sub-command pattern
+- ADR-0025 OTel tracer provider optional
 
 전체 INDEX: `docs/kb/adr/INDEX.md`.

@@ -464,3 +464,75 @@ each alert as **Trigger → Diagnosis → Mitigation → Escalation**.
   tls / backup) is failing.
 - **Mitigation**: apply the §2.1 `Phase=Failed CR` procedure
   (classify by the Conditions Reason).
+
+## 10. Replication mode automatic failover
+
+ADR-0017 (replication failover — replica with the largest offset).
+The operator owns the failover decision; there is no Sentinel sidecar.
+
+### 10.1 Activation conditions
+
+- `Spec.Mode == Replication` and `Spec.Replicas > 1`
+- `Spec.AutoFailover == true` (default — set to `false` to disable)
+
+### 10.2 Algorithm (7 steps)
+
+1. Read the current primary (`Status.CurrentPrimary` or `<name>-0`)
+   and verify pod readiness.
+2. If `NotReady` for less than 30 s, treat as a transient flap and
+   ignore.
+3. Issue `INFO replication` against every replica (excluding the
+   primary) and harvest `master_repl_offset`.
+4. `selectFailoverCandidate` picks the replica with the largest
+   offset (ties broken by smaller ordinal).
+5. `PromoteToPrimary` issues `REPLICAOF NO ONE` against the candidate
+   → it becomes the new primary.
+6. For every other `Ready` replica, issue `EnsureReplicaOf <new-primary>`.
+7. Update `Status.CurrentPrimary` in memory; the next reconcile
+   persists it to the CR.
+
+OTel spans for each phase: `Failover/INFO_replication`,
+`Failover/PromoteToPrimary`, `Failover/EnsureReplicaOf_all`
+(see [`observability/otel.md`](../observability/otel.md)).
+
+### 10.3 Disabling
+
+```yaml
+spec:
+  autoFailover: false   # operator skips the failover path; manual recovery only
+```
+
+### 10.4 Known limits
+
+- **No hard split-brain guarantee under network partition** — two
+  primaries can be elected. Mitigation: the 30 s `NotReady` threshold
+  + operator leader election (single replica).
+- **ValkeyCluster mode is N/A** — Valkey's native cluster mode uses
+  `cluster_replica_validity_factor`. `ValkeyClusterReconciler` is
+  intentionally not involved in failover.
+- **No e2e automation yet** — replication-failover e2e is a separate cycle.
+
+## 11. Verified operational scenarios
+
+Verified behavior captured during release-validation runs. Each row
+represents a scenario exercised against the live operator; the
+"Behavior" column states what was observed.
+
+| Scenario | Behavior | Data |
+|---|---|---|
+| primary pod kill (force) | STS re-creates; operator re-promotes pod-0 | PVC retained |
+| replica scale up (3 → 5) | new replica auto-joins `master link up` | — |
+| replica scale down (5 → 2) | surplus pods cleaned up | existing data retained |
+| ValkeyCluster shard pod kill | `cluster_state=ok` holds (replica takes over) | all slots preserved |
+| TLS + mTLS ValkeyCluster (cert-manager) | `Phase=Running`, `slots=16384`, data-plane SET/GET ✓ | — |
+| TLS + mTLS Valkey Standalone (cert-manager) | `Phase=Running`, ping/set/get on port 6380 ✓ | — |
+| TLS + mTLS Valkey Replication (3 replicas) | `master_link_status:up`, write propagation across replicas ✓ | — |
+| ValkeyBackup (RDB) | Pending → InProgress → Completed; `/data/dump.rdb` 89 B generated | — |
+| ValkeyBackup M3.5 (Job-based PVC) | Copying → Completed; `<name>-backup` PVC retains `dump.rdb` | TLS propagated automatically |
+| ValkeyRestore (Standalone PVC) | Mounting → Restoring → Verifying → Completed; init container cp's `/data/dump.rdb` | populates `Status.RestoredKeys` |
+| ValkeyRestore (`Source.TargetRef` S3) | ephemeral PVC + Download Job → standard init-container flow | cross-cluster restore |
+| ValkeyRestore (ValkeyCluster, ROX) | shard ordinal → `SHARD_IDX` shell mapping → per-pod cp | ROX source PVC required |
+| Replication auto failover (ADR-0017) | primary `NotReady` 30 s+ → largest-offset replica `REPLICAOF NO ONE` → `Status.CurrentPrimary` updated | e2e: `test/e2e/failover_test.go` |
+| NetworkPolicy resource creation | selfPeer + 6379 / 16379 ingress + `ownerReferences` | (CNI-dependent) |
+| Operator metrics endpoint (HTTPS:8443) | `controller_runtime_*` + `valkey_cluster_*` exposed | — |
+| Prometheus alert rules | 13 alerts (state / slots / replicas / phase / errors / latency / operator down) | `config/prometheus/alert-rules.yaml` |
