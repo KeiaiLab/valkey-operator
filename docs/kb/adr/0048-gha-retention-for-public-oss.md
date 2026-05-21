@@ -2,7 +2,7 @@
 
 | Meta | Value |
 |---|---|
-| Status | Proposed |
+| Status | Accepted (per operator family trade-off — sister ADR-0018 &#x0023; mongodb-ADR-0032 chose strict removal) |
 | Date | 2026-05-21 |
 | Author | keiailab |
 | Supersedes | (none) |
