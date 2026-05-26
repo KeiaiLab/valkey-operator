@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// 도메인 타입별 controllerutil.CreateOrUpdate wrapper. mongodb-operator
+// 도메인 타입별 controllerutil.CreateOrUpdate wrapper.
 // internal/controller/resources_apply.go 패턴 차용. 핵심 학습:
 // - immutable 필드 (Selector / ServiceName / VolumeClaimTemplates / ClusterIP) 는
 //   Create 시점에만 설정.

@@ -12,7 +12,7 @@
 #   CHART_NAME      default valkey-operator
 #   PUB_RING        default /tmp/valkey-operator-pubring.gpg
 #
-# Refs: docs/ROADMAP.md 'release-smoke-test.sh — port the mongodb-operator pattern'
+# Refs: docs/ROADMAP.md 'release-smoke-test.sh'
 #       (P-C.4.1) + ADR-0044 (Artifact Hub Signed badge) + issue #187
 
 set -euo pipefail

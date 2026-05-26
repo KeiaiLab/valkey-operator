@@ -80,7 +80,7 @@ pre-push:
         fi
         rm -f /tmp/.go.mod.lefthook.bak /tmp/.go.sum.lefthook.bak
     kube-linter:
-      # P1-11: K8s 리소스 보안/best-practice 검사 (postgres-operator 정합).
+      # P1-11: K8s 리소스 보안/best-practice 검사.
       # helm template 결과를 kube-linter 로 검사 → CRD 별도.
       # 설치: brew install kube-linter (또는 go install golang.stackrox.io/kube-linter/cmd/kube-linter@latest)
       # 우회: KUBE_LINTER_SKIP=1
@@ -97,7 +97,7 @@ pre-push:
         # helm template default values 로 lint (valkey chart name).
         helm template valkey-operator charts/valkey-operator --include-crds | kube-linter lint -
     go-licenses:
-      # P1-12: Go 의존성 라이선스 검사 (postgres-operator 정합).
+      # P1-12: Go 의존성 라이선스 검사.
       # forbidden / restricted license (GPL-3.0, AGPL 등) 포함 의존성 차단.
       # 설치: go install github.com/google/go-licenses@latest
       # 우회: GO_LICENSES_SKIP=1
@@ -109,7 +109,7 @@ pre-push:
         fi
         go-licenses check ./... --disallowed_types=forbidden,restricted 2>&1 | grep -v "^W" || true
     markdown-link-check:
-      # P1-13: 마크다운 문서의 깨진 링크 검사 (postgres-operator 정합).
+      # P1-13: 마크다운 문서의 깨진 링크 검사.
       # 설치: npm install -g markdown-link-check
       # 우회: MD_LINK_CHECK_SKIP=1
       run: |

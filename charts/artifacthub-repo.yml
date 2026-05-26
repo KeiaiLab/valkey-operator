@@ -6,7 +6,7 @@
 #   URL:  https://keiailab.github.io/valkey-operator
 #   path: https://artifacthub.io/packages/helm/keiailab-valkey-operator/valkey-operator
 #
-# signingKey 는 keiailab 공통 PGP key (mongodb-operator/postgres-operator 와 동일 owner) 재사용.
+# signingKey 는 keiailab 공통 PGP key 재사용.
 
 repositoryID: 16085dd0-0f19-4c6b-ab90-bd97105bdf42
 

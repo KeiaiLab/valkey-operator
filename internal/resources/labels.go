@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package resources — Valkey / ValkeyCluster 가 사용하는 K8s 리소스 빌더.
-// mongodb-operator/internal/resources/builder.go 의 함수형 builder 패턴 차용.
+// 함수형 builder 패턴.
 package resources
 
 import (

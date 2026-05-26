@@ -215,7 +215,7 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 		))
 	}
 
-	// storage.size 하한 1Gi (cross-cut audit, mongodb-operator it46 step 7
+	// storage.size 하한 1Gi (cross-cut audit
 	// commit 8b2414f 와 동일 invariant). RDB snapshot + AOF 합산 floor 보장.
 	errs = append(errs, validateStorageSizeMin(specPath.Child("storage", "size"), vc.Spec.Storage.Size)...)
 	errs = append(errs, validateStorageMode(specPath.Child("storage"), vc.Spec.Storage)...)
@@ -443,7 +443,7 @@ func validateTopologySpread(path *field.Path, tscs []corev1.TopologySpreadConstr
 	return errs
 }
 
-// validateStorageSizeMin — storage.size 하한 1Gi 검증. mongodb-operator it46
+// validateStorageSizeMin — storage.size 하한 1Gi 검증. cross-cut audit
 // step 7 와 동일 패턴 (cross-cut audit per ADR-0016). zero (unset) 은 CRD
 // default 가 채우므로 본 함수 도달 시점엔 양수.
 func validateStorageSizeMin(path *field.Path, size resource.Quantity) field.ErrorList {
