@@ -33,7 +33,6 @@ POC / 평가 / 외부 redis-cluster chart 마이그레이션 검토 사용자.
 PR 을 열어 위 표에 한 row 추가:
 
 ```markdown
-| **<조직 / 프로젝트>** ([profile](<URL>)) | <컴포넌트 + 토폴로지> | <사용 패턴> | <시작 버전> | <현재 버전> | <등재 일자 YYYY-MM-DD> |
 ```
 
 비공개 또는 익명 등재를 원하시면 SECURITY.md 의 보안 채널로 알려주시면 maintainer 가 *organization-anonymized* row 로 등재합니다.

@@ -1,7 +1,7 @@
 <p align="center">
-  <a href="BRANDING.md">English</a> |
-  <a href="BRANDING.ko.md">한국어</a> |
-  <a href="BRANDING.ja.md">日本語</a> |
+  <a href="../../BRANDING.md">English</a> |
+  <a href="../ko/BRANDING.md">한국어</a> |
+  <a href="../ja/BRANDING.md">日本語</a> |
   <b>中文</b>
 </p>
 
@@ -133,4 +133,4 @@ README 中 shield.io badge 的顺序 (左→右):
 
 - License: [Apache-2.0](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
-- Third-party attributions: 见 [NOTICE](NOTICE) (如适用)
+- Third-party attributions: 见 [NOTICE](../../../NOTICE) (如适用)

@@ -36,7 +36,6 @@ candidates.
 Open a PR that appends a row to one of the tables above:
 
 ```markdown
-| **<organization or project>** ([profile](<URL>)) | <component + topology> | <usage pattern> | <first version> | <current version> | <YYYY-MM-DD> |
 ```
 
 If you would rather be listed anonymously, reach out via the security

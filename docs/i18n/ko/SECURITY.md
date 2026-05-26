@@ -133,5 +133,5 @@ exact build that produced the image.
 ## 알려진 한계 (현재 버전)
 
 - 영어: [README.md → "Known limitations"](../../../README.md#known-limitations)
-- 한국어: [README.ko.md → "잠재적 운영 이슈"](../../../README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
+- 한국어: [operations troubleshooting](../../operations/troubleshooting.md)
 - 그 외: GitHub Issues label `security`.
