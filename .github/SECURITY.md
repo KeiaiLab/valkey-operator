@@ -25,8 +25,7 @@ Choose either:
      `89A4 0947 6828 CB99 2338  C378 651E 51AF 520B CB78`
    - Public key: `artifacthub-repo.yml` on the `gh-pages` branch, or
      <https://keiailab.github.io/valkey-operator/artifacthub-repo.yml>
-   - The same key signs `mongodb-operator` and `postgres-operator`
-     (3-repo unified key).
+   - This key is used across all keiailab operator repositories.
 
 ### What to include
 
