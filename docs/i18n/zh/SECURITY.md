@@ -24,7 +24,6 @@
      `89A4 0947 6828 CB99 2338  C378 651E 51AF 520B CB78`
    - Public key: 位于 `gh-pages` 分支的 `artifacthub-repo.yml`,或
      <https://keiailab.github.io/valkey-operator/artifacthub-repo.yml>
-   - 同一个 key 也被 `mongodb-operator` 和 `postgres-operator` 共用
      (3-repo 统一密钥)。
 
 ### 报告中应包含的内容
@@ -136,17 +135,3 @@ cosign verify-blob \
 - 英文: [README.md → "Known limitations"](../../../README.md#known-limitations)
 - 韩文: [README.ko.md → "잠재적 운영 이슈"](../../../README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
 - 另见: GitHub Issues 中带有 `security` 标签的 issue。
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

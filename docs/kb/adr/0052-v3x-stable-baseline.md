@@ -24,13 +24,10 @@ CLAUDE.md §7: "본 규약은 **상용 제품 수준**의 다중 프로젝트 �
 - OP (운영): ✅ release.sh 자동화 / helm-publish.sh 신규 (valkey-ADR/0050 OP-2) / chart .tgz publish / OCI image / UPGRADING.md (OP-10)
 - C (커뮤니티): ✅ ADOPTERS.md / CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / GOVERNANCE / 외부 chart 호환성 매트릭스 (valkey-ADR/0043) / SLSA Level 3 + cosign supply chain (valkey-ADR/0046) / ArtifactHub 서명 배지 (valkey-ADR/0044)
 
-audit 시계열 기록: [`commons/docs/quality/audit-history.md`](https://github.com/keiailab/operator-commons/blob/main/docs/quality/audit-history.md) → "🎉 2026-05-21 15:30 — audit ❌ 0 달성" 섹션.
-
 ### 2. 거버넌스 baseline
 
 - **RFC-0002 정합** (GitHub Actions 영구 금지) — 본 repo 는 valkey-ADR/0048 dual-track + valkey-ADR/0045 (oss CI restore) 로 운영. 예외 3종 (Pages 정적 배포 + Dependabot/Renovate + release tag → Release body) 명시.
 - **i18n** (en/ko) README — supercycle 2026-05-21 Wave 4 부분 완료 (ja/zh 는 후속 RFC).
-- **operator-commons** 의존성 정합: `github.com/keiailab/operator-commons` 적합 버전 import (Sprint 1 의 pkg/pvc + pkg/topology 채택 — valkey-ADR/0049 / commons-ADR/0016).
 - **공급망 보안**: valkey-ADR/0046 (SLSA Level 3 + cosign signature) + valkey-ADR/0044 (ArtifactHub trust badge) — 외부 사용자 검증 신호.
 - **상업 호환**: valkey-ADR/0042 (commercial parity series closure) + valkey-ADR/0043 (외부 chart 호환 매트릭스).
 
@@ -74,7 +71,6 @@ audit 시계열 기록: [`commons/docs/quality/audit-history.md`](https://github
 ## 참조
 
 - commons-ADR/0013: `audit-production-grade.sh` 5 repo SSOT 측정 자동화
-- commons audit-history (시계열): https://github.com/keiailab/operator-commons/blob/main/docs/quality/audit-history.md
 - CLAUDE.md §7 (v3.x-stable 정의): https://github.com/keiailab/.codex (글로벌 standards, private)
 - valkey-ADR/0042: Commercial parity series closure
 - valkey-ADR/0043: 외부 chart valkey 호환 매트릭스

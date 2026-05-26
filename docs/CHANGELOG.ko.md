@@ -89,8 +89,7 @@
 - dependabot 7 건 main 머지:
   - Docker base: `golang 1.26.3`, `distroless/static@e3f9456`
     (#80, #81).
-  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils +
-    operator-commons 0.7.0 + otel 그룹 + ginkgo 2.28.3 + gomega
+  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils + + otel 그룹 + ginkgo 2.28.3 + gomega
     1.40.0 (#84–#88).
 
 ## [1.0.12] - 2026-05-12
@@ -181,7 +180,7 @@
 
 ### Changed
 
-- operator-commons v0.5.0 → v0.6.0 — RFC-0018 의 `SetAvailable` +
+- — RFC-0018 의 `SetAvailable` +
   `SetReadyFalse` 사용 가능해짐 (#7).
 
 ### Docs
@@ -218,7 +217,7 @@
   depguard 정리), Makefile `validate` 타겟 추가 (kustomize + helm
   lint + helm template). ADR-0030 등재. 본 repo 의 `.lefthook.yml`
   은 RFC-0017 §3.1 표준 원본으로 승격 (변경 없음, 0aea740).
-- operator-commons v0.4.0 → v0.5.0 (4833f13).
+- (4833f13).
 - `.codecov.yml` 신규 — 4-repo target 70% 절대 floor 통일
   (d381587).
 
@@ -373,7 +372,6 @@ RBAC 결함 fix.
 ### Refs
 - ADR-0057 (인프라 부트스트랩 43fd542): self-hosted
   valkey-operator 채택 로드맵.
-- 운영 사고 분석 + Phase A 진행: keiailab/mongodb-operator
   HANDOFF.md (2026-05-07).
 
 ### Added (GitOps deploy 정합)
@@ -385,8 +383,7 @@ RBAC 결함 fix.
   (db ns, shards=3, replicasPerShard=1, ceph-block,
   auth.enabled=true).
 - `deploy/README.md` — 운영 런북.
-- ADR-0029 — GitOps deploy 오버레이 도입 (mongodb-operator /
-  postgresql-operator 와 3-repo 정합).
+- ADR-0029 — GitOps deploy 오버레이 도입 (3-repo 정합).
 
 ### Added (cycles 20-90 — Quality 시스템 + production-grade UX)
 
@@ -592,17 +589,3 @@ completion**.
 - **`internal/webhook/v1alpha1`: 80.7%** (신규 패키지).
 - 단위 테스트: 60+ 건.
 - 통합 테스트: 4 시나리오 (실 Valkey 6 노드).
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

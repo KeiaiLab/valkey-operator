@@ -104,6 +104,5 @@ reconciler 行为:
 - Schema: `api/v1alpha1/valkeycluster_types.go` (`PerShard` 字段)
 - 孤儿清理 helper: `internal/controller/pdb_default.go`
   (`EnsurePDBDeleted`)
-- 同源模式: `mongodb-operator/internal/resources/builder.go`
 - 单元测试: `internal/controller/pdb_default_test.go`
   (`BuildShardPDB` + `EnsurePDBDeleted` —— 全部 PASS)

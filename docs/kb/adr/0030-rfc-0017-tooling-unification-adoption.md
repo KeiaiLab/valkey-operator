@@ -55,4 +55,3 @@ RFC-0017 을 **Accepted** 로 채택하고 본 repo 에서:
 ## References
 
 - 글로벌 RFC: `~/Documents/ai-dev/rfcs/0017-operator-tooling-unification.md`
-- 관련 audit: `~/.claude/plans/mongodb-operator-operator-commons-postgr-tranquil-horizon.md`

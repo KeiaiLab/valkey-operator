@@ -52,17 +52,3 @@ CVE 보고, 시크릿/인증 모델 변경은 [SECURITY.md](../../../.github/SEC
 | Date | Change | Refs |
 |---|---|---|
 | 2026-05-07 | 본 문서 신설 — 3-repo (mongodb / postgresql / valkey) 거버넌스 자산 정합 | INC-2026-05-07 |
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

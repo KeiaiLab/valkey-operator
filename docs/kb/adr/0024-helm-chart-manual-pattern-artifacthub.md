@@ -7,14 +7,13 @@
 
 ## Context
 
-3 개 keiailab operator repo (`mongodb-operator`, `postgres-operator`,
+keiailab Helm chart 표준화 결정.
 `valkey-operator`) 의 GitOps / Helm 파이프라인을 *동일 패턴* 으로 통일해야 한다.
 
 기존 상태 (조사 결과 2026-05-06):
 
 | 항목 | mongodb-op | postgres-op | valkey-op |
 |---|---|---|---|
-| Helm chart 위치 | `charts/mongodb-operator/` | `charts/postgresql-operator/` | (없음) |
 | ArtifactHub 메타 | `charts/artifacthub-repo.yml` | `charts/artifacthub-repo.yml` | (없음) |
 | ArtifactHub 등록 | ✓ | ✓ | (없음) |
 | `Makefile` release 6단계 | ✓ | ✓ | (없음) |
@@ -22,7 +21,6 @@
 | Decision (이전) | 수기 chart | 수기 chart | ADR-0021 → kubebuilder helm/v2-alpha plugin |
 
 ADR-0021 은 *plan 만 결정* 되었고 `dist/chart/` 산출물은 생성되지 않았다 (paper-only).
-사용자 지시: "*3개의 폴더 모두 mongodb-operator 와 동일하게 GitOps 적용*".
 
 ## Decision
 
@@ -111,17 +109,14 @@ ArtifactHub publish 모델:
       GHCR `ghcr.io/keiailab/valkey-operator:v0.1.0-alpha.1` (sha256 2d1463bf...) +
       GH Release prerelease=true + gh-pages orphan branch (commit 37716ff) +
       Pages 자동 활성화 (status: built) + index.yaml live (5063 bytes).
-- [x] AI-0024-3: postgres-operator 의 `release` 타겟 buildx 보강 (commit 314af15).
 - [x] AI-0024-4: grpc CVE-2026-33186 (CRITICAL) v1.72.2→v1.81.0 (commit a353b44).
 - [x] AI-0024-5: otel SDK GO-2026-4394 v1.36.0→v1.43.0 (commit c05b251).
 - [x] AI-0024-6: Makefile audit trivy fail-handling 보강 (silent-fail → exit 1,
       postgres 패턴 정합, commit a353b44).
 - [x] AI-0024-7: `scripts/artifacthub-register.sh` helper (UUID 검증 + sed 교체 +
       검증 명령 echo, commit a353b44).
-- [x] AI-0024-8: postgres-operator 첫 release v0.3.0-alpha.1 publish (2026-05-06).
       GHCR sha256:7658a42e + GH Release prerelease + gh-pages orphan (817399a) +
       Pages built + helm pull 검증 PASS. 3-repo 모두 publish 완료.
-- [x] AI-0024-9: mongodb-operator audit 의 trivy silent-fail 동일 결함 보강
       (commit 2b7c44a) — postgres 패턴 정합. 3-repo audit gate 통일.
 - [x] AI-0024-10: 3-repo 동일 `renovate.json` 추가 (RFC 0002 §7 예외) —
       자동 CVE 감지 + k8s/otel group + vulnerabilityAlerts (security/p0).

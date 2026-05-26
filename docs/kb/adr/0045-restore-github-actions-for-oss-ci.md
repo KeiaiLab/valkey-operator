@@ -76,9 +76,6 @@ The deviation applies **only** to `keiailab/valkey-operator` and its
 sister OSS operator repositories that publish to a public registry:
 
 - `keiailab/valkey-operator` (this repo)
-- `keiailab/mongodb-operator`
-- `keiailab/postgres-operator`
-- `keiailab/operator-commons`
 
 Each sister repository SHOULD record its own ADR referencing this one
 rather than relying on a transitive deviation.
@@ -135,14 +132,12 @@ rather than relying on a transitive deviation.
 
 - ADR-0046: SLSA-3 provenance + cosign signing for `valkey-operator`
   container image and Helm chart (depends on this ADR).
-- Sister repos (`mongodb-operator`, `postgres-operator`,
-  `operator-commons`): write parallel ADRs referencing this one.
 - `ai-dev/rfcs/0002`: append a clarification that public OSS operator
   repositories are out of scope.
 
 ## References
 
-- Commit `71d322b` — original Actions setup (ported from mongodb-operator)
+- Commit `71d322b` — original Actions setup (original Actions setup)
 - Commit `3c69429` — removal under RFC-0002
 - 2026-05-12 PR sweep (this commit) — restoration evidence
 - RFC-0002 §7 — narrow exceptions previously granted

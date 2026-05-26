@@ -93,5 +93,4 @@ reconciler の挙動:
 - 実装: `internal/resources/pdb.go` (`BuildShardPDB`)
 - スキーマ: `api/v1alpha1/valkeycluster_types.go` (`PerShard` フィールド)
 - Orphan cleanup ヘルパー: `internal/controller/pdb_default.go` (`EnsurePDBDeleted`)
-- 兄弟パターン: `mongodb-operator/internal/resources/builder.go`
 - ユニットテスト: `internal/controller/pdb_default_test.go` (`BuildShardPDB` + `EnsurePDBDeleted` — 全て PASS)

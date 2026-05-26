@@ -59,7 +59,6 @@ Rekor public ledger 만 가능.
 - 외부 외부 chart 와 동등 보증 수준 — 사용자 이탈 차단.
 - SLSA L2 가 EU Cyber Resilience Act (CRA) 의 *minimum acceptable*
   baseline 으로 인용 가능 (2027 시행 예정).
-- 4-repo 표준화의 Reference (mongodb / postgres-operator 도 동일 패턴
   도입 가능).
 
 ### Negative

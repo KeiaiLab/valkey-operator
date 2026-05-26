@@ -63,7 +63,7 @@ comm -23 /tmp/local_branches.txt /tmp/remote_branches.txt \
 
 ```sh
 # keiailab の全リポジトリにわたる直近 7 日間の失敗 run
-for repo in valkey-operator mongodb-operator postgres-operator operator-commons; do
+for repo in valkey-operator; do
   echo "--- $repo ---"
   gh run list --status failure --created ">=$(date -d '-7 days' +%Y-%m-%d)" --limit 5 -R keiailab/$repo
 done

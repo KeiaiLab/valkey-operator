@@ -128,7 +128,6 @@ discipline note in §Consequences applies).
    restored.
 2. **Partial removal (keep External Trust Gate only, remove `ci.yml`
    and `helm-lint.yml`)** — Rejected. Inconsistency with sister
-   operators (`postgres-operator`, `mongodb-operator`) which retain the
    full set; the local 4-tier duplicate would add maintenance burden
    without clear benefit. Depth-defense value is small but non-zero and
    the cost is low.
@@ -157,8 +156,6 @@ discipline note in §Consequences applies).
   - [ADR-0047](0047-community-operators-sync-automation.md) — RFC-0002 §7
     Exception ③ extension; sync job runs in `release.yml`.
 - **Cross-operator ADRs (consolidated rationale parity)**:
-  - `postgres-operator/docs/kb/adr/0017-gha-retention-for-public-oss.md`
-  - `mongodb-operator/docs/kb/adr/0031-gha-retention-for-public-oss.md`
 - **Incident KB**: I-2026-04-28 (GHA billing outage; RFC-0002 trigger).
 - **Related repo policy**:
   - [ADR-0030](0030-rfc-0017-tooling-unification-adoption.md) — RFC-0017

@@ -2,7 +2,6 @@
 
 > English: [post-merge-cleanup.md](post-merge-cleanup.md) — canonical / 정본
 
-
 PR squash-merge 후 *local branch + 머지 흔적* 정리 절차. PR #38-#64 시리즈
 운영 중 누적된 25 stale local branch 사례 발견 후 추가.
 
@@ -65,7 +64,7 @@ GitHub 에서 *동일 워크플로우 실패 메일이 반복적으로* 도착.
 
 ```sh
 # 모든 keiailab repo 의 최근 7일 failed runs
-for repo in valkey-operator mongodb-operator postgres-operator operator-commons; do
+for repo in valkey-operator; do
   echo "--- $repo ---"
   gh run list --status failure --created ">=$(date -d '-7 days' +%Y-%m-%d)" --limit 5 -R keiailab/$repo
 done

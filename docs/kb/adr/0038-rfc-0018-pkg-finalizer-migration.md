@@ -3,7 +3,6 @@
 - Date: 2026-05-09
 - Status: Accepted (PR-A6 first cut — finalizer only, status migration 별 PR)
 - Authors: @eightynine01
-- Refs: RFC-0018 (`operator-commons/docs/kb/rfc/0018-status-finalizer-standard.md`), ADR-0003 (commons), Plan §2 D10
 
 ## Context
 
@@ -24,8 +23,6 @@ RFC-0018 §3.2 의 valkey-operator 측 채택. 본 ADR 작성 시점:
 
 ## Decision
 
-1. **5 controller 의 finalizer 호출** 을 `sigs.k8s.io/controller-runtime/pkg/controller/controllerutil` 에서 `github.com/keiailab/operator-commons/pkg/finalizer` (alias `commonsfinalizer`) 로 위임.
-
 2. **API 매핑**:
    - `controllerutil.ContainsFinalizer(o, name)` → `commonsfinalizer.Has(o, name)`
    - `controllerutil.AddFinalizer(o, name)` → `commonsfinalizer.Add(o, name)`
@@ -41,13 +38,11 @@ RFC-0018 §3.2 의 valkey-operator 측 채택. 본 ADR 작성 시점:
 
 ### Positive
 
-- 4-repo 정합성 (mongodb-operator PR-A5, postgres-operator PR-A7 와 동일 패턴) — RFC-0018 §3.1 표준 채택.
 - commons `pkg/finalizer` 채택률 0% → 25% (4 repo 중 valkey 가 첫 도입). mongodb / postgres 후속 시 75% → postgres 비대칭 보존하면 67%.
 - 호출 표면 변화 없음 — 기존 호출 패턴 그대로, 단순 import path 변경.
 
 ### Negative
 
-- 의존성 표면 +1 (operator-commons/pkg/finalizer). v0.6.0 bump 후속 — 이미 별 PR (chore/bump-commons-v0.6.0 #7) 머지됨.
 - 외부 contributor 가 *commons API* 학습 의무. 단 controllerutil 와 sig 동등이라 학습 비용 미미.
 
 ### Trade-offs
@@ -69,9 +64,8 @@ RFC-0018 §3.2 의 valkey-operator 측 채택. 본 ADR 작성 시점:
 
 ## Refs
 
-- RFC-0018: operator-commons/docs/kb/rfc/0018-status-finalizer-standard.md
 - ADR-0003 (commons): pkg/status 슈가 + pkg/finalizer 변경 없음 결정.
 - Plan §2 D10/D11 (4-repo migration matrix).
-- PR-A1 머지 commit: 9891bf3 (operator-commons main).
+- PR-A1 머지 commit: 9891bf3 (main).
 - valkey-operator commons v0.6.0 bump: chore/bump-commons-v0.6.0 머지.
 - 후속 PR-A6.2 (별도): `setCondition` → `commonsstatus.SetReady` 위임.

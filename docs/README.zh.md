@@ -64,15 +64,9 @@
 | 支持资源 | [.github/SUPPORT.md](../.github/SUPPORT.md) |
 | 项目治理 | [.github/GOVERNANCE.md](../.github/GOVERNANCE.md) |
 
-## Operator 家族
-
-[keiailab operator family](family.md) — postgres-operator · mongodb-operator ·
-**valkey-operator** · operator-commons (共享 Go 库)。
-提供 [한국어](family.ko.md) · [日本語](family.ja.md) · [中文](family.zh.md) 版本。
-
 ## i18n 状态
 
 韩文姊妹版与英文正本并排存放 (`<name>.ko.md`)。
 日文 (`.ja.md`) 与中文 (`.zh.md`) 的覆盖范围 **优先聚焦顶层文档**
-(README、ROADMAP、CONTRIBUTING、family)。运维 runbook 则随着采纳
+(README、ROADMAP、CONTRIBUTING)。运维 runbook 则随着采纳
 需求逐步本地化。

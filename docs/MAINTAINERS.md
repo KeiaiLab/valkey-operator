@@ -56,17 +56,3 @@ See `.github/CODEOWNERS` for the per-directory reviewer routing.
 ## Emeritus
 
 _(none yet)_
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

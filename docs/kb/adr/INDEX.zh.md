@@ -53,13 +53,11 @@
 | [0040](0040-helm-chart-vs-operator-adoption.md) | Helm chart vs Operator 选型策略 (外部 chart / 外部 chart / valkey-operator 决策矩阵 + 5 gap) | 已采纳 | 2026-05-10 |
 | [0041](0041-chaos-engineering-chaos-mesh.md) | 混沌工程 — 采用 chaos-mesh (4 个 e2e 场景,ADR-0040 §gap #4) | 已采纳 | 2026-05-10 |
 | [0042](archive/0042-commercial-parity-series-closure.md) | Commercial Parity 系列汇总 — archive (保留历史,deprecation 理由见外部 chart 正文) | 已废弃 | 2026-05-10 |
-| [0043](archive/0043-cloudpirates-valkey-compatibility.md) | 外部 chart 兼容策略 — archive (CRD 扩展决策延至 GA 后,deprecation 理由见外部 chart 正文) | 已废弃 | 2026-05-12 |
 | [0044](0044-artifacthub-signed-official-trust-badges.md) | Artifact Hub 信任徽章 — Signed 强制,Official 走外部评审 | 已采纳 | 2026-05-12 |
 | [0045](0045-restore-github-actions-for-oss-ci.md) | 为 OSS CI 恢复 GitHub Actions workflow (相对 RFC-0002 的有界例外) | 已采纳 | 2026-05-12 |
 | [0046](0046-slsa3-cosign-supply-chain.md) | 为发布产物 (image + chart + SBOM) 提供 SLSA-3 provenance + cosign keyless 签名 | 已采纳 | 2026-05-12 |
 | [0047](0047-community-operators-sync-automation.md) | community-operators 同步自动化 (RFC 0002 例外 ③ 扩展) | 已采纳 | 2026-05-14 |
 | [0048](0048-gha-retention-for-public-oss.md) | GitHub Actions 保留策略 — 公开 OSS Operator 外部信任门 (按 operator 家族权衡) | 已采纳 | 2026-05-21 |
-| [0049](0049-sprint-1-commons-pvc-topology-adoption.md) | Sprint 1 — 采纳 operator-commons pkg/pvc + pkg/topology (-322 LOC,valkey 2 处调用方 + statefulset 内联替换) | 已采纳 | 2026-05-21 |
 | [0050](0050-audit-augmentation.md) | Audit 增强 — postgres 模式 cp (lefthook 3 件 + helm-publish + UPGRADING,audit P1-11/12/13 + OP-2 + OP-10 ✅) | 已采纳 | 2026-05-21 |
 | [0051](0051-multi-arch-build-enablement.md) | 多架构构建按需启用 — `PLATFORMS` env 覆盖 (默认仍 amd64,为引入 ARM 节点 + 外部 GA 准备,RFC-0048 姊妹) — 由重复的 0043 重新编号 | 已提案 | 2026-05-19 |
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable 基线认定 (audit ❌ 0 满足,CLAUDE.md §7 v3.x-stable 条件) | 已采纳 | 2026-05-21 |

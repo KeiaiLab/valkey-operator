@@ -58,23 +58,6 @@ Cluster topology: slot rebalance + replica re-election on shard scale.
 - ServiceAccount: `valkey-operator`
 - Webhook: validation + conversion (TLS via cert-manager)
 
-## operator-commons import surface
-
-Adoption per `operator-commons/ARCHITECTURE.md` matrix: **8/8 (100%)** — *carbon-copy reference*.
-
-| Package | Status | Usage |
-|---|---|---|
-| `pkg/security` | ✅ | restricted PSA SecurityContext (it8) |
-| `pkg/version` | ✅ | Valkey version allowlist (it8) |
-| `pkg/labels` | ✅ | Recommended labels (it29) |
-| `pkg/monitoring` | ✅ | ServiceMonitor reconciler (it23) |
-| `pkg/networkpolicy` | ✅ | Deny-by-default + options (it25) |
-| `pkg/webhook` | ✅ | Validation helpers (it31) |
-| `pkg/finalizer` | ✅ | `Add` / `Remove` / `Has` |
-| `pkg/status` | ✅ | Condition reasons |
-
-valkey is the *first 100% adopter* — mongodb / postgres use it as reference for their own migration.
-
 ## Test layers
 
 | Layer | Location | Coverage |
@@ -134,17 +117,3 @@ Full list: `docs/kb/adr/INDEX.md`.
 - `GOVERNANCE.md` / `GOVERNANCE.ko.md`
 - `AGENTS.md`
 - `docs/kb/adr/INDEX.md`
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

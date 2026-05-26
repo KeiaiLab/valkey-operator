@@ -17,15 +17,6 @@
 
 **Project**: `valkey-operator` — Kubernetes 的 Apache-2.0 Valkey Operator — Standalone + Cluster + Backup/Restore,BSD-3 license-clean。
 
-**Family**: 共享 [`operator-commons`](https://github.com/keiailab/operator-commons) 通用库的四个姊妹 operator 之一:
-
-| Project | Database | Repository |
-|---|---|---|
-| `postgres-operator` | PostgreSQL 18+ | https://github.com/keiailab/postgres-operator |
-| `mongodb-operator` | MongoDB 7.0+ | https://github.com/keiailab/mongodb-operator |
-| `valkey-operator` | Valkey 8.0+ (Redis fork, BSD-3) | https://github.com/keiailab/valkey-operator |
-| `operator-commons` | Shared Go library | https://github.com/keiailab/operator-commons |
-
 ## 2. Logo 与视觉资源 (Visual Assets)
 
 | 资源 | URL | 用途 |
@@ -110,21 +101,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 
 所有 README 与根级 .md 文件的末尾须附以下 footer (Wave 3 标准):
 
-```markdown
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>
-```
+```markdown```
 
 ## 8. Badges 标准顺序
 
@@ -157,17 +134,3 @@ README 中 shield.io badge 的顺序 (左→右):
 - License: [Apache-2.0](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: 见 [NOTICE](NOTICE) (如适用)
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

@@ -9,7 +9,6 @@
 
 > English: [SECURITY.md](../../../.github/SECURITY.md) — canonical / 정본
 
-
 ## 취약점 보고
 
 **공개 issue 로 보고하지 마세요.** 보안 취약점이 패치되기 전에 공개 노출
@@ -24,7 +23,6 @@
 2. **이메일**: `security@keiailab.com` (PGP 옵션):
    - PGP fingerprint: `89A4 0947 6828 CB99 2338  C378 651E 51AF 520B CB78`
    - public key: gh-pages 의 `artifacthub-repo.yml` 또는 https://keiailab.github.io/valkey-operator/artifacthub-repo.yml
-   - 동일 key 가 mongodb-operator + postgres-operator 에서도 사용 (3-repo 통일).
 
 ### 포함 정보
 
@@ -137,17 +135,3 @@ exact build that produced the image.
 - 영어: [README.md → "Known limitations"](../../../README.md#known-limitations)
 - 한국어: [README.ko.md → "잠재적 운영 이슈"](../../../README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
 - 그 외: GitHub Issues label `security`.
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

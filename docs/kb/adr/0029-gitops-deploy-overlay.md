@@ -10,7 +10,7 @@
 
 1. ArgoCD Application 의 `destination.namespace=prod` vs `config/default` 의 `namespace=<op>-operator-system` 영구 drift.
 2. 자동 생성된 Namespace 리소스가 prod ns 사전생성 정책과 충돌.
-3. 3 repo 중 mongodb-operator 만 `deploy/overlays/prod/` 진입점을 가져 운영자 인지 부하.
+3. 기존에는 `deploy/overlays/prod/` 진입점을 가져 운영자 인지 부하.
 
 ### 도출 결정
 
@@ -24,7 +24,7 @@
 
 ## Decision
 
-mongodb-operator 와 동일 구조의 GitOps 오버레이 계층을 도입한다.
+표준 구조의 GitOps 오버레이 계층을 도입한다.
 
 ```
 deploy/
