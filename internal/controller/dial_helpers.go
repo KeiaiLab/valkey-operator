@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -162,6 +163,7 @@ func tlsConfigForClusterRef(
 			return cfg, nil
 		}
 	}
-	cfg.InsecureSkipVerify = true
+	log.FromContext(ctx).Info("TLS enabled without CA bundle — using InsecureSkipVerify fallback", "ref", ref.Name)
+	cfg.InsecureSkipVerify = true //nolint:gosec // ADR-0003: CA bundle not ready yet
 	return cfg, nil
 }

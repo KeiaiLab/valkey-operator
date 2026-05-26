@@ -147,6 +147,6 @@ exact build that produced the image.
 
 ## Known limitations
 
-- English: [README.md → "Known limitations"](../README.md#known-limitations)
-- Korean: [README.ko.md → "잠재적 운영 이슈"](../README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
+- [README.md → "Known limitations"](../README.md#known-limitations)
+- [Troubleshooting guide](../docs/operations/troubleshooting.md)
 - See also: GitHub Issues with the `security` label.

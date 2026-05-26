@@ -58,6 +58,7 @@
 | [0046](0046-slsa3-cosign-supply-chain.md) | 为发布产物 (image + chart + SBOM) 提供 SLSA-3 provenance + cosign keyless 签名 | 已采纳 | 2026-05-12 |
 | [0047](0047-community-operators-sync-automation.md) | community-operators 同步自动化 (RFC 0002 例外 ③ 扩展) | 已采纳 | 2026-05-14 |
 | [0048](0048-gha-retention-for-public-oss.md) | GitHub Actions 保留策略 — 公开 OSS Operator 外部信任门 (按 operator 家族权衡) | 已采纳 | 2026-05-21 |
+| [0049](0049-sprint-1-commons-pvc-topology-adoption.md) | Sprint 1 — pkg/pvc + pkg/topology 채택 (-322 LOC) | Accepted | 2026-05-21 |
 | [0050](0050-audit-augmentation.md) | Audit 增强 — postgres 模式 cp (lefthook 3 件 + helm-publish + UPGRADING,audit P1-11/12/13 + OP-2 + OP-10 ✅) | 已采纳 | 2026-05-21 |
 | [0051](0051-multi-arch-build-enablement.md) | 多架构构建按需启用 — `PLATFORMS` env 覆盖 (默认仍 amd64,为引入 ARM 节点 + 外部 GA 准备,RFC-0048 姊妹) — 由重复的 0043 重新编号 | 已提案 | 2026-05-19 |
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable 基线认定 (audit ❌ 0 满足,CLAUDE.md §7 v3.x-stable 条件) | 已采纳 | 2026-05-21 |

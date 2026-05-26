@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"os"
 	"time"
@@ -368,22 +367,6 @@ func (r *ValkeyBackupReconciler) dialBackupTarget(ctx context.Context, b *cachev
 	return dialClusterRefTarget(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
 }
 
-// tlsConfigForBackupTarget — dial_helpers.go 의 tlsConfigForClusterRef thin wrapper.
-// 후속 backup target TLS reconcile 단계에서 호출 예정 (진행 중).
-//
-//nolint:unused // wrapper API 보존, 후속 phase 가 호출.
-func (r *ValkeyBackupReconciler) tlsConfigForBackupTarget(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (*tls.Config, error) {
-	return tlsConfigForClusterRef(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
-}
-
-// fetchBackupTargetPassword — dial_helpers.go 의 fetchClusterRefPassword thin wrapper.
-// 후속 backup auth 단계에서 호출 예정 (진행 중).
-//
-//nolint:unused // wrapper API 보존, 후속 phase 가 호출.
-func (r *ValkeyBackupReconciler) fetchBackupTargetPassword(ctx context.Context, b *cachev1alpha1.ValkeyBackup) (string, error) {
-	return fetchClusterRefPassword(ctx, r.Client, b.Spec.ClusterRef, b.Namespace)
-}
-
 // reconcileCopyingPhase — Copying phase 의 reconcile loop.
 //
 // 처리 흐름:
@@ -440,8 +423,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 		logger.Info("Backup copy Job created", "name", job.Name)
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
-	existingJob := job // CreateOrUpdate 가 obj 를 in-place modify — 후속 polling 에 사용.
-	_ = existingJob
+	existingJob := job
 
 	// 3. Job 상태 폴링.
 	if existingJob.Status.Succeeded > 0 {
