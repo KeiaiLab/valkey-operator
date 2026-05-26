@@ -56,6 +56,7 @@
 | [0046](0046-slsa3-cosign-supply-chain.md) | SLSA-3 provenance + cosign keyless signing for release artifacts (image + chart + SBOM) | Accepted | 2026-05-12 |
 | [0047](0047-community-operators-sync-automation.md) | community-operators sync 자동화 (RFC 0002 예외 ③ 확장) | Accepted | 2026-05-14 |
 | [0048](0048-gha-retention-for-public-oss.md) | GitHub Actions retention — Public OSS Operator External Trust Gate (per operator family trade-off) | Accepted | 2026-05-21 |
+| [0049](0049-sprint-1-commons-pvc-topology-adoption.md) | Sprint 1 — pkg/pvc + pkg/topology 채택 (-322 LOC, valkey 2 callsite + statefulset inline 을 대체) | Accepted | 2026-05-21 |
 | [0050](0050-audit-augmentation.md) | Audit Augmentation — postgres 패턴 cp (lefthook 3종 + helm-publish + UPGRADING, audit P1-11/12/13 + OP-2 + OP-10 ✅) | Accepted | 2026-05-21 |
 | [0051](0051-multi-arch-build-enablement.md) | 멀티아키 빌드 opt-in 활성화 — `PLATFORMS` env override (default amd64 유지, ARM 노드 도입 + 외부 GA 대비, RFC-0048 sister) — renumbered from duplicate 0043 | Proposed | 2026-05-19 |
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable baseline 인정 (audit ❌ 0 충족, CLAUDE.md §7 v3.x-stable 조건) | Accepted | 2026-05-21 |
