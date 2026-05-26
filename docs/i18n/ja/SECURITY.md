@@ -145,5 +145,5 @@ cosign verify-blob \
 ## 既知の制限事項
 
 - 英語: [README.md → "Known limitations"](../../../README.md#known-limitations)
-- 韓国語: [README.ko.md → "잠재적 운영 이슈"](../../../README.ko.md#잠재적-운영-이슈-현재-알려진-한계)
+- 韓国語: [operations troubleshooting](../../operations/troubleshooting.md)
 - 関連: GitHub Issues で `security` ラベルを参照してください。

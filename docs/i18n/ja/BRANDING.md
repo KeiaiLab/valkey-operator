@@ -1,8 +1,8 @@
 <p align="center">
-  <a href="BRANDING.md">English</a> |
-  <a href="BRANDING.ko.md">한국어</a> |
+  <a href="../../BRANDING.md">English</a> |
+  <a href="../ko/BRANDING.md">한국어</a> |
   <b>日本語</b> |
-  <a href="BRANDING.zh.md">中文</a>
+  <a href="../zh/BRANDING.md">中文</a>
 </p>
 
 # ブランディングガイド — `valkey-operator`
@@ -133,4 +133,4 @@ README の shield.io badge の順序 (左→右):
 
 - License: [Apache-2.0](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
-- Third-party attributions: [NOTICE](NOTICE) を参照 (該当する場合)
+- Third-party attributions: [NOTICE](../../../NOTICE) を参照 (該当する場合)
