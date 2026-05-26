@@ -45,8 +45,7 @@ func shouldAutoCreatePDB(spec *cachev1alpha1.PodDisruptionBudgetSpec, replicas i
 // EnsurePDBDeleted — CDEX-M1 fix (Codex stage 3 finding, ai-dev `cleanup-supercycle-2026-05-21` plan defer 5).
 //
 // shouldAutoCreatePDB=false 시 *기존 PDB 가 cluster 에 잔존* 하면 삭제 보장 (spec ↔ cluster state 동기화).
-// mongodb-operator `reconcilePDB` (`mongodb_controller.go:313` sister pattern) 정합.
-//
+
 // 트리거 사고: spec.Enabled=true 로 PDB 자동 생성 후 사용자가 spec.Enabled=false 로 변경 시
 // 기존 PDB 가 orphan 으로 잔존 → drain blocker.
 //

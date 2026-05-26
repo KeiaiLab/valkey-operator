@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package controller — Valkey + ValkeyCluster reconciler 가 공유하는 헬퍼.
-// mongodb-operator/internal/controller/helpers.go 패턴 차용.
+
 package controller
 
 import (

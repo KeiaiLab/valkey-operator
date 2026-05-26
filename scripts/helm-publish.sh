@@ -19,7 +19,7 @@
 #   - HELM_SIGN=1 시 PGP key (HELM_GPG_KEY) keyring import 필요.
 #
 # CLAUDE.md §2 (RFC 0002) — GHA helm-publish workflow 대체 (로컬 4계층).
-# postgres-operator 의 동일 스크립트 패턴을 valkey-operator chart name 으로 정합.
+# keiailab 표준 스크립트 패턴을 valkey-operator chart name 으로 정합.
 # OP-2 (audit-production-grade.sh) 보강 — S-valkey audit 5건 중 1건.
 
 set -euo pipefail

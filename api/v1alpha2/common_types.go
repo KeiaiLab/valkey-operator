@@ -411,7 +411,7 @@ type PodDisruptionBudgetSpec struct {
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }
 
-// ScalePolicy — 인스턴스 수 변경 가드. mongodb-operator ADR 0008 패턴 차용.
+// ScalePolicy — 인스턴스 수 변경 가드 (ADR-0006).
 //
 // Valkey replication / cluster 토폴로지 변경은 무시할 수 없는 부작용을 동반:
 // - Replication: full SYNC 트래픽 폭주

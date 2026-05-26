@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package valkey — operator 가 in-process 로 valkey 인스턴스에 접속해 cluster
-// init / replication / health 를 제어하는 client 래퍼. mongodb-operator 의
+// init / replication / health 를 제어하는 client 래퍼.
 // internal/mongodb/client.go 패턴을 valkey 도메인에 맞게 차용.
 //
 // go-redis/v9 사용 — Valkey 는 Redis 7.2 wire-compatible 이므로 그대로 동작.
