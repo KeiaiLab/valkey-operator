@@ -44,17 +44,3 @@
 ## 从外部 redis-cluster chart 迁移
 
 如果您正在运营 外部 `redis-cluster` chart (Redis 7.x / 8.x) 并在评估 Valkey,请参阅 `ROADMAP.md` → **Phase B (RDB 兼容性与替代迁移路径)**。部分 Redis 8.2.x 的 RDB 文件无法直接恢复到 Valkey 9.0.4;在这种情况下 `ValkeyRestore` 会 fail fast,运维方不会在静默错误 (silent error) 中无限等待。
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

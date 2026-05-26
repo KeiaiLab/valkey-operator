@@ -2,12 +2,10 @@
 
 > English: [webhook.md](webhook.md) — canonical / 정본
 
-
 Validating + mutating admission webhook. *opt-in default* (helm 의
 `webhook.enabled=false` 가 기본). 활성화 시 cert-manager 클러스터 사전
 설치 필수.
 
-> mongodb-operator 의 [동일 패턴](https://github.com/keiailab/mongodb-operator/blob/main/docs/advanced/webhook.md) — 3 operator
 > cross-cut audit (ADR-0016) 으로 invariant + UX 일관.
 
 ## Quick Start
@@ -86,9 +84,6 @@ spec.storage.size: storage.size must be >= 1Gi — RDB snapshot + AOF data dir f
 
 ## failurePolicy=Fail 영향
 
-webhook server pod down 시 모든 valkey CR CRUD 차단. mongodb-operator
-[ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md) 참조 (3 operator 동일 정책).
-
 HA 권장: production 환경 `replicaCount: 2` + PDB.
 
 ## Troubleshooting
@@ -121,7 +116,3 @@ helm upgrade --reuse-values valkey-operator keiailab/valkey-operator \
 cert-manager 리소스 / Webhook Configuration 자동 제거. 기존 valkey CR 영향 0.
 
 ## 관련 문서
-
-- mongodb-operator [ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md) — failurePolicy=Fail.
-- mongodb-operator [ADR-0016](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0016-cross-cut-audit-pattern.md) — Cross-cut audit pattern.
-- mongodb-operator [ADR-0017](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0017-crd-default-vs-webhook-invariant.md) — CRD default vs webhook invariant (Type A' Errata).

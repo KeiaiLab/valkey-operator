@@ -64,16 +64,9 @@ GitHub 가 자동 인식하는 커뮤니티 건전성 파일은 ADR-0053 (root `
 | 지원 채널 | [.github/SUPPORT.md](../.github/SUPPORT.md) |
 | 프로젝트 거버넌스 | [.github/GOVERNANCE.md](../.github/GOVERNANCE.md) |
 
-## 오퍼레이터 패밀리
-
-[keiailab 오퍼레이터 패밀리](family.md) — postgres-operator · mongodb-operator
-· **valkey-operator** · operator-commons (공유 Go 라이브러리).
-[한국어](family.ko.md) · [日本語](family.ja.md) · [中文](family.zh.md) 로도
-제공된다.
-
 ## i18n 상태
 
 한국어 자매 문서는 각 영어 정본 옆에 `<name>.ko.md` 로 둔다. 日本語
 (`.ja.md`) 와 中文 (`.zh.md`) 의 커버리지는 **최상위 파일에 집중**되어
-있다 (README, ROADMAP, CONTRIBUTING, family). 운영 runbook 은 채택 수요에
+있다 (README, ROADMAP, CONTRIBUTING). 운영 runbook 은 채택 수요에
 따라 점진적으로 현지화한다.

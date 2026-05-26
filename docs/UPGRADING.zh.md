@@ -13,7 +13,6 @@ Helm 用户只要执行 chart 升级即可应用全部变更;而使用静态 man
 | 新增 controller / CR / API | minor (v1.X → v1.X+1) | 新增 ValkeyBackupTarget |
 | 既有 API 签名变更 (breaking) | major (v1.X → v2.0) | ValkeyCluster.spec.storage 结构变更 |
 | bug fix / 依赖 bump | patch (v1.X.Y → v1.X.Y+1) | controller-runtime 0.19→0.20 |
-| operator-commons 依赖 bump | minor (commons v0.X → v0.X+1) | 引入 pkg/pvc + pkg/topology |
 
 ## 1. v1.0.x → v1.0.13 (当前版本)
 
@@ -49,16 +48,15 @@ v1alpha2 首次引入。v1alpha1 的 CR 会通过 conversion webhook 自动
 转换 — 用户无需任何操作。但使用 `kubectl apply -f` 新建 v1alpha1
 manifest 时会出现 *deprecated* 警告 — 推荐改用 v1alpha2。
 
-## 2. Sprint 1 引入 (operator-commons v0.9.0)
+## 2. Sprint 1 引入 ( )
 
 ADR-0049 (`docs/kb/adr/0049-sprint-1-commons-pvc-topology-adoption.md`)。
 
 ```bash
-# 升级 go.mod 中 operator-commons 的依赖版本后
+# 升级 go.mod 中 的依赖版本后
 go mod tidy
 ```
 
-- **新增 import**: `github.com/keiailab/operator-commons/pkg/pvc`、`pkg/topology`
 - **删除的代码**: `internal/controller/pvc_resize.go` (-136 LOC) + 对应测试
   (-166 LOC) + `internal/resources/statefulset.go` 中的内联
   `defaultTopologySpread` (-22 LOC) → 合计 -322 LOC
@@ -80,8 +78,6 @@ CLAUDE.md §7 的 *商用产品级别* (P0+P1+P2+OP+C 全部 ✅) 达成时。
 - breaking change *最小化* — major bump 是 *语义信号*
 - 保证 5 个仓库的一致性:参阅
   `commons/docs/quality/production-grade-checklist.md`
-
-详情:operator-commons ADR-0013 (audit-production-grade.sh)
 
 ## 4. GHA 双轨策略 (ADR-0048)
 
@@ -121,7 +117,6 @@ workflow,并与本地 4 层 hook (lefthook) 双轨并行 (ADR-0048)。
 ## 参考
 
 - ADR 索引: `docs/kb/adr/INDEX.md`
-- operator-commons UPGRADING: https://github.com/keiailab/operator-commons/blob/main/docs/UPGRADING.md
 - audit: `make audit-quality` (5 个仓库的度量,commons ADR-0013)
 - i18n: `commons/docs/i18n/README.md`
 - 家族 family: `docs/family.md`

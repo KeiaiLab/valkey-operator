@@ -558,7 +558,7 @@ spec:
   - name: Discussions
     url: https://github.com/keiailab/valkey-operator/discussions
   maintainers:
-  - email: help@masblue.studio
+  - email: support@keiailab.com
     name: Keiailab
   maturity: alpha
   minKubeVersion: 1.26.0

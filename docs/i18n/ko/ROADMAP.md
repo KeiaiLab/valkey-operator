@@ -9,7 +9,6 @@
 
 > English: [ROADMAP.md](../../ROADMAP.md) — canonical / 정본
 
-
 본 ROADMAP 은 *날짜 약속이 아니라* 검증 가능한 기능 체크리스트로 진행을 추적한다. 시간 기반 deadline 은 의도적으로 회피하며 (글로벌 `standards/workflow.md` "시간 기반 로드맵 금지"), 기능 단위로 진행을 추적한다.
 
 ## 체크박스 의미
@@ -98,7 +97,6 @@
   - [ ] secondary-promote 기반 cutover
   - [ ] 롤백 절차
   - Verify: 스테이징 환경 dry-run + RTO/RPO 측정 기록
-- [ ] **release-smoke-test.sh** — mongodb-operator 패턴 적용
   - [ ] image / sbom / trivy / chart index / smoke 5단계
   - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
 
@@ -157,17 +155,3 @@
 | 2026-05-11 | webhook `validateStorageClassName` 추가 — RBD storageClass 기본 검증 (DNS-1123 subdomain) `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 전면 재작성 — 사실 정정 (ServiceMonitor 등) + sub-task 체크리스트 입자도 + 신규 항목 (VolumeSnapshot multipod / conversion webhook) 노출 | parallel-leaping-seal plan |
 | 2026-05-07 | 본 문서 신설 — 3-repo governance 자산 정합 | INC-2026-05-07 |
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

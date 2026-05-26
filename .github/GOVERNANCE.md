@@ -75,17 +75,3 @@ an existing one always requires explicit consensus.
 |---|---|---|
 | 2026-05-07 | Document created — 3-repo (mongodb / postgresql / valkey) governance asset alignment | INC-2026-05-07 |
 | 2026-05-12 | English becomes canonical; Korean preserved as `GOVERNANCE.ko.md` | i18n PR-K |
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

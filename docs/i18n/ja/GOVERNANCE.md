@@ -55,17 +55,3 @@ CVE レポートおよび secrets / auth モデルへの変更は、まず [SECU
 |---|---|---|
 | 2026-05-07 | ドキュメント作成 — 3 リポジトリ (mongodb / postgresql / valkey) のガバナンスアセット整合 | INC-2026-05-07 |
 | 2026-05-12 | 英語版を canonical に変更、韓国語版は `GOVERNANCE.ko.md` として保持 | i18n PR-K |
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

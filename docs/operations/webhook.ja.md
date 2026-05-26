@@ -4,8 +4,6 @@
 
 Validating + mutating admission webhook。**既定では opt-in** (Helm chart の `webhook.enabled=false`)。有効化する前に、クラスタへの cert-manager 導入が必須である。
 
-> [mongodb-operator の webhook ドキュメント](https://github.com/keiailab/mongodb-operator/blob/main/docs/advanced/webhook.md) と同一パターン — 3 operator 横断監査 (ADR-0016) によって invariant と UX が揃えられている。
-
 ## クイックスタート
 
 ### 前提条件
@@ -81,8 +79,6 @@ spec.storage.size: storage.size must be >= 1Gi — RDB snapshot + AOF data dir f
 
 ## `failurePolicy=Fail` の影響
 
-webhook サーバ pod が落ちると、全ての `valkey` CR の CRUD がブロックされる。詳細は mongodb-operator [ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md) を参照 (3 operator 全てで同一ポリシー)。
-
 HA 推奨: production では `replicaCount: 2` + PDB を必ず設定する。
 
 ## トラブルシューティング
@@ -112,7 +108,3 @@ helm upgrade --reuse-values valkey-operator keiailab/valkey-operator \
 cert-manager 関連リソースと Webhook Configuration が自動的に削除される。既存の `valkey` CR への影響はない。
 
 ## 関連
-
-- mongodb-operator [ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md) — `failurePolicy=Fail`。
-- mongodb-operator [ADR-0016](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0016-cross-cut-audit-pattern.md) — cross-cut audit pattern。
-- mongodb-operator [ADR-0017](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0017-crd-default-vs-webhook-invariant.md) — CRD default vs webhook invariant (Type A' errata)。

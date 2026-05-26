@@ -53,13 +53,11 @@
 | [0040](0040-helm-chart-vs-operator-adoption.md) | Helm chart vs Operator 採用方針 (外部 chart / 外部 chart / valkey-operator の意思決定マトリクス + 5 gap) | Accepted | 2026-05-10 |
 | [0041](0041-chaos-engineering-chaos-mesh.md) | Chaos Engineering — chaos-mesh 採用 (4 シナリオ e2e、ADR-0040 §gap #4) | Accepted | 2026-05-10 |
 | [0042](archive/0042-commercial-parity-series-closure.md) | Commercial Parity Series 総括 — archive (history 保存、外部 chart 本文 deprecation 理由) | Deprecated | 2026-05-10 |
-| [0043](archive/0043-cloudpirates-valkey-compatibility.md) | 外部 chart 互換方針 — archive (CRD 拡張は GA 後に判断、外部 chart 本文 deprecation 理由) | Deprecated | 2026-05-12 |
 | [0044](0044-artifacthub-signed-official-trust-badges.md) | Artifact Hub trust badges — Signed は必須、Official は外部レビュー待ち | Accepted | 2026-05-12 |
 | [0045](0045-restore-github-actions-for-oss-ci.md) | OSS CI 向けに GitHub Actions workflows を復活 (RFC-0002 からの scoped deviation) | Accepted | 2026-05-12 |
 | [0046](0046-slsa3-cosign-supply-chain.md) | release artifact (image + chart + SBOM) に SLSA-3 provenance + cosign keyless signing を適用 | Accepted | 2026-05-12 |
 | [0047](0047-community-operators-sync-automation.md) | community-operators sync 自動化 (RFC 0002 例外 ③ の拡張) | Accepted | 2026-05-14 |
 | [0048](0048-gha-retention-for-public-oss.md) | GitHub Actions retention — Public OSS Operator External Trust Gate (operator family ごとの trade-off) | Accepted | 2026-05-21 |
-| [0049](0049-sprint-1-commons-pvc-topology-adoption.md) | Sprint 1 — operator-commons pkg/pvc + pkg/topology を採用 (-322 LOC、valkey 2 callsite + statefulset inline を置換) | Accepted | 2026-05-21 |
 | [0050](0050-audit-augmentation.md) | Audit Augmentation — postgres パターンを cp (lefthook 3 種 + helm-publish + UPGRADING、audit P1-11/12/13 + OP-2 + OP-10 ✅) | Accepted | 2026-05-21 |
 | [0051](0051-multi-arch-build-enablement.md) | マルチアーキ build の opt-in 有効化 — `PLATFORMS` env override (default は amd64 維持、ARM node 導入 + 外部 GA に備える、RFC-0048 の sister) — 重複 0043 から renumber | Proposed | 2026-05-19 |
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable baseline 認定 (audit ❌ 0 件達成、CLAUDE.md §7 v3.x-stable 条件) | Accepted | 2026-05-21 |

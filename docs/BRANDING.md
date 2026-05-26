@@ -7,7 +7,7 @@
 
 # Branding Guide — `valkey-operator`
 
-> Visual identity, voice, and tone for the keiailab operator family.
+> Visual identity, voice, and tone for valkey-operator.
 
 This document is the canonical reference for `valkey-operator` branding decisions. It applies to the README, release notes, marketing material, and any third-party communication that represents the project.
 
@@ -16,15 +16,6 @@ This document is the canonical reference for `valkey-operator` branding decision
 **Organization**: [keiailab](https://keiailab.com) — Kubernetes-native data platform operators (Apache-2.0, license-clean, vanilla-upstream compatible).
 
 **Project**: `valkey-operator` — Apache-2.0 Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean.
-
-**Family**: One of four sister operators sharing the [`operator-commons`](https://github.com/keiailab/operator-commons) shared library:
-
-| Project | Database | Repository |
-|---|---|---|
-| `postgres-operator` | PostgreSQL 18+ | https://github.com/keiailab/postgres-operator |
-| `mongodb-operator` | MongoDB 7.0+ | https://github.com/keiailab/mongodb-operator |
-| `valkey-operator` | Valkey 8.0+ (Redis fork, BSD-3) | https://github.com/keiailab/valkey-operator |
-| `operator-commons` | Shared Go library | https://github.com/keiailab/operator-commons |
 
 ## 2. Logo & Visual Assets
 
@@ -72,7 +63,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 **Voice principles**:
 - **Direct** — bullet-point over paragraph where possible
 - **Evidence-based** — claims include benchmark / SLA / link
-- **Vendor-neutral** — reference upstream (PostgreSQL, MongoDB, Valkey) but do not embed/wrap third-party operators
+- **Vendor-neutral** — reference upstream Valkey but do not embed/wrap third-party operators
 - **License-aware** — Apache-2.0 + BSD/MIT/PG-license dependencies only
 
 **Avoid**:
@@ -110,21 +101,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 
 모든 README + root-level .md 파일의 마지막에 다음 footer 부착 (Wave 3 표준):
 
-```markdown
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>
-```
+```markdown```
 
 ## 8. Badges 표준 순서
 
@@ -132,7 +109,7 @@ README 의 shield.io badge 순서 (좌→우):
 
 1. License (Apache-2.0)
 2. Go Version (1.25+)
-3. Database (e.g. PostgreSQL 18+ / MongoDB 7.0+ / Valkey 8.0+)
+3. Database (Valkey 8.0+)
 4. Kubernetes Version (1.26+)
 5. Container Image (ghcr.io/keiailab)
 6. Helm Chart (Chart.yaml version + Artifact Hub link)
@@ -157,17 +134,3 @@ README 의 shield.io badge 순서 (좌→우):
 - License: [Apache-2.0](../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: see [NOTICE](NOTICE) (if applicable)
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

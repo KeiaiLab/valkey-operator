@@ -3,11 +3,10 @@
 - Date: 2026-05-21
 - Status: Accepted
 - Authors: @eightynine01 (S-valkey audit 보강, subagent dispatch)
-- Refs: operator-commons spec `2026-05-21-valkey-audit-augmentation-design.md`, ADR-0049 (Sprint 1)
 
 ## Context
 
-operator-commons `scripts/audit-production-grade.sh` 의 5 repo (commons / postgres
+`scripts/audit-production-grade.sh` 의 5 repo (commons / postgres
 / mongodb / valkey / forgewise) 측정에서 valkey-operator 잔여 ❌ 5건:
 
 | ID | 항목 | 현 상태 |
@@ -18,12 +17,12 @@ operator-commons `scripts/audit-production-grade.sh` 의 5 repo (commons / postg
 | OP-2 | scripts/helm-publish.sh | 없음 |
 | OP-10 | docs/UPGRADING.md | 없음 |
 
-postgres-operator + mongodb-operator 는 5건 모두 ✅ — valkey 만 누락. 5 repo
+keiailab 의 표준 패턴을 valkey-operator 에 적용.
 일관성 회복이 필요.
 
 ## Decision
 
-postgres-operator 의 검증된 패턴을 *최소 정합 조정* (chart name, repo name)
+검증된 패턴을 *최소 정합 조정* (chart name, repo name)
 후 cp:
 
 1. **`.lefthook.yml` 의 pre-push 에 3 hook 추가** (PR #171):
@@ -75,9 +74,4 @@ postgres-operator 의 검증된 패턴을 *최소 정합 조정* (chart name, re
 - PR #171 — `feat(lefthook): kube-linter + go-licenses + markdown-link-check`
 - PR #172 — `feat(scripts): helm-publish.sh`
 - PR #173 — `docs(upgrading): UPGRADING.md`
-- spec: `operator-commons/docs/specs/2026-05-21-valkey-audit-augmentation-design.md`
 - postgres 참조:
-  - `postgres-operator/.lefthook.yml` (kube-linter + go-licenses + markdown-link-check)
-  - `postgres-operator/scripts/helm-publish.sh`
-  - `postgres-operator/docs/UPGRADING.md`
-- audit 측정: `bash operator-commons/scripts/audit-production-grade.sh /Users/phil/Workspace/keiailab`

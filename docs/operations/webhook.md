@@ -6,11 +6,6 @@ Validating + mutating admission webhook. **Opt-in by default**
 (`webhook.enabled=false` in the Helm chart). Requires cert-manager
 on the cluster before you flip it on.
 
-> Same pattern as
-> [mongodb-operator's webhook doc](https://github.com/keiailab/mongodb-operator/blob/main/docs/advanced/webhook.md)
-> — 3-operator cross-cut audit (ADR-0016) keeps the invariants and
-> UX consistent.
-
 ## Quick start
 
 ### Prerequisites
@@ -92,9 +87,8 @@ spec.storage.size: storage.size must be >= 1Gi — RDB snapshot + AOF data dir f
 ## `failurePolicy=Fail` impact
 
 When the webhook server pod is down, every `valkey` CR CRUD is
-blocked. See mongodb-operator
-[ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md)
-(same policy in all 3 operators).
+blocked. The `failurePolicy=Fail` design is documented in
+[ADR-0009](../kb/adr/0009-webhook-validation-defaulting.md).
 
 HA recommendation: production runs `replicaCount: 2` + PDB.
 
@@ -134,12 +128,6 @@ automatically. No impact on existing `valkey` CRs.
 
 ## Related
 
-- mongodb-operator
-  [ADR-0015](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0015-webhook-failure-policy-fail.md)
-  — `failurePolicy=Fail`.
-- mongodb-operator
-  [ADR-0016](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0016-cross-cut-audit-pattern.md)
-  — cross-cut audit pattern.
-- mongodb-operator
-  [ADR-0017](https://github.com/keiailab/mongodb-operator/blob/main/docs/kb/adr/0017-crd-default-vs-webhook-invariant.md)
-  — CRD default vs webhook invariant (Type A' errata).
+- [ADR-0009](../kb/adr/0009-webhook-validation-defaulting.md) — webhook validation and defaulting design.
+- [ADR-0011](../kb/adr/0011-required-fields-webhook-defaulting.md) — required fields webhook defaulting.
+- [ADR-0017](../kb/adr/0017-replication-failover-replica-with-largest-offset.md) — failover Type A' errata.

@@ -19,15 +19,6 @@
 
 **Project**: `valkey-operator` — Kubernetes 용 Apache-2.0 Valkey Operator — Standalone + Cluster + Backup/Restore, BSD-3 license-clean.
 
-**Family**: [`operator-commons`](https://github.com/keiailab/operator-commons) 공용 라이브러리를 공유하는 4 개 자매 operator 중 하나:
-
-| Project | Database | Repository |
-|---|---|---|
-| `postgres-operator` | PostgreSQL 18+ | https://github.com/keiailab/postgres-operator |
-| `mongodb-operator` | MongoDB 7.0+ | https://github.com/keiailab/mongodb-operator |
-| `valkey-operator` | Valkey 8.0+ (Redis fork, BSD-3) | https://github.com/keiailab/valkey-operator |
-| `operator-commons` | Shared Go library | https://github.com/keiailab/operator-commons |
-
 ## 2. Logo & Visual Assets (로고 및 시각 자산)
 
 | 자산 | URL | 용도 |
@@ -112,21 +103,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 
 모든 README + root-level .md 파일의 마지막에 다음 footer 부착 (Wave 3 표준):
 
-```markdown
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>
-```
+```markdown```
 
 ## 8. Badges 표준 순서
 
@@ -159,17 +136,3 @@ README 의 shield.io badge 순서 (좌→우):
 - License: [Apache-2.0](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: [NOTICE](NOTICE) 참조 (해당 시)
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

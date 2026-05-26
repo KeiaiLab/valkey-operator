@@ -55,17 +55,3 @@ CVE 报告与对 secrets / auth 模型的变更首先通过 [SECURITY.md](../../
 |---|---|---|
 | 2026-05-07 | 文档创建 — 3 个仓库 (mongodb / postgresql / valkey) 治理资产对齐 | INC-2026-05-07 |
 | 2026-05-12 | 英文版成为 canonical;韩文版作为 `GOVERNANCE.ko.md` 保留 | i18n PR-K |
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

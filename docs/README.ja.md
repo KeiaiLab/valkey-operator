@@ -65,15 +65,9 @@ tool-dependency 例外) に従って `.github/` 配下に置かれる:
 | Support resources | [.github/SUPPORT.md](../.github/SUPPORT.md) |
 | Project governance | [.github/GOVERNANCE.md](../.github/GOVERNANCE.md) |
 
-## Operator ファミリー
-
-[keiailab operator family](family.md) — postgres-operator · mongodb-operator ·
-**valkey-operator** · operator-commons (共通 Go ライブラリ)。
-[한국어](family.ko.md) · [日本語](family.ja.md) · [中文](family.zh.md) でも利用可能。
-
 ## i18n の状況
 
 韓国語の姉妹版は英語の canonical の隣に併置される (`<name>.ko.md`)。
 日本語 (`.ja.md`) と中国語 (`.zh.md`) のカバレッジは **トップレベル
-ファイル** (README、ROADMAP、CONTRIBUTING、family) を中心に整備されており、
+ファイル** (README、ROADMAP、CONTRIBUTING) を中心に整備されており、
 運用 runbook は採用状況の需要に応じて段階的にローカライズしていく。

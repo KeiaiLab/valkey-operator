@@ -63,15 +63,9 @@ GitHub-detected community health files live in `.github/` per ADR-0053
 | Support resources | [.github/SUPPORT.md](../.github/SUPPORT.md) |
 | Project governance | [.github/GOVERNANCE.md](../.github/GOVERNANCE.md) |
 
-## Operator family
-
-[keiailab operator family](family.md) — postgres-operator · mongodb-operator ·
-**valkey-operator** · operator-commons (shared Go library).
-Available in [한국어](family.ko.md) · [日本語](family.ja.md) · [中文](family.zh.md).
-
 ## i18n status
 
 Korean siblings live next to each English canonical (`<name>.ko.md`).
 Japanese (`.ja.md`) and Chinese (`.zh.md`) coverage is **focused on
-top-level files** (README, ROADMAP, CONTRIBUTING, family). Operational
+top-level files** (README, ROADMAP, CONTRIBUTING). Operational
 runbooks are progressively localized as adoption demand surfaces.

@@ -67,7 +67,7 @@ GitHub 持续推送**同一个 workflow 的失败邮件**。
 
 ```sh
 # keiailab 各仓库最近 7 天的 failed runs
-for repo in valkey-operator mongodb-operator postgres-operator operator-commons; do
+for repo in valkey-operator; do
   echo "--- $repo ---"
   gh run list --status failure --created ">=$(date -d '-7 days' +%Y-%m-%d)" --limit 5 -R keiailab/$repo
 done

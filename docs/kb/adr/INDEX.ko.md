@@ -54,13 +54,11 @@ decisions) 을 Nygard 5섹션 형식으로 보존한다. 결정의 *이유* 가 
 | [0040](0040-helm-chart-vs-operator-adoption.md) | Helm chart vs Operator 채택 정책 (외부 chart / 외부 chart / valkey-operator 의사결정 매트릭스 + 5 gap) | Accepted | 2026-05-10 |
 | [0041](0041-chaos-engineering-chaos-mesh.md) | Chaos Engineering — chaos-mesh 채택 (4 시나리오 e2e, ADR-0040 §gap #4) | Accepted | 2026-05-10 |
 | [0042](archive/0042-commercial-parity-series-closure.md) | Commercial Parity 시리즈 종합 — archive (이력 보존, 외부 chart 본문 deprecation 사유) | Deprecated | 2026-05-10 |
-| [0043](archive/0043-cloudpirates-valkey-compatibility.md) | 외부 chart 호환 정책 — archive (CRD 확장 결정 GA 이후로 이연, 외부 chart 본문 deprecation 사유) | Deprecated | 2026-05-12 |
 | [0044](0044-artifacthub-signed-official-trust-badges.md) | Artifact Hub trust badges — Signed 필수, Official 은 외부 review 통과 후 | Accepted | 2026-05-12 |
 | [0045](0045-restore-github-actions-for-oss-ci.md) | OSS CI 한정 GitHub Actions workflow 복원 (RFC-0002 한정 일탈) | Accepted | 2026-05-12 |
 | [0046](0046-slsa3-cosign-supply-chain.md) | 릴리즈 산출물 (image + chart + SBOM) 대상 SLSA-3 provenance + cosign keyless 서명 | Accepted | 2026-05-12 |
 | [0047](0047-community-operators-sync-automation.md) | community-operators sync 자동화 (RFC 0002 예외 ③ 확장) | Accepted | 2026-05-14 |
 | [0048](0048-gha-retention-for-public-oss.md) | GitHub Actions 잔존 — Public OSS Operator External Trust Gate (operator family 별 trade-off) | Accepted | 2026-05-21 |
-| [0049](0049-sprint-1-commons-pvc-topology-adoption.md) | Sprint 1 — operator-commons pkg/pvc + pkg/topology 채택 (-322 LOC, valkey 2 callsite + statefulset inline 교체) | Accepted | 2026-05-21 |
 | [0050](0050-audit-augmentation.md) | Audit Augmentation — postgres 패턴 cp (lefthook 3종 + helm-publish + UPGRADING, audit P1-11/12/13 + OP-2 + OP-10 ✅) | Accepted | 2026-05-21 |
 | [0051](0051-multi-arch-build-enablement.md) | 멀티아키 빌드 opt-in 활성화 — `PLATFORMS` env override (default amd64 유지, ARM 노드 도입 + 외부 GA 대비, RFC-0048 sister) — duplicate 0043 에서 번호 재부여 | Proposed | 2026-05-19 |
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable baseline 인정 (audit ❌ 0 충족, CLAUDE.md §7 v3.x-stable 조건) | Accepted | 2026-05-21 |

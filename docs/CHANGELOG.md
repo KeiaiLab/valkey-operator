@@ -90,8 +90,7 @@
   receives stdlib CVE fixes automatically.
 - 7 dependabot updates merged into main:
   - Docker base: `golang 1.26.3`, `distroless/static@e3f9456` (#80, #81)
-  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils +
-    operator-commons 0.7.0 + otel group + ginkgo 2.28.3 + gomega
+  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils + + otel group + ginkgo 2.28.3 + gomega
     1.40.0 (#84–#88).
 
 ## [1.0.12] - 2026-05-12
@@ -167,7 +166,7 @@
 
 ### Changed
 
-- operator-commons v0.5.0 → v0.6.0 (RFC-0018 `SetAvailable` + `SetReadyFalse` 사용 가능, #7).
+- (RFC-0018 `SetAvailable` + `SetReadyFalse` 사용 가능, #7).
 
 ### Docs
 
@@ -193,7 +192,7 @@
 ### Changed
 
 - audit (4-repo cross-cut, 2026-05-09): RFC-0017 채택 — `.golangci.yml` + `.custom-gcl.yml` 신규 (postgres 표준 cp + depguard 정리), Makefile `validate` 타겟 추가 (kustomize + helm lint + helm template). ADR-0030 등재. 본 repo `.lefthook.yml` 은 RFC-0017 §3.1 표준 원본으로 승격됨 (변경 없음, 0aea740).
-- operator-commons v0.4.0 → v0.5.0 (4833f13).
+- (4833f13).
 - `.codecov.yml` 신규 (4-repo target 70% 절대 floor 통일, d381587).
 
 ### Fixed
@@ -307,8 +306,6 @@ ADR-0057 Phase A1 (운영 클러스터 사전 배포) 진행 중 발견된 chart
 
 ### Refs
 - ADR-0057 (인프라 부트스트랩 43fd542): self-hosted valkey-operator 채택 로드맵
-- 운영 사고 분석 + Phase A 진행: keiailab/mongodb-operator HANDOFF.md (2026-05-07)
-
 ### Added (GitOps deploy 정합)
 
 - `deploy/overlays/prod/` GitOps 진입점 — config/{crd,rbac,manager} 를 prod ns 로
@@ -316,8 +313,6 @@ ADR-0057 Phase A1 (운영 클러스터 사전 배포) 진행 중 발견된 chart
 - `deploy/valkey-cluster.yaml` — production ValkeyCluster sample (db ns,
   shards=3, replicasPerShard=1, ceph-block, auth.enabled=true).
 - `deploy/README.md` — 운영 런북.
-- ADR-0029 — GitOps deploy 오버레이 도입 (mongodb-operator / postgresql-operator 와 3-repo 정합).
-
 ### Added (cycles 20-90 — Quality systems + production-grade UX)
 
 **Quality 시스템 (39 SSOT 게이트)**:
@@ -444,17 +439,3 @@ ADR-0057 Phase A1 (운영 클러스터 사전 배포) 진행 중 발견된 chart
 - **internal/webhook/v1alpha1: 80.7%** (신규 패키지)
 - 단위테스트: 60+건
 - 통합테스트: 4 시나리오 (실 Valkey 6노드)
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

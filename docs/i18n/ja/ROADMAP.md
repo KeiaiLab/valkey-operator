@@ -142,7 +142,6 @@
   - [x] secondary-promote ベースの cutover — `docs/migration/secondary-promote.md` (PR #136)
   - [x] ロールバック手順 — `docs/migration/rollback.md` (PR #136)
   - Verify: staging dry-run + RTO / RPO 測定結果の記録
-- [x] **release-smoke-test.sh** — mongodb-operator パターンを移植 (PR #136)
   - [x] 5 ステージ: image / SBOM / trivy / chart index / smoke — `scripts/release-smoke-test.sh` (PR #136)
   - Verify: `bash hack/release-smoke-test.sh <tag>` で 12/12 PASS
 
@@ -213,17 +212,3 @@
 | 2026-05-11 | webhook `validateStorageClassName` 追加 — RBD storageClass DNS-1123 基本検証 `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 全面改稿 — 事実訂正 (ServiceMonitor 等)、sub-task の粒度を細分化、新規項目 (VolumeSnapshot multipod、conversion webhook) 露出 | parallel-leaping-seal plan |
 | 2026-05-07 | 文書作成 — 3-repo ガバナンス資産整合 | INC-2026-05-07 |
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

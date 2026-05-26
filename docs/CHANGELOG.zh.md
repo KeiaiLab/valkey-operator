@@ -87,8 +87,7 @@
 - 合并到 main 的 7 项 dependabot 更新:
   - Docker base: `golang 1.26.3`、`distroless/static@e3f9456`
     (#80, #81)。
-  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils +
-    operator-commons 0.7.0 + otel 组 + ginkgo 2.28.3 + gomega
+  - Go modules: k8s 0.36 + controller-runtime 0.24 + utils + + otel 组 + ginkgo 2.28.3 + gomega
     1.40.0 (#84–#88)。
 
 ## [1.0.12] - 2026-05-12
@@ -179,7 +178,7 @@
 
 ### Changed
 
-- operator-commons v0.5.0 → v0.6.0 — RFC-0018 的 `SetAvailable`
+- — RFC-0018 的 `SetAvailable`
   / `SetReadyFalse` 现可使用 (#7)。
 
 ### Docs
@@ -217,7 +216,7 @@
   helm lint + helm template)。登记 ADR-0030。本仓库的
   `.lefthook.yml` 升格为 RFC-0017 §3.1 的标准原本 (无内容变更,
   0aea740)。
-- operator-commons v0.4.0 → v0.5.0 (4833f13)。
+- (4833f13)。
 - 新增 `.codecov.yml` — 4-repo 的目标 70% 绝对 floor 统一
   (d381587)。
 
@@ -371,7 +370,6 @@ ADR-0057 Phase A1 (运维集群前置部署) 过程中发现的 chart RBAC
 ### Refs
 - ADR-0057 (基础设施 bootstrap 43fd542): self-hosted
   valkey-operator 的采纳路线。
-- 运维事故分析 + Phase A 推进: keiailab/mongodb-operator
   HANDOFF.md (2026-05-07)。
 
 ### Added (GitOps deploy 对齐)
@@ -383,7 +381,6 @@ ADR-0057 Phase A1 (运维集群前置部署) 过程中发现的 chart RBAC
   (db ns、shards=3、replicasPerShard=1、ceph-block、
   auth.enabled=true)。
 - `deploy/README.md` — 运维 runbook。
-- ADR-0029 — 引入 GitOps deploy overlay (与 mongodb-operator /
   postgresql-operator 形成 3-repo 对齐)。
 
 ### Added (cycles 20-90 — Quality 体系 + production-grade UX)
@@ -598,17 +595,3 @@ completion**。
 - **`internal/webhook/v1alpha1`: 80.7%** (新增包)。
 - 单元测试: 60+ 项。
 - 集成测试: 4 个场景 (真 Valkey 6 节点)。
-
----
-
-<p align="center">
-  <b>keiailab operator family</b><br/>
-  <a href="https://github.com/keiailab/postgres-operator">postgres-operator</a> ·
-  <a href="https://github.com/keiailab/mongodb-operator">mongodb-operator</a> ·
-  <a href="https://github.com/keiailab/valkey-operator">valkey-operator</a> ·
-  <a href="https://github.com/keiailab/operator-commons">operator-commons</a>
-</p>
-
-<p align="center">
-  © 2026 keiailab · <a href="LICENSE">Apache-2.0</a> · <a href="https://keiailab.com">keiailab.com</a>
-</p>

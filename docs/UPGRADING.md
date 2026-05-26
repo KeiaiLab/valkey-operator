@@ -12,7 +12,6 @@ patch 해야 한다.
 | 신규 controller / CR / API 추가 | minor (v1.X → v1.X+1) | ValkeyBackupTarget 신설 |
 | 기존 API 시그니처 변경 (breaking) | major (v1.X → v2.0) | ValkeyCluster.spec.storage struct 변경 |
 | bug fix / dependency bump | patch (v1.X.Y → v1.X.Y+1) | controller-runtime 0.19→0.20 |
-| operator-commons 의존 bump | minor (commons v0.X → v0.X+1) | pkg/pvc + pkg/topology 채택 |
 
 ## 1. v1.0.x → v1.0.13 (현재)
 
@@ -48,28 +47,11 @@ v1alpha2 신규 도입. v1alpha1 CR 은 conversion webhook 으로 자동 변환 
 조치 불필요. 단 `kubectl apply -f` 로 v1alpha1 manifest 신규 생성은 *deprecated*
 경고 — v1alpha2 사용 권장.
 
-## 2. Sprint 1 채택 (operator-commons v0.9.0)
+## 2. Sprint 1 채택 ( )
 
 ADR-0049 (`docs/kb/adr/0049-sprint-1-commons-pvc-topology-adoption.md`).
 
 ```bash
-# go.mod 의 operator-commons 의존 bump 후
-go mod tidy
-```
-
-- **신규 import**: `github.com/keiailab/operator-commons/pkg/pvc`, `pkg/topology`
-- **삭제된 코드**: `internal/controller/pvc_resize.go` (-136 LOC) + test
-  (-166 LOC) + `internal/resources/statefulset.go` 의 inline
-  `defaultTopologySpread` (-22 LOC) → 총 -322 LOC
-- **callsite 교체**:
-  - `valkey_controller.go:235` — `commonspvc.ExpandDataPVCs(ctx, c, ns, []string{crName}, size)`
-  - `valkeycluster_controller.go:239` — 동일
-  - `statefulset.go` — `commonstopology.Defaulted(constraints, replicas, selector)`
-
-마이그레이션 영향:
-- Reconcile 동작 동일 (refactor 만, 외부 동작 변경 없음)
-- CRD spec 변경 없음
-- Helm chart 영향 없음
 
 ## 3. v1.0.x → v2.0.0 (예정 — v3.x-stable 선언 시점)
 
@@ -78,8 +60,6 @@ CLAUDE.md §7 의 *상용 제품 수준* (P0+P1+P2+OP+C 모두 ✅) 도달 시.
 - 모든 CR 의 API stability `Stable` 승격 (v1)
 - breaking change *최소화* — major bump 는 *의미 신호*
 - 5 repo 일관성 보장: `commons/docs/quality/production-grade-checklist.md` 참조
-
-상세: operator-commons ADR-0013 (audit-production-grade.sh)
 
 ## 4. GHA dual-track 정책 (ADR-0048)
 
@@ -116,7 +96,6 @@ dual-track 운영 (ADR-0048).
 ## 참고
 
 - ADR 목록: `docs/kb/adr/INDEX.md`
-- operator-commons UPGRADING: https://github.com/keiailab/operator-commons/blob/main/docs/UPGRADING.md
 - audit: `make audit-quality` (5 repo 측정, commons ADR-0013)
 - i18n: `commons/docs/i18n/README.md`
 - 가족 family: `docs/family.md`

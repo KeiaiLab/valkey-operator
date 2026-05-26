@@ -110,6 +110,5 @@ independent — the same user value applies to every per-shard PDB.
 - Schema: `api/v1alpha1/valkeycluster_types.go` (`PerShard` field)
 - Orphan cleanup helper: `internal/controller/pdb_default.go`
   (`EnsurePDBDeleted`)
-- Sibling pattern: `mongodb-operator/internal/resources/builder.go`
 - Unit tests: `internal/controller/pdb_default_test.go`
   (`BuildShardPDB` + `EnsurePDBDeleted` — all PASS)

@@ -1,9 +1,8 @@
-# ADR-0049: Sprint 1 — operator-commons pkg/pvc + pkg/topology 채택 (-322 LOC)
+# ADR-0049: Sprint 1 — pkg/pvc + pkg/topology 채택 (-322 LOC)
 
 - Date: 2026-05-21
 - Status: Accepted
 - Authors: @eightynine01 (Codex Major #7 — Sprint 1 Phase 2)
-- Refs: operator-commons ADR-0012 (commons-side decisions)
 
 ## Context
 
@@ -37,7 +36,7 @@ cross-repo 중복. commons Sprint 1 (ADR-0012) 에서 `pkg/pvc` +
    ```
    - valkey 는 `Replicas >= 2` 의미 → commons 기본 `WithMinReplicas(2)` 와 동일.
 
-3. **go.mod**: `operator-commons v0.7.0 → v0.8.1-0.20260521045707-85a46ba80952`
+3. **go.mod**: ` -0.20260521045707-85a46ba80952`
    (commons PR #52 pre-merge — 그리고 valkey 는 v0.7.0 에서 v0.8.0 skip 후
    바로 신규 commit hash 로 이동). v0.9.0 tag 후 본 ADR 갱신.
 
@@ -64,7 +63,7 @@ cross-repo 중복. commons Sprint 1 (ADR-0012) 에서 `pkg/pvc` +
 
 ## Refs
 
-- operator-commons PR #52, ADR-0012.
+- PR #52, ADR-0012.
 - 삭제된 원본:
   - `internal/controller/pvc_resize.go` (-136 LOC).
   - `internal/controller/pvc_resize_test.go` (-166 LOC).

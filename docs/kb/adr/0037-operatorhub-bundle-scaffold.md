@@ -34,7 +34,7 @@ annotations) 을 community-operators repo (`k8s-operatorhub/community-operators`
    - `categories`: "Database, Storage"
    - `capabilities: Seamless Upgrades` (StatefulSet rolling update)
    - `installModes`: AllNamespaces only (cluster-scoped operator pattern)
-   - `maintainers`: Keiailab <help@masblue.studio>
+   - `maintainers`: Keiailab <support@keiailab.com>
    - `provider`: Keiailab
    - `maturity: alpha` (v1alpha1 API 단계)
    - `minKubeVersion: 1.26.0`
@@ -59,7 +59,7 @@ annotations) 을 community-operators repo (`k8s-operatorhub/community-operators`
   가 관리하는 자원을 정확히 인지.
 
 부정:
-- Makefile + config/manifests/ 영역이 valkey 에 신규 추가. operator-commons /
+- Makefile + config/manifests/ 영역이 valkey 에 신규 추가. /
   postgres / mongodb 와 비대칭 (postgres + mongodb 는 후속 PR 로 정합).
 - alm-examples 부재로 OperatorHub UI 의 "Try it" 폼 자동 생성 불가 (PR-B9.2
   까지). 사용자는 여전히 Helm chart 또는 raw YAML 적용 가능.

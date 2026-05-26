@@ -93,5 +93,4 @@ reconciler 는 다음 reconcile 시:
 - 구현: `internal/resources/pdb.go` `BuildShardPDB`
 - PerShard field schema: `api/v1alpha1/valkeycluster_types.go`
 - PDB delete path helper: `internal/controller/pdb_default.go` `EnsurePDBDeleted`
-- 형제 패턴: `mongodb-operator/internal/resources/builder.go`
 - 유닛 테스트: `internal/controller/pdb_default_test.go` (BuildShardPDB + EnsurePDBDeleted PASS)
