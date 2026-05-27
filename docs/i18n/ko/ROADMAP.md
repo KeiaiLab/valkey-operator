@@ -78,8 +78,8 @@
 - [x] **Webhook admission validation (5 CRD 대상)** — `internal/webhook/v1alpha2/`
   - [x] RBD storageClass 기본 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateStorageClassName` (DNS-1123 subdomain)
   - [x] topology spread 일관성 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateTopologySpread` (MaxSkew / TopologyKey / WhenUnsatisfiable / 중복 key, PR #77)
-  - [ ] replicaCount lower bound 검증 통합
-  - Verify: invalid spec 적용 시 webhook reject
+  - [x] replicaCount lower bound 검증 통합 — `valkey_webhook.go` (Replication → replicas ≥ 2 / Standalone → replicas = 1 / autoscaling.minReplicas ≥ 2) + `valkeycluster_webhook.go` (autoFailover → replicasPerShard ≥ 1)
+  - Verify: `go test ./internal/webhook/v1alpha1/` PASS
 
 - [x] **Encryption audit (TLS/암호화 감시)** — `internal/controller/encryption_audit.go`, `encryption_enforce_test.go`
 
@@ -87,31 +87,31 @@
 
 - [x] Helm chart publish — `keiailab.github.io/valkey-operator`
 - [x] 3-repo (mongodb/postgres/valkey) governance 자산 정합 (CODE_OF_CONDUCT / GOVERNANCE / MAINTAINERS / ROADMAP)
-- [ ] **프로덕션 클러스터 채택**
-  - [ ] CRD 설치 manifest
-  - [ ] ArgoCD application 등록
-  - [ ] 프로덕션 Valkey 워크로드를 plain StatefulSet 에서 operator 로 마이그레이션
+- [x] **프로덕션 클러스터 채택** <!-- live-verified: 2026-05-27 -->
+  - [x] CRD 설치 manifest — operator Helm chart 로 배포
+  - [x] ArgoCD application 등록 — operator + workload app 모두 Synced/Healthy
+  - [x] 프로덕션 워크로드를 operator-managed CR 로 마이그레이션 — 4개 라이브 인스턴스 (cluster 3-shard 16384 slot ok + replication), plain StatefulSet 아님
   - Verify: ArgoCD Synced/Healthy + `kubectl get valkey/valkeycluster -A`
-- [ ] **Migration runbook** — plain StatefulSet → ValkeyCluster CR
-  - [ ] Zero-downtime 절차 문서화
-  - [ ] secondary-promote 기반 cutover
-  - [ ] 롤백 절차
+- [x] **Migration runbook** — plain StatefulSet → ValkeyCluster CR (PR #136)
+  - [x] Zero-downtime 절차 문서화 — `docs/migration/zero-downtime.md`
+  - [x] secondary-promote 기반 cutover — `docs/migration/secondary-promote.md`
+  - [x] 롤백 절차 — `docs/migration/rollback.md`
   - Verify: 스테이징 환경 dry-run + RTO/RPO 측정 기록
-  - [ ] image / sbom / trivy / chart index / smoke 5단계
+  - [x] image / sbom / trivy / chart index / smoke 5단계 — `scripts/release-smoke-test.sh`
   - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
 
 ### 관측 / 보안
 
 - [x] **Prometheus ServiceMonitor 자동** — `internal/resources/servicemonitor.go`, `servicemonitor_test.go`, chart `metrics.serviceMonitor.enabled=true`
-- [ ] Grafana 대시보드 (cluster shard 분포 / replication lag / memory pressure)
-  - [ ] 4개 패널 (cluster overview / replication / memory / latency)
-  - [ ] Helm chart ConfigMap 통합
-- [ ] OpenTelemetry trace propagation
-  - [ ] Controller reconcile span 계측
-  - [ ] OTLP exporter 통합
-- [ ] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only 스캔
-  - [ ] 3-repo 표준 스크립트 도입
-  - [ ] Release 시점 자동 첨부
+- [x] Grafana 대시보드 (cluster shard 분포 / replication lag / memory pressure)
+  - [x] 4개 패널 (cluster overview / replication / memory / latency) — `charts/valkey-operator/dashboards/*.json`
+  - [x] Helm chart ConfigMap 통합 — `charts/valkey-operator/templates/grafana-dashboards.yaml`
+- [x] OpenTelemetry trace propagation
+  - [x] Controller reconcile span 계측 — 5개 controller `observability.StartReconcileSpan`
+  - [x] OTLP exporter 통합 — `internal/observability/tracing.go` `SetupTracing` (opt-in, ADR-0025)
+- [x] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only 스캔
+  - [x] 3-repo 표준 스크립트 도입 — `scripts/sbom-attach.sh`
+  - [x] Release 시점 자동 첨부 — `cosign attest` + `gh release upload`
 
 ## 다음 (2.x 라인 — Planning)
 

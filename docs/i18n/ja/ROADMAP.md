@@ -112,8 +112,8 @@
     `internal/webhook/v1alpha1/valkeycluster_webhook.go`
     `validateTopologySpread` (MaxSkew / TopologyKey /
     WhenUnsatisfiable / duplicate key、#77)
-  - [ ] replicaCount lower-bound チェックを webhook に統合
-  - Verify: invalid spec が webhook によって reject されること
+  - [x] replicaCount lower-bound チェックを webhook に統合 — `valkey_webhook.go` (Replication → replicas ≥ 2 / Standalone → replicas = 1 / autoscaling.minReplicas ≥ 2) + `valkeycluster_webhook.go` (autoFailover → replicasPerShard ≥ 1)
+  - Verify: `go test ./internal/webhook/v1alpha1/` PASS
 
 - [x] **Encryption audit (TLS / 暗号化 surveillance)** —
   `internal/controller/encryption_audit.go`、
@@ -130,11 +130,11 @@
 - [x] **SLSA-3 provenance + cosign keyless signing** をイメージ、
   Helm chart、SBOM に対して適用 (ADR-0046) — 検証コマンドは
   [SECURITY.md](../../../.github/SECURITY.md) を参照。v1.0.13 から有効。
-- [ ] **本番クラスタへの導入**
-  - [ ] CRD-install manifest
-  - [ ] ArgoCD application 登録
-  - [ ] 本番 Valkey ワークロードを plain StatefulSet から operator に
-    マイグレーション
+- [x] **本番クラスタへの導入** <!-- live-verified: 2026-05-27 -->
+  - [x] CRD-install manifest — operator Helm chart で配備
+  - [x] ArgoCD application 登録 — operator + workload app すべて Synced/Healthy
+  - [x] 本番ワークロードを operator-managed CR に移行 — 4 つのライブ
+    インスタンス (cluster 3-shard 16384 slot ok + replication)、plain StatefulSet ではない
   - Verify: ArgoCD Synced/Healthy +
     `kubectl get valkey/valkeycluster -A`
 - [x] **Migration runbook** — plain StatefulSet → ValkeyCluster CR (PR #136)
@@ -153,16 +153,16 @@
   `metrics.serviceMonitor.enabled=true`
 - [x] **OpenSSF Scorecard + dependency-review + CodeQL SAST + DCO
   workflows** — `.github/workflows/` を参照
-- [x] Grafana ダッシュボード (cluster shard 分布 / replication (PR open)
+- [x] Grafana ダッシュボード (cluster shard 分布 / replication
   lag / memory pressure)
-  - [x] 4 パネル: cluster overview、replication、memory、latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json` (PR open)
-  - [x] Helm chart ConfigMap 統合 — `charts/valkey-operator/templates/grafana-dashboards.yaml` (PR open)
-- [ ] OpenTelemetry trace 伝播
-  - [ ] controller reconcile span の計装
-  - [ ] OTLP exporter の組み込み
-- [x] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only スキャン (PR open)
-  - [x] 3-repo 共有スクリプトの採用 — `scripts/sbom-attach.sh` (PR open)
-  - [x] release 時の自動添付 — `cosign attest` + `gh release upload` (PR open)
+  - [x] 4 パネル: cluster overview、replication、memory、latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json`
+  - [x] Helm chart ConfigMap 統合 — `charts/valkey-operator/templates/grafana-dashboards.yaml`
+- [x] OpenTelemetry trace 伝播
+  - [x] controller reconcile span の計装 — 5 controller が `observability.StartReconcileSpan` を呼び出し
+  - [x] OTLP exporter の組み込み — `internal/observability/tracing.go` `SetupTracing` (opt-in、ADR-0025)
+- [x] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only スキャン
+  - [x] 3-repo 共有スクリプトの採用 — `scripts/sbom-attach.sh`
+  - [x] release 時の自動添付 — `cosign attest` + `gh release upload`
 
 ## 次 (2.x ライン — Planning)
 
