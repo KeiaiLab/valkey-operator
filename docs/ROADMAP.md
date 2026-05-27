@@ -119,8 +119,14 @@ file used to confirm the checkbox.
     `internal/webhook/v1alpha1/valkeycluster_webhook.go`
     `validateTopologySpread` (MaxSkew / TopologyKey /
     WhenUnsatisfiable / duplicate key, #77)
-  - [ ] Wire the replicaCount lower-bound check into the webhook
-  - Verify: invalid specs rejected by the webhook
+  - [x] replicaCount lower-bound check wired into the webhook —
+    `internal/webhook/v1alpha1/valkey_webhook.go` (mode=Replication →
+    replicas ≥ 2; mode=Standalone → replicas = 1; autoscaling.minReplicas
+    ≥ 2) + `valkeycluster_webhook.go` (autoFailover → replicasPerShard ≥ 1)
+  - Verify: `go test ./internal/webhook/v1alpha1/` PASS
+    (`TestValkey_Validate_Replication_replicas_min_2`,
+    `TestValkey_Autoscaling_min_below_2_rejected`,
+    `TestValkeyClusterValidate_AutoFailover_requires_replicas`)
 
 - [x] **Encryption audit (TLS / encryption surveillance)** —
   `internal/controller/encryption_audit.go`,
@@ -137,11 +143,13 @@ file used to confirm the checkbox.
 - [x] **SLSA-3 provenance + cosign keyless signing** for the image,
   Helm chart, and SBOM (ADR-0046) — verification commands in
   [SECURITY.md](../.github/SECURITY.md). Active from v1.0.13.
-- [ ] **Production cluster adoption**
-  - [ ] CRD-install manifest
-  - [ ] ArgoCD application registration
-  - [ ] Migrate the production Valkey workload from a plain
-    StatefulSet to the operator
+- [x] **Production cluster adoption** <!-- live-verified: 2026-05-27 -->
+  - [x] CRD-install manifest — shipped via the operator Helm chart
+  - [x] ArgoCD application registration — operator + workload apps
+    Synced/Healthy
+  - [x] Production workloads migrated to operator-managed CRs —
+    4 live instances spanning cluster (3-shard, 16384 slots ok) and
+    replication modes, no longer plain StatefulSets
   - Verify: ArgoCD Synced/Healthy and
     `kubectl get valkey/valkeycluster -A`
 - [x] **Migration runbook** — plain StatefulSet → ValkeyCluster CR (PR #136)
@@ -161,16 +169,20 @@ file used to confirm the checkbox.
   `metrics.serviceMonitor.enabled=true`
 - [x] **OpenSSF Scorecard + dependency-review + CodeQL SAST + DCO
   workflows** — see `.github/workflows/`
-- [x] Grafana dashboards (cluster shard distribution / replication (PR open)
+- [x] Grafana dashboards (cluster shard distribution / replication
   lag / memory pressure)
-  - [x] 4 panels: cluster overview, replication, memory, latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json` (PR open)
-  - [x] Helm-chart ConfigMap integration — `charts/valkey-operator/templates/grafana-dashboards.yaml` (PR open)
-- [ ] OpenTelemetry trace propagation
-  - [ ] Instrument the controller reconcile span
-  - [ ] Wire up the OTLP exporter
-- [x] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only scan (PR open)
-  - [x] Adopt the shared 3-repo script — `scripts/sbom-attach.sh` (PR open)
-  - [x] Auto-attach at release time — `cosign attest` + `gh release upload` (PR open)
+  - [x] 4 panels: cluster overview, replication, memory, latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json`
+  - [x] Helm-chart ConfigMap integration — `charts/valkey-operator/templates/grafana-dashboards.yaml`
+- [x] OpenTelemetry trace propagation
+  - [x] Instrument the controller reconcile span — all 5 controllers
+    call `observability.StartReconcileSpan` + child `StartCallSpan`
+    (`internal/controller/*_controller.go`)
+  - [x] Wire up the OTLP exporter — `internal/observability/tracing.go`
+    `SetupTracing` (OTLP gRPC, opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`,
+    ADR-0025)
+- [x] Image SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only scan
+  - [x] Adopt the shared 3-repo script — `scripts/sbom-attach.sh`
+  - [x] Auto-attach at release time — `cosign attest` + `gh release upload`
 
 ## Next (2.x line — Planning)
 
@@ -216,6 +228,7 @@ file used to confirm the checkbox.
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-05-27 | Truth-up — flip stale `[ ]`→`[x]`: replicaCount lower-bound (already wired in webhooks), OpenTelemetry trace propagation (`SetupTracing` + 5-controller spans), Production cluster adoption (operator + 4 live CRs, ArgoCD Synced/Healthy); drop merged "(PR open)" tags (Grafana dashboards / SBOM) | lexical-puzzling-graham plan |
 | 2026-05-12 | English becomes canonical; Korean preserved as `ROADMAP.ko.md`; ADR-0045 (GH Actions restoration) + ADR-0046 (SLSA-3 + cosign) noted in Operations and Security sections | i18n initiative |
 | 2026-05-11 | Added webhook `validateStorageClassName` — RBD storageClass DNS-1123 baseline validation `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | Full rewrite — factual corrections (ServiceMonitor etc.), finer sub-task granularity, new items exposed (VolumeSnapshot multipod, conversion webhook) | parallel-leaping-seal plan |

@@ -112,8 +112,8 @@
     `internal/webhook/v1alpha1/valkeycluster_webhook.go`
     `validateTopologySpread` (MaxSkew / TopologyKey /
     WhenUnsatisfiable / 重复 key、#77)
-  - [ ] 将 replicaCount 下限校验接入 webhook
-  - Verify: invalid spec 被 webhook 拒绝
+  - [x] 将 replicaCount 下限校验接入 webhook — `valkey_webhook.go` (Replication → replicas ≥ 2 / Standalone → replicas = 1 / autoscaling.minReplicas ≥ 2) + `valkeycluster_webhook.go` (autoFailover → replicasPerShard ≥ 1)
+  - Verify: `go test ./internal/webhook/v1alpha1/` PASS
 
 - [x] **加密审计 (TLS / 加密监控)** —
   `internal/controller/encryption_audit.go`、
@@ -130,10 +130,10 @@
 - [x] **SLSA-3 provenance + cosign keyless signing** 应用于镜像、
   Helm chart 与 SBOM (ADR-0046) — 验证命令见
   [SECURITY.md](../../../.github/SECURITY.md)。自 v1.0.13 起生效。
-- [ ] **生产集群采用**
-  - [ ] CRD-install manifest
-  - [ ] ArgoCD application 注册
-  - [ ] 将生产 Valkey 工作负载从 plain StatefulSet 迁移至 operator
+- [x] **生产集群采用** <!-- live-verified: 2026-05-27 -->
+  - [x] CRD-install manifest — 通过 operator Helm chart 部署
+  - [x] ArgoCD application 注册 — operator + workload app 均 Synced/Healthy
+  - [x] 将生产工作负载迁移至 operator-managed CR — 4 个在线实例 (cluster 3-shard 16384 slot ok + replication),非 plain StatefulSet
   - Verify: ArgoCD Synced/Healthy 且
     `kubectl get valkey/valkeycluster -A`
 - [x] **迁移手册 (Migration runbook)** — plain StatefulSet → ValkeyCluster CR (PR #136)
@@ -152,16 +152,16 @@
   `metrics.serviceMonitor.enabled=true`
 - [x] **OpenSSF Scorecard + dependency-review + CodeQL SAST + DCO
   workflows** — 详见 `.github/workflows/`
-- [x] Grafana 仪表板 (cluster shard 分布 / replication (PR open)
+- [x] Grafana 仪表板 (cluster shard 分布 / replication
   lag / memory pressure)
-  - [x] 4 个面板: cluster overview、replication、memory、latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json` (PR open)
-  - [x] Helm chart ConfigMap 集成 — `charts/valkey-operator/templates/grafana-dashboards.yaml` (PR open)
-- [ ] OpenTelemetry trace 传播
-  - [ ] 为 controller reconcile span 插桩 (instrument)
-  - [ ] 接入 OTLP exporter
-- [x] 镜像 SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only 扫描 (PR open)
-  - [x] 采用 3-repo 共享脚本 — `scripts/sbom-attach.sh` (PR open)
-  - [x] release 时自动附加 — `cosign attest` + `gh release upload` (PR open)
+  - [x] 4 个面板: cluster overview、replication、memory、latency — `charts/valkey-operator/dashboards/{cluster-overview,replication,memory,latency}.json`
+  - [x] Helm chart ConfigMap 集成 — `charts/valkey-operator/templates/grafana-dashboards.yaml`
+- [x] OpenTelemetry trace 传播
+  - [x] 为 controller reconcile span 插桩 (instrument) — 5 个 controller 调用 `observability.StartReconcileSpan`
+  - [x] 接入 OTLP exporter — `internal/observability/tracing.go` `SetupTracing` (opt-in、ADR-0025)
+- [x] 镜像 SBOM (SPDX) + trivy HIGH/CRITICAL fixed-only 扫描
+  - [x] 采用 3-repo 共享脚本 — `scripts/sbom-attach.sh`
+  - [x] release 时自动附加 — `cosign attest` + `gh release upload`
 
 ## 下一阶段 (2.x 线 — Planning)
 
