@@ -37,7 +37,13 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${DISPATCH_TAG:-$REF_NAME}"
-          VERSION="${TAG#v}"
+          # 태그 스킴 robust 처리: GitHub Release 컨벤션인 'valkey-operator-X.Y.Z'
+          # 와 'vX.Y.Z' 를 모두 지원한다. 기존 '${TAG#v}' 는 'valkey-operator-1.0.13'
+          # 을 'alkey-operator-1.0.13' 으로 망가뜨려 preflight 실패 → 정식 multiarch+
+          # 서명 이미지가 한 번도 발행되지 못한 근본 원인이었다 (참고: 단일 태그 push
+          # 의무 — GitHub 은 한 번에 3개 초과 태그 push 시 워크플로를 트리거하지 않음).
+          VERSION="${TAG#valkey-operator-}"
+          VERSION="${VERSION#v}"
           CHART_VER=$(grep '^version:' charts/valkey-operator/Chart.yaml | awk '{print $2}' | tr -d '"')
           APP_VER=$(grep '^appVersion:' charts/valkey-operator/Chart.yaml | awk '{print $2}' | tr -d '"')
           if [ "$CHART_VER" != "$VERSION" ]; then
