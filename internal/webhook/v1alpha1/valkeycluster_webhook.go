@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -230,6 +231,9 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	// pod.{securityContext,containerSecurityContext} PSA restricted 가드.
 	errs = append(errs, validatePodSecurityRestricted(specPath.Child("pod"), vc.Spec.Pod)...)
 
+	// additionalConfig directive 주입 + operator-managed override 차단 (Valkey CR 와 sister).
+	errs = append(errs, validateAdditionalConfig(specPath.Child("additionalConfig"), vc.Spec.AdditionalConfig)...)
+
 	return errs
 }
 
@@ -308,6 +312,75 @@ func validateStorageClassName(path *field.Path, name string) field.ErrorList {
 		return field.ErrorList{field.Invalid(path, name, err.Error())}
 	}
 	return nil
+}
+
+// reservedConfigDirectives — operator 가 valkey.conf 템플릿에서 직접 렌더하는
+// 보안/토폴로지 critical directive. AdditionalConfig 로 이 key 를 덮어쓰면 사용자가
+// operator 의 보장 (auth 강제 / TLS / cluster 토폴로지 / 네트워크 바인딩) 을 silent
+// 우회하게 되므로 admission 단계에서 거부한다. 출처: internal/assets/valkey.conf.tmpl.
+//
+// valkey directive 이름은 대소문자를 구분하지 않으므로 key 를 소문자로 정규화해 비교.
+var reservedConfigDirectives = map[string]struct{}{
+	"bind":                {},
+	"port":                {},
+	"protected-mode":      {},
+	"dir":                 {},
+	"requirepass":         {},
+	"masterauth":          {},
+	"replicaof":           {},
+	"cluster-enabled":     {},
+	"cluster-config-file": {},
+	"tls-port":            {},
+	"tls-cert-file":       {},
+	"tls-key-file":        {},
+	"tls-ca-cert-file":    {},
+	"tls-auth-clients":    {},
+}
+
+// validateAdditionalConfig — spec.additionalConfig (valkey.conf 추가 directive) 검증.
+//
+// Why: 템플릿 valkey.conf.tmpl 의 `{{ range .Extra }}{{ $k }} {{ $v }}{{ end }}` 는
+// key/value 를 *escape 없이* 그대로 한 줄로 렌더한다. 따라서
+//   - key/value 에 개행(\n,\r) 이 있으면 임의 directive 주입이 가능하고,
+//   - key 에 공백이 있으면 valkey 가 첫 토큰만 directive 로 인식해 의도와 다른 설정이 되며,
+//   - operator-managed directive (requirepass / tls-* 등) 를 덮어쓰면 보안 우회가 된다.
+//
+// CRD schema (map[string]string) 로는 이 invariant 를 표현할 수 없어 webhook 으로 보강한다.
+func validateAdditionalConfig(path *field.Path, cfg map[string]string) field.ErrorList {
+	var errs field.ErrorList
+	for k, v := range cfg {
+		keyPath := path.Key(k)
+		if k == "" {
+			errs = append(errs, field.Invalid(
+				keyPath, k,
+				"additionalConfig directive key must be non-empty",
+			))
+			continue
+		}
+		// key 는 단일 directive 토큰 — 공백/개행 불가 (주입 + 토큰 오인식 차단).
+		if strings.ContainsAny(k, " \t\n\r") {
+			errs = append(errs, field.Invalid(
+				keyPath, k,
+				"additionalConfig directive key must not contain whitespace or newlines (config injection)",
+			))
+			continue
+		}
+		// value 개행 차단 — 한 줄에 추가 directive 주입 방지.
+		if strings.ContainsAny(v, "\n\r") {
+			errs = append(errs, field.Invalid(
+				keyPath, v,
+				"additionalConfig value must not contain a newline (config injection)",
+			))
+			continue
+		}
+		if _, reserved := reservedConfigDirectives[strings.ToLower(k)]; reserved {
+			errs = append(errs, field.Forbidden(
+				keyPath,
+				"directive '"+k+"' is operator-managed and cannot be overridden via additionalConfig",
+			))
+		}
+	}
+	return errs
 }
 
 // validatePodSecurityRestricted — spec.pod.{securityContext,containerSecurityContext}
