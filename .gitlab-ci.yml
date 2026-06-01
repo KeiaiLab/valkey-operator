@@ -55,3 +55,37 @@ mirror_to_github:
   retry:
     max: 1
     when: runner_system_failure
+
+# ─── SSOT test:go override (envtest 셋업 주입) ────────────────────────────────
+# SSOT(templates/gitlab/.gitlab-ci.yml)의 test:go 는 `go test ./...` 를 그대로 돌려
+# envtest 통합 테스트(internal/controller, internal/webhook)가 etcd/kube-apiserver
+# 부재로 실패한다. valkey 는 repo-local go-test 가 없으므로(STACK_TAGS=helm) SSOT
+# test:go 만 동일 name 재정의로 override + setup-envtest 셋업 주입.
+# controller-runtime v0.23.x → release-0.23 / k8s.io/api v0.35 → 1.35 (postgres/mongodb 일관).
+test:go:
+  stage: test
+  image: golang:1.25-alpine
+  rules:
+    - exists:
+        - go.mod
+  cache:
+    key: "go-mod-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - .go/pkg/mod/
+      - .gocache/
+  variables:
+    GOMODCACHE: ${CI_PROJECT_DIR}/.go/pkg/mod
+    GOCACHE: ${CI_PROJECT_DIR}/.gocache
+  before_script:
+    - apk add --no-cache git gcc musl-dev
+    - go install sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.23
+    - export KUBEBUILDER_ASSETS=$($(go env GOPATH)/bin/setup-envtest use 1.35 --bin-dir "${CI_PROJECT_DIR}/.envtest-bin" -p path)
+  script:
+    - go test ./... -race -cover -coverprofile=coverage.out -timeout=15m
+    - go tool cover -func=coverage.out | tail -3
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    when: always
+    paths:
+      - coverage.out
+    expire_in: 1 week
