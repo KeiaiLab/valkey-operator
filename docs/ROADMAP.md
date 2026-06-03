@@ -32,7 +32,10 @@ file used to confirm the checkbox.
 ### Stability and maturity
 
 - [x] **PodSecurity restricted compliance**
-  - [x] 4 SecurityContext helpers unified — `internal/resources/security.go`
+  - [x] Restricted SecurityContext helpers
+    (`buildRestrictedContainerSecurityContext` etc.) applied across the
+    resource builders — `internal/resources/statefulset.go`,
+    `backup_job.go`, `download_job.go`, `upload_job.go`, `restore.go`
   - [x] Regression guard for restricted PSA in resource builders
   - [x] Controller and webhook podSpec conversion paths fully guarded
     — `internal/webhook/v1alpha1/valkeycluster_webhook.go`
@@ -100,18 +103,27 @@ file used to confirm the checkbox.
 
 - [x] **API version evolution**
   - [x] v1alpha2 active — `api/v1alpha2/`
-  - [x] v1alpha1 → v1alpha2 conversion webhook —
-    `api/v1alpha2/conversion.go`
+  - [~] v1alpha1 → v1alpha2 conversion webhook —
+    `api/v1alpha2/conversion.go` (conversion funcs + Hub markers
+    shipped; webhook serving path not yet wired — no
+    `spec.conversion.strategy: Webhook` in config/crd, no conversion
+    clientConfig in the chart webhook, not registered in cmd/main.go;
+    see `api/v1alpha2/doc.go`)
   - [x] 5 CRDs (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore,
     ValkeyBackupTarget)
   - Verify: `kubectl apply -f <v1alpha1.yaml>` and check it is stored
     as a v1alpha2 object
 
-- [x] **Online PVC resize** —
-  `internal/controller/pvc_resize.go`
+- [x] **Online PVC resize** — `commonspvc.ExpandDataPVCs`
+  (operator-commons `pkg/pvc`) invoked from
+  `internal/controller/valkey_controller.go` and
+  `internal/controller/valkeycluster_controller.go` (ADR-0049)
 
-- [x] **Webhook admission validation (5 CRDs)** —
-  `internal/webhook/v1alpha2/`
+- [x] **Webhook admission validation (4 validating webhooks +
+  conversion webhook)** — `internal/webhook/v1alpha1/`
+  (validating webhooks for Valkey, ValkeyCluster, ValkeyBackupTarget,
+  ValkeyRestore; ValkeyBackup has no validating webhook — the 5th CRD
+  is covered via the conversion path)
   - [x] RBD storageClass baseline validation —
     `internal/webhook/v1alpha1/valkeycluster_webhook.go`
     `validateStorageClassName` (DNS-1123 subdomain)
@@ -159,7 +171,7 @@ file used to confirm the checkbox.
   - Verify: staging dry-run with RTO / RPO measurements recorded
 - [x] **release-smoke-test.sh** — follow established pattern (PR #136)
   - [x] Five stages: image / SBOM / trivy / chart index / smoke — `scripts/release-smoke-test.sh` (PR #136)
-  - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
+  - Verify: `bash scripts/release-smoke-test.sh <tag>` 12/12 PASS
 
 ### Observability and security
 
@@ -228,6 +240,7 @@ file used to confirm the checkbox.
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-03 | Citation truth-up — fix phantom cited paths that the 2026-05-27 pass missed (features real, paths wrong): conversion webhook serving path not wired → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helpers live in `statefulset.go` et al. (no `security.go`); webhook header `v1alpha2/`→`v1alpha1/` + "4 validating webhooks + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, no `pvc_resize.go`); smoke-test Verify `hack/`→`scripts/`. Added `internal/observability/roadmap_citation_test.go` regression guard | docs/roadmap-citation-truthup |
 | 2026-05-27 | Truth-up — flip stale `[ ]`→`[x]`: replicaCount lower-bound (already wired in webhooks), OpenTelemetry trace propagation (`SetupTracing` + 5-controller spans), Production cluster adoption (operator + 4 live CRs, ArgoCD Synced/Healthy); drop merged "(PR open)" tags (Grafana dashboards / SBOM) | lexical-puzzling-graham plan |
 | 2026-05-12 | English becomes canonical; Korean preserved as `ROADMAP.ko.md`; ADR-0045 (GH Actions restoration) + ADR-0046 (SLSA-3 + cosign) noted in Operations and Security sections | i18n initiative |
 | 2026-05-11 | Added webhook `validateStorageClassName` — RBD storageClass DNS-1123 baseline validation `[x]` | ralph-loop iter#2 |

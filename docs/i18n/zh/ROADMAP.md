@@ -28,7 +28,9 @@
 ### 稳定性与成熟度
 
 - [x] **PodSecurity restricted compliance**
-  - [x] 4 处 SecurityContext helper 统一 — `internal/resources/security.go`
+  - [x] 将 restricted SecurityContext helper (`buildRestrictedContainerSecurityContext` 等)
+    应用于 resources 构造器全程 — `internal/resources/statefulset.go`、
+    `backup_job.go`、`download_job.go`、`upload_job.go`、`restore.go`
   - [x] resources 构造器的 restricted PSA 回归守护
   - [x] controller 与 webhook 侧 podSpec 转换路径全程守护
     — `internal/webhook/v1alpha1/valkeycluster_webhook.go`
@@ -94,17 +96,25 @@
 
 - [x] **API 版本演进**
   - [x] v1alpha2 活跃 — `api/v1alpha2/`
-  - [x] v1alpha1 → v1alpha2 conversion webhook —
-    `api/v1alpha2/conversion.go`
+  - [~] v1alpha1 → v1alpha2 conversion webhook —
+    `api/v1alpha2/conversion.go` (转换函数 + Hub 标记已就位,但
+    webhook 服务路径尚未接线 — config/crd 中无
+    `spec.conversion.strategy: Webhook` / chart webhook 中无 conversion
+    clientConfig / cmd/main.go 未注册,参见 `api/v1alpha2/doc.go`)
   - [x] 5 个 CRD (Valkey、ValkeyCluster、ValkeyBackup、ValkeyRestore、
     ValkeyBackupTarget)
   - Verify: `kubectl apply -f <v1alpha1.yaml>` 后确认其作为 v1alpha2 对象保存
 
-- [x] **PVC 在线扩容 (Online PVC resize)** —
-  `internal/controller/pvc_resize.go`
+- [x] **PVC 在线扩容 (Online PVC resize)** — `commonspvc.ExpandDataPVCs`
+  (operator-commons `pkg/pvc`) 由
+  `internal/controller/valkey_controller.go` /
+  `internal/controller/valkeycluster_controller.go` 调用 (ADR-0049)
 
-- [x] **Webhook 准入校验 (5 CRD)** —
-  `internal/webhook/v1alpha2/`
+- [x] **Webhook 准入校验 (4 个 validating webhook +
+  conversion webhook)** — `internal/webhook/v1alpha1/`
+  (Valkey / ValkeyCluster / ValkeyBackupTarget / ValkeyRestore 的
+  validating webhook; ValkeyBackup 无 validating webhook —
+  第 5 个 CRD 经 conversion 路径处理)
   - [x] RBD storageClass 基础校验 —
     `internal/webhook/v1alpha1/valkeycluster_webhook.go`
     `validateStorageClassName` (DNS-1123 subdomain)
@@ -142,7 +152,7 @@
   - [x] 回滚流程 — `docs/migration/rollback.md` (PR #136)
   - Verify: staging dry-run + RTO / RPO 测量结果记录
   - [x] 5 个阶段: image / SBOM / trivy / chart index / smoke — `scripts/release-smoke-test.sh` (PR #136)
-  - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
+  - Verify: `bash scripts/release-smoke-test.sh <tag>` 12/12 PASS
 
 ### 可观测性与安全
 
@@ -207,6 +217,7 @@
 
 | 日期 | 变更 | 引用 |
 |---|---|---|
+| 2026-06-03 | 引用路径修正 — 修复 2026-05-27 修正遗漏的 phantom 引用路径 (功能实存,仅路径错误): conversion webhook 服务路径未接线 → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helper 实体位于 `statefulset.go` 等 (无 `security.go`); webhook 头 `v1alpha2/`→`v1alpha1/` + "4 个 validating webhook + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, 无 `pvc_resize.go`); smoke-test Verify `hack/`→`scripts/`。新增 `internal/observability/roadmap_citation_test.go` 回归守护 | docs/roadmap-citation-truthup |
 | 2026-05-12 | English 成为正本;韩文保留为 `ROADMAP.ko.md`;ADR-0045 (GH Actions 恢复) + ADR-0046 (SLSA-3 + cosign) 在运维与安全章节标注 | i18n initiative |
 | 2026-05-11 | 添加 webhook `validateStorageClassName` — RBD storageClass DNS-1123 基础校验 `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 全量重写 — 事实修正 (ServiceMonitor 等)、更细粒度的 sub-task、暴露新项 (VolumeSnapshot multipod、conversion webhook) | parallel-leaping-seal plan |

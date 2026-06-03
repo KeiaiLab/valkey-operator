@@ -26,7 +26,7 @@
 ### 안정성 / 성숙도
 
 - [x] **PodSecurity restricted compliance**
-  - [x] 4 곳 SecurityContext helper 통일 — `internal/resources/security.go`
+  - [x] restricted SecurityContext helper (`buildRestrictedContainerSecurityContext` 등) 를 resources 빌더 전반에 적용 — `internal/resources/statefulset.go`, `backup_job.go`, `download_job.go`, `upload_job.go`, `restore.go`
   - [x] restricted PSA 회귀 가드 (resources 빌더)
   - [x] controller / webhook 측 podSpec 변환 경로 전수 가드 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validatePodSecurityRestricted` (6 항목 — runAsNonRoot/runAsUser/privileged/allowPrivilegeEscalation, 9 단위 테스트, PR #78)
   - Verify: `kubectl label ns <ns> pod-security.kubernetes.io/enforce=restricted` 후 pod ready
@@ -69,13 +69,13 @@
 
 - [x] **API 버전 진화**
   - [x] v1alpha2 활성 — `api/v1alpha2/`
-  - [x] v1alpha1 → v1alpha2 conversion webhook — `api/v1alpha2/conversion.go`
+  - [~] v1alpha1 → v1alpha2 conversion webhook — `api/v1alpha2/conversion.go` (변환 함수 + Hub 마커는 존재하나 webhook 서빙 경로 미배선 — config/crd 에 `spec.conversion.strategy: Webhook` 없음 / chart webhook 에 conversion clientConfig 없음 / cmd/main.go 미등록, `api/v1alpha2/doc.go` 참조)
   - [x] 5 CRD (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore, ValkeyBackupTarget)
   - Verify: `kubectl apply -f <v1alpha1.yaml>` 후 v1alpha2 객체로 변환 확인
 
-- [x] **PVC online resize** — `internal/controller/pvc_resize.go`
+- [x] **PVC online resize** — `commonspvc.ExpandDataPVCs` (operator-commons `pkg/pvc`) 를 `internal/controller/valkey_controller.go` / `internal/controller/valkeycluster_controller.go` 에서 호출 (ADR-0049)
 
-- [x] **Webhook admission validation (5 CRD 대상)** — `internal/webhook/v1alpha2/`
+- [x] **Webhook admission validation (4 validating webhook + conversion webhook)** — `internal/webhook/v1alpha1/` (Valkey / ValkeyCluster / ValkeyBackupTarget / ValkeyRestore validating webhook; ValkeyBackup 은 validating webhook 없음 — 5번째 CRD 는 conversion 경로로 처리)
   - [x] RBD storageClass 기본 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateStorageClassName` (DNS-1123 subdomain)
   - [x] topology spread 일관성 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateTopologySpread` (MaxSkew / TopologyKey / WhenUnsatisfiable / 중복 key, PR #77)
   - [x] replicaCount lower bound 검증 통합 — `valkey_webhook.go` (Replication → replicas ≥ 2 / Standalone → replicas = 1 / autoscaling.minReplicas ≥ 2) + `valkeycluster_webhook.go` (autoFailover → replicasPerShard ≥ 1)
@@ -98,7 +98,7 @@
   - [x] 롤백 절차 — `docs/migration/rollback.md`
   - Verify: 스테이징 환경 dry-run + RTO/RPO 측정 기록
   - [x] image / sbom / trivy / chart index / smoke 5단계 — `scripts/release-smoke-test.sh`
-  - Verify: `bash hack/release-smoke-test.sh <tag>` 12/12 PASS
+  - Verify: `bash scripts/release-smoke-test.sh <tag>` 12/12 PASS
 
 ### 관측 / 보안
 
@@ -152,6 +152,7 @@
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-03 | 인용 경로 정정 — 2026-05-27 정정이 놓친 phantom 인용 경로 fix (기능은 실재, 경로만 오류): conversion webhook 서빙 미배선 → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helper 실 위치 `statefulset.go` 등 (`security.go` 부재); webhook 헤더 `v1alpha2/`→`v1alpha1/` + "4 validating webhook + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, `pvc_resize.go` 부재); smoke-test Verify `hack/`→`scripts/`. `internal/observability/roadmap_citation_test.go` 회귀 가드 추가 | docs/roadmap-citation-truthup |
 | 2026-05-11 | webhook `validateStorageClassName` 추가 — RBD storageClass 기본 검증 (DNS-1123 subdomain) `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 전면 재작성 — 사실 정정 (ServiceMonitor 등) + sub-task 체크리스트 입자도 + 신규 항목 (VolumeSnapshot multipod / conversion webhook) 노출 | parallel-leaping-seal plan |
 | 2026-05-07 | 본 문서 신설 — 3-repo governance 자산 정합 | INC-2026-05-07 |

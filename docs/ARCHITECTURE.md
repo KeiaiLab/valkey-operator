@@ -13,7 +13,7 @@
 
 - **Purpose**: Kubebuilder-based K8s operator for [Valkey](https://valkey.io) (BSD-3 fork of Redis). One controller manages three topologies behind a uniform CRD surface.
 - **Scope**: Standalone / Replication / Cluster (16384-slot) topologies + backup/restore + S3-compatible external storage.
-- **Stability tier**: v1.0.13 (GA on standalone + replication + cluster; federation alpha)
+- **Stability tier**: v1.0.13 (GA on standalone + replication + cluster; federation planned — not started)
 - **Latest release**: v1.0.13 (2026-05-13)
 - **License**: Apache-2.0
 - **Module path**: `github.com/keiailab/valkey-operator`

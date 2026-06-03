@@ -77,6 +77,7 @@ These gates block PR merges if any two surfaces drift apart:
 | 45 | `TestArtifactHubRepositoryMetadataEnablesVerifiedPublisherAndSigningKey` | `artifacthub-repo.yml` `repositoryID`, `signingKey`, and `owners` stay in sync |
 | 46 | `TestReleasePipelineRequiresSignedHelmCharts` | `HELM_SIGN=1` default; release/helm-publish produce `.tgz.prov` assets |
 | 47 | `TestReleaseSmokeVerifiesHelmProvenance` | GH Release / `gh-pages` provenance verified via `helm verify` against the published signing key |
+| 48 | `TestRoadmapCitationsResolve` | Every backtick-wrapped source-tree path citation in `docs/ROADMAP.md` (`internal/` / `charts/` / `scripts/` / `hack/` / `api/` / `cmd/` / `config/` / `test/`) resolves to a real file/dir (phantom citation blocked) |
 
 Run command: `go test ./internal/observability/`
 
@@ -135,7 +136,7 @@ These accumulate as OSS trust signals:
 ```bash
 # 1. Run the §1–§6 automation suite and confirm green.
 make gate                                # = lint + test + helm + audit
-go test ./internal/observability/        # 47 SSOT gates
+go test ./internal/observability/        # 48 SSOT gates
 bash scripts/release-smoke-test.sh vX.Y.Z  # 8 stages (skips on missing image/chart)
 
 # 2. Run release.sh manually.

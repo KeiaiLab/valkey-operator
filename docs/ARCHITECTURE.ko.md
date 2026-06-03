@@ -8,7 +8,7 @@
 
 - **목적**: [Valkey](https://valkey.io) (Redis 의 BSD-3 fork) 를 위한 Kubebuilder 기반 K8s 오퍼레이터. 하나의 컨트롤러가 통일된 CRD 표면 뒤에서 세 개의 토폴로지를 관리.
 - **범위**: Standalone / Replication / Cluster (16384-slot) 토폴로지 + 백업·복구 + S3 호환 외부 스토리지.
-- **안정성 등급**: v1.0.13 (standalone + replication + cluster GA; federation alpha)
+- **안정성 등급**: v1.0.13 (standalone + replication + cluster GA; federation 계획됨 — 미착수)
 - **최신 릴리즈**: v1.0.13 (2026-05-13)
 - **라이선스**: Apache-2.0
 - **모듈 경로**: `github.com/keiailab/valkey-operator`
