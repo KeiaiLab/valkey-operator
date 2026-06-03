@@ -1,0 +1,29 @@
+# keiailab OSS · GitLab CI (self-contained, RFC-0043 spirit / shadow phase)
+# Mirror of the local quality gates: vet -> test -> build.
+# allow_failure keeps this non-blocking until a runner + green baseline exist.
+stages: [lint, test, build]
+
+default:
+  image: golang:1.23
+  tags: [keiailab]
+
+variables:
+  GOFLAGS: "-mod=mod"
+
+go-vet:
+  stage: lint
+  script:
+    - go vet ./...
+  allow_failure: true
+
+go-test:
+  stage: test
+  script:
+    - go test ./...
+  allow_failure: true
+
+go-build:
+  stage: build
+  script:
+    - go build ./...
+  allow_failure: true
