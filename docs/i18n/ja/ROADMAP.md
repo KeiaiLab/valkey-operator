@@ -129,6 +129,14 @@
   `internal/controller/encryption_audit.go`、
   `encryption_enforce_test.go`
 
+- [~] **Valkey 公式 module preset (Redis Stack 相当)** — BSD ライセンスの module `valkey-search` / `valkey-json` / `valkey-bloom` を `ValkeySpec.Modules` で turnkey ロード。外部 Redis Stack module (RediSearch / RedisJSON、RSALv2 / SSPL) は *意図的な非対象* — Valkey BSD-3 とライセンス非互換 (ADR-0032)
+  - [x] `ModuleSpec` type + `ValkeySpec.Modules []ModuleSpec` フィールド (PR-C6.1) — `api/v1alpha2/valkey_types.go`
+  - [ ] Controller 配線 — init container `.so` mount (emptyDir) + StatefulSet podSpec の `--loadmodule` (PR-C6.2) — `internal/resources/statefulset.go`
+  - [ ] 公式 preset allow-list 検証 + 公式 image 自動 resolve (admission webhook) — `internal/webhook/v1alpha1/valkey_webhook.go`
+  - [ ] chart module リスト公開 — `charts/valkey-operator/values.yaml`
+  - [ ] e2e — `valkey-search` `FT.SEARCH` 往復 — `test/e2e`
+  - Verify: `modules` に `valkey-search` preset を指定した Valkey CR を適用後、`valkey-cli MODULE LIST` に module ロードを確認
+
 ### 運用とデリバリ
 
 - [x] Helm chart 公開 — `keiailab.github.io/valkey-operator`
@@ -218,6 +226,7 @@
 
 | 日付 | 変更 | 参照 |
 |---|---|---|
+| 2026-06-03 | **Valkey 公式 module preset (Redis Stack 相当)** を「安定性と成熟度」に `[~]` 項目として追加 — `ModuleSpec` / `ValkeySpec.Modules` API 表面は出荷済み (PR-C6.1)、controller init container 配線 / webhook allow-list / chart values / e2e は PR-C6.2 残り。外部 Redis Stack module は非対象維持 (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
 | 2026-06-03 | 引用パス訂正 — 2026-05-27 の訂正が見落とした phantom 引用パス fix (機能は実在、パスのみ誤り): conversion webhook サービング未配線 → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helper 実体は `statefulset.go` 等 (`security.go` 不在); webhook ヘッダ `v1alpha2/`→`v1alpha1/` + "4 validating webhook + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, `pvc_resize.go` 不在); smoke-test Verify `hack/`→`scripts/`。`internal/observability/roadmap_citation_test.go` 回帰ガード追加 | docs/roadmap-citation-truthup |
 | 2026-05-12 | English を正本に昇格、韓国語は `ROADMAP.ko.md` として保持、ADR-0045 (GH Actions 復元) + ADR-0046 (SLSA-3 + cosign) を Operations と Security セクションに反映 | i18n initiative |
 | 2026-05-11 | webhook `validateStorageClassName` 追加 — RBD storageClass DNS-1123 基本検証 `[x]` | ralph-loop iter#2 |
