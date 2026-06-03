@@ -62,6 +62,13 @@
 | [0052](0052-v3x-stable-baseline.md) | v3.x-stable baseline 인정 (audit ❌ 0 충족, CLAUDE.md §7 v3.x-stable 조건) | Accepted | 2026-05-21 |
 | [0053](0053-root-md-documentation-policy.md) | Root `.md` 문서 정책 + 도구 의존 예외 (PR-D 시리즈 정당화) | Accepted | 2026-05-21 |
 | [0054](0054-gitops-artifacthub-standardization.md) | GitOps overlay + ArtifactHub 검증 파이프라인 표준화 (operator 4종 2-layer 표준, reference 구현 ADR-0024/0044 계승, artifacthub-verify smoke 추가) | Accepted | 2026-06-02 |
+| [0055](0055-valkey-9x-feature-flags-gate.md) | Valkey 9.x feature flags — version-gated config rendering (design gate, 9.x support already ships; opt-in directive gate via MajorVersion, directive set = open Q) | Proposed | 2026-06-03 |
+| [0056](0056-multi-cluster-federation-valkeyfederation-crd.md) | Multi-cluster federation — ValkeyFederation CRD (design gate, hub-spoke vs mesh / cross-cluster auth / routing in-operator vs delegated, Non-Goals multi-tenancy tension) | Proposed | 2026-06-03 |
+| [0057](0057-cross-region-backup-replication.md) | Cross-region backup replication — KMS key mgmt + CRR + lifecycle (design gate, above feat/s3-sse-kms-wiring; CRR vs dual-target write, IAM surface expansion) | Proposed | 2026-06-03 |
+| [0058](0058-online-schemaless-migration-research-spike.md) | Online schema-less migration (RDB diff / LWW) — research spike gate (least-defined; in-operator vs standalone tool vs out-of-scope, no native LWW, no RDB parser) | Proposed | 2026-06-03 |
+| [0059](0059-weighted-read-replica-routing.md) | Weighted read-replica routing (latency-aware) — design gate (read routing is client-driven; minimal slice = replica-only read Service + topology hints, latency-aware deferred) | Proposed | 2026-06-03 |
+| [0060](0060-controller-v2-workqueue-ratelimiter-fanout-tuning.md) | Controller v2 — workqueue rate-limiter / reconcile fan-out tuning (design gate, all 5 controllers at controller-runtime defaults; no tuning until reproducible load test, premature-optimization guard) | Proposed | 2026-06-03 |
+| [0061](0061-crd-v1-graduation-prerequisites.md) | CRD v1 graduation (v1alpha2 → v1) — prerequisite gate (extends ADR-0026; v1alpha2 conversion webhook serving path unwired + storage flip + time-elapsed stabilization Verify) | Proposed | 2026-06-03 |
 
 ## 작성 가이드
 
@@ -73,7 +80,7 @@
 
 ## Reserved 슬롯 정책
 
-ADR 번호 0018-0020 은 plans 단계에서 예약되었으나 *작성 전* 상태로 보존. 재사용 금지 원칙에 따라 새 ADR 은 다음 가용 번호 (0030+) 부터 부여한다. Reserved 슬롯이 작성되면 INDEX 행을 정식 항목으로 교체한다.
+ADR 번호 0019-0020 은 plans 단계에서 예약되었으나 *작성 전* 상태로 보존. 재사용 금지 원칙에 따라 새 ADR 은 다음 가용 번호 (현재 0062+) 부터 부여한다. Reserved 슬롯이 작성되면 INDEX 행을 정식 항목으로 교체한다.
 
 ## 글로벌 참조
 
