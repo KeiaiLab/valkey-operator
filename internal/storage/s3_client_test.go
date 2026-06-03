@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/minio/minio-go/v7/pkg/encrypt"
+
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
 
@@ -124,6 +126,101 @@ func TestBuildS3Client_pathStyleMinIO(t *testing.T) {
 	if c.EndpointHost() != "minio.local:9000" {
 		t.Fatalf("endpoint host=%s", c.EndpointHost())
 	}
+}
+
+// parseServerSideEncryption — 각 분기 (빈값 / AES256 / aws:kms / aws:kms:<id> /
+// 잘못된 값) 테이블 테스트. 실 S3 호출 없이 파싱 + encrypt.ServerSide 구성만 검증.
+func TestParseServerSideEncryption(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       string
+		wantNil  bool        // nil ServerSide 기대 (= 암호화 미설정)
+		wantType encrypt.Type // wantNil=false 시 기대 Type
+		wantErr  bool
+	}{
+		{name: "빈값은 nil (기존 동작 보존)", in: "", wantNil: true},
+		{name: "AES256은 SSE-S3", in: "AES256", wantType: encrypt.S3},
+		{name: "aws:kms는 기본키 SSE-KMS", in: "aws:kms", wantType: encrypt.KMS},
+		{name: "aws:kms:<id>는 지정키 SSE-KMS", in: "aws:kms:arn:aws:kms:ap-northeast-2:111122223333:key/abcd-1234", wantType: encrypt.KMS},
+		{name: "aws:kms: 빈 keyID는 에러", in: "aws:kms:", wantErr: true},
+		{name: "알 수 없는 값은 에러", in: "rot13", wantErr: true},
+		{name: "소문자 aes256은 에러 (대소문자 구분)", in: "aes256", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseServerSideEncryption(tc.in)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error for %q, got nil (sse=%v)", tc.in, got)
+				}
+				if got != nil {
+					t.Fatalf("expected nil ServerSide on error, got %v", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error for %q: %v", tc.in, err)
+			}
+			if tc.wantNil {
+				if got != nil {
+					t.Fatalf("expected nil ServerSide for %q, got %v", tc.in, got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("expected non-nil ServerSide for %q, got nil", tc.in)
+			}
+			if got.Type() != tc.wantType {
+				t.Fatalf("for %q: got Type=%q, want %q", tc.in, got.Type(), tc.wantType)
+			}
+		})
+	}
+}
+
+// BuildS3Client 가 ServerSideEncryption 을 파싱해 S3Client.sse 에 저장하는지 검증.
+func TestBuildS3Client_storesSSE(t *testing.T) {
+	t.Run("AES256 저장", func(t *testing.T) {
+		s3 := &cachev1alpha1.S3Spec{
+			Endpoint:             "https://s3.amazonaws.com",
+			Region:               "ap-northeast-2",
+			Bucket:               "b",
+			ServerSideEncryption: "AES256",
+		}
+		c, err := BuildS3Client(s3, "AKIA", "secret")
+		if err != nil {
+			t.Fatalf("unexpected: %v", err)
+		}
+		if c.sse == nil || c.sse.Type() != encrypt.S3 {
+			t.Fatalf("expected SSE-S3 stored, got %v", c.sse)
+		}
+	})
+
+	t.Run("빈값은 sse nil (기존 동작)", func(t *testing.T) {
+		s3 := &cachev1alpha1.S3Spec{
+			Endpoint: "https://s3.amazonaws.com",
+			Region:   "us-east-1",
+			Bucket:   "b",
+		}
+		c, err := BuildS3Client(s3, "AKIA", "secret")
+		if err != nil {
+			t.Fatalf("unexpected: %v", err)
+		}
+		if c.sse != nil {
+			t.Fatalf("expected nil sse for empty ServerSideEncryption, got %v", c.sse)
+		}
+	})
+
+	t.Run("잘못된 값은 BuildS3Client 에러", func(t *testing.T) {
+		s3 := &cachev1alpha1.S3Spec{
+			Endpoint:             "https://s3.amazonaws.com",
+			Region:               "us-east-1",
+			Bucket:               "b",
+			ServerSideEncryption: "bogus",
+		}
+		if _, err := BuildS3Client(s3, "AKIA", "secret"); err == nil {
+			t.Fatalf("expected error on invalid ServerSideEncryption")
+		}
+	})
 }
 
 // Reachable / FPut / FGet 의 직접 호출은 실제 S3/MinIO endpoint 의존이므로

@@ -27,6 +27,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/minio/minio-go/v7/pkg/encrypt"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -36,6 +37,10 @@ type S3Client struct {
 	mc     *minio.Client
 	bucket string
 	prefix string
+
+	// sse — 업로드 시 적용할 서버측 암호화. nil 이면 암호화 미설정 (provider 기본값).
+	// S3Spec.ServerSideEncryption 파싱 결과 (parseServerSideEncryption).
+	sse encrypt.ServerSide
 }
 
 // BuildS3Client — Spec + 자격증명 으로 client 생성.
@@ -53,6 +58,11 @@ func BuildS3Client(s3 *cachev1alpha1.S3Spec, accessKey, secretKey string) (*S3Cl
 		return nil, fmt.Errorf("invalid endpoint %q: %w", s3.Endpoint, err)
 	}
 
+	sse, err := parseServerSideEncryption(s3.ServerSideEncryption)
+	if err != nil {
+		return nil, fmt.Errorf("invalid serverSideEncryption %q: %w", s3.ServerSideEncryption, err)
+	}
+
 	bucketLookup := minio.BucketLookupAuto
 	if s3.ForcePathStyle {
 		bucketLookup = minio.BucketLookupPath
@@ -67,7 +77,7 @@ func BuildS3Client(s3 *cachev1alpha1.S3Spec, accessKey, secretKey string) (*S3Cl
 	if err != nil {
 		return nil, fmt.Errorf("minio.New: %w", err)
 	}
-	return &S3Client{mc: mc, bucket: s3.Bucket, prefix: s3.Prefix}, nil
+	return &S3Client{mc: mc, bucket: s3.Bucket, prefix: s3.Prefix, sse: sse}, nil
 }
 
 // Reachable — BucketExists 호출. true=권한 + reachability OK.
@@ -96,7 +106,8 @@ func (c *S3Client) FPut(ctx context.Context, objectKey, filePath string) (int64,
 	}
 	full := c.prefix + objectKey
 	info, err := c.mc.FPutObject(ctx, c.bucket, full, filePath, minio.PutObjectOptions{
-		ContentType: "application/octet-stream",
+		ContentType:          "application/octet-stream",
+		ServerSideEncryption: c.sse, // nil 이면 minio-go 가 SSE 헤더 미설정 (기존 동작 보존).
 	})
 	if err != nil {
 		return 0, fmt.Errorf("FPutObject %s/%s: %w", c.bucket, full, err)
@@ -148,5 +159,34 @@ func parseEndpoint(raw string) (host string, secure bool, err error) {
 		return u.Host, false, nil
 	default:
 		return "", false, fmt.Errorf("unsupported scheme %q (want http/https)", u.Scheme)
+	}
+}
+
+// parseServerSideEncryption — S3Spec.ServerSideEncryption 문자열 → minio encrypt.ServerSide.
+//
+// 지원 값 (AWS S3 / S3-compatible 표준):
+//   - ""              → nil (암호화 미설정, provider 기본값 — 기존 동작 보존)
+//   - "AES256"        → SSE-S3 (server-managed key, encrypt.NewSSE)
+//   - "aws:kms"       → SSE-KMS, AWS-managed default key (keyID 미지정)
+//   - "aws:kms:<id>"  → SSE-KMS, 지정 KMS keyID
+//
+// 알 수 없는 값은 명확한 error — 오타가 *silent 평문 업로드* 로 이어지지 않도록.
+func parseServerSideEncryption(raw string) (encrypt.ServerSide, error) {
+	switch {
+	case raw == "":
+		return nil, nil
+	case raw == "AES256":
+		return encrypt.NewSSE(), nil
+	case raw == "aws:kms":
+		// keyID 빈 문자열 = AWS 계정 기본 KMS key 사용 (AWS S3 표준 동작).
+		return encrypt.NewSSEKMS("", nil)
+	case strings.HasPrefix(raw, "aws:kms:"):
+		keyID := strings.TrimPrefix(raw, "aws:kms:")
+		if keyID == "" {
+			return nil, fmt.Errorf("aws:kms key id empty (use %q for default key)", "aws:kms")
+		}
+		return encrypt.NewSSEKMS(keyID, nil)
+	default:
+		return nil, fmt.Errorf("unsupported value %q (want \"AES256\", \"aws:kms\", or \"aws:kms:<keyID>\")", raw)
 	}
 }
