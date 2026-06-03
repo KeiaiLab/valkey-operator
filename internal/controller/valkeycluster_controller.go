@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"time"
 
@@ -281,7 +280,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// 8. STS 상태 폴링.
 	stsKey := types.NamespacedName{Name: resources.StatefulSetName(vc.Name), Namespace: vc.Namespace}
-	stsObj, err := r.fetchSTS(ctx, stsKey)
+	stsObj, err := fetchSTSStatus(ctx, r.Client, stsKey)
 	if err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
@@ -629,21 +628,6 @@ func (r *ValkeyClusterReconciler) ensureAuthSecret(
 	}, nil
 }
 
-// fetchSTS — STS 의 readyReplicas / replicas 조회. ValkeyReconciler.fetchSTS 와 동일 동작.
-func (r *ValkeyClusterReconciler) fetchSTS(ctx context.Context, key types.NamespacedName) (*stsStatus, error) {
-	obj := &appsv1StatefulSet{}
-	if err := r.Get(ctx, key, obj.Inner()); err != nil {
-		if errors.IsNotFound(err) {
-			return &stsStatus{}, nil
-		}
-		return nil, err
-	}
-	return &stsStatus{
-		readyReplicas: obj.s.Status.ReadyReplicas,
-		totalReplicas: obj.s.Status.Replicas,
-	}, nil
-}
-
 // ensureClusterMeet — 모든 pod 가 Ready 일 때 CLUSTER MEET + ADDSLOTS + REPLICATE 1회 호출.
 //
 // pod ordinal 매핑: 0..shards-1 = primary, shards..total-1 = replica.
@@ -837,111 +821,9 @@ func dialPod(addr, password string, tlsCfg *tls.Config) *redis.Client {
 	return vk.NewSingleClient(opts)
 }
 
-// tlsConfigForCluster — Spec.TLS.Enabled 시 다음 우선순위로 RootCAs 구성:
-//
-//  1. Spec.TLS.CustomCert.SecretName 의 ca.crt → x509 cert pool.
-//  2. Spec.TLS.CertManager 의 issuer 가 만들어둔 Secret 의 ca.crt — 본 함수는 직접 추적
-//     안 함 (cert-manager 가 만든 Secret 이름을 사용자가 CustomCert 로 명시해야 함 또는
-//     ADR-0003 후속 PR 에서 Issuer status 추적).
-//  3. 둘 다 미제공 → InsecureSkipVerify (fallback, 경고 로그).
-//
-// 미활성 시 nil 반환 → 평문 접속.
+// tlsConfigForCluster — control-plane TLS config (buildValkeyTLSConfig 위임).
 func (r *ValkeyClusterReconciler) tlsConfigForCluster(ctx context.Context, vc *cachev1alpha1.ValkeyCluster) (*tls.Config, error) {
-	if vc.Spec.TLS == nil || !vc.Spec.TLS.Enabled {
-		return nil, nil
-	}
-	cfg := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		// cert-manager 가 발급하는 SAN 에 fully-qualified DNS 만 들어가므로 (예
-		// `vc-tls-headless.default.svc`, `*.vc-tls-headless.default.svc`),
-		// short name 만 ServerName 으로 넘기면 verification 실패.
-		ServerName: resources.HeadlessServiceName(vc.Name) + "." + vc.Namespace + ".svc",
-	}
-
-	// CustomCert 가 명시되면 해당 Secret 의 ca.crt + tls.{crt,key} 로드 (mTLS).
-	if vc.Spec.TLS.CustomCert != nil && vc.Spec.TLS.CustomCert.SecretName != "" {
-		secretName := vc.Spec.TLS.CustomCert.SecretName
-		pool, err := r.loadCABundle(ctx, vc.Namespace, secretName)
-		if err != nil {
-			return nil, fmt.Errorf("load ca bundle: %w", err)
-		}
-		if pool != nil {
-			cfg.RootCAs = pool
-			if cert, err := r.loadClientCert(ctx, vc.Namespace, secretName); err == nil && cert != nil {
-				cfg.Certificates = []tls.Certificate{*cert}
-			}
-			return cfg, nil
-		}
-	}
-
-	// CertManager 명시 시 우리가 만든 Certificate CR 의 secretName 추적 (ADR-0010).
-	if vc.Spec.TLS.CertManager != nil && vc.Spec.TLS.CertManager.IssuerRef.Name != "" {
-		secretName := resources.CertificateSecretName(vc.Name)
-		pool, err := r.loadCABundle(ctx, vc.Namespace, secretName)
-		if err != nil {
-			return nil, fmt.Errorf("load cert-manager ca bundle: %w", err)
-		}
-		if pool != nil {
-			cfg.RootCAs = pool
-			if cert, err := r.loadClientCert(ctx, vc.Namespace, secretName); err == nil && cert != nil {
-				cfg.Certificates = []tls.Certificate{*cert}
-			}
-			return cfg, nil
-		}
-		// Certificate 가 아직 ready 가 아닌 경우 (cert-manager 가 Secret 생성 중) →
-		// fallback. 다음 reconcile 에서 자동 회복.
-	}
-
-	// CA bundle 미발견 → InsecureSkipVerify fallback + warning.
-	cfg.InsecureSkipVerify = true //nolint:gosec // ADR-0003: CA bundle 미준비 시 fallback
-	log.FromContext(ctx).Info(
-		"TLS enabled without CA bundle — using InsecureSkipVerify fallback",
-		"cluster", vc.Name)
-	return cfg, nil
-}
-
-// loadCABundle — Secret 의 ca.crt 를 x509 cert pool 에 로드.
-// Secret 미존재 시 (nil, nil), key 누락 시 (nil, nil), 파싱 실패 시 (nil, err).
-func (r *ValkeyClusterReconciler) loadCABundle(ctx context.Context, namespace, secretName string) (*x509.CertPool, error) {
-	s := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, s); err != nil {
-		if errors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	caBytes, ok := s.Data["ca.crt"]
-	if !ok || len(caBytes) == 0 {
-		return nil, nil
-	}
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(caBytes) {
-		return nil, fmt.Errorf("invalid PEM in %s/%s/ca.crt", namespace, secretName)
-	}
-	return pool, nil
-}
-
-// loadClientCert — Valkey 의 `tls-auth-clients yes` 가 mTLS 를 강제하므로 operator
-// 는 동일 Secret 의 tls.crt + tls.key 를 client cert 로 제시해야 한다.
-// (CustomCert / CertManager 가 만든 Secret 에 둘 다 있는 일반 형식 사용).
-func (r *ValkeyClusterReconciler) loadClientCert(ctx context.Context, namespace, secretName string) (*tls.Certificate, error) {
-	s := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, s); err != nil {
-		if errors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	crt, hasCrt := s.Data["tls.crt"]
-	key, hasKey := s.Data["tls.key"]
-	if !hasCrt || !hasKey || len(crt) == 0 || len(key) == 0 {
-		return nil, nil
-	}
-	cert, err := tls.X509KeyPair(crt, key)
-	if err != nil {
-		return nil, fmt.Errorf("invalid keypair in %s/%s: %w", namespace, secretName, err)
-	}
-	return &cert, nil
+	return buildValkeyTLSConfig(ctx, r.Client, vc.Namespace, vc.Name, vc.Spec.TLS)
 }
 
 // buildShardStatusFromNodes — CLUSTER NODES 응답 기반 ShardStatus.

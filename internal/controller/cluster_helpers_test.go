@@ -295,7 +295,7 @@ func TestBuildShardStatusFromNodes_afterFailover(t *testing.T) {
 // CA bundle 로드 — Secret 미존재 시 fallback.
 func TestLoadCABundle_secretMissing(t *testing.T) {
 	r := scalePolicyTestReconciler(nil)
-	pool, err := r.loadCABundle(testCtx(), "ns", "missing-secret")
+	pool, err := loadCABundle(testCtx(), r.Client, "ns", "missing-secret")
 	if err != nil {
 		t.Fatalf("missing secret should not error: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestLoadCABundle_validPEM(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(caSecret).Build()
 	r := &ValkeyClusterReconciler{Client: c, Scheme: scheme}
 
-	pool, err := r.loadCABundle(testCtx(), "ns", "ca-secret")
+	pool, err := loadCABundle(testCtx(), r.Client, "ns", "ca-secret")
 	if err != nil {
 		t.Fatalf("valid PEM: %v", err)
 	}
@@ -334,7 +334,7 @@ func TestLoadCABundle_invalidPEM(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(caSecret).Build()
 	r := &ValkeyClusterReconciler{Client: c, Scheme: scheme}
 
-	_, err := r.loadCABundle(testCtx(), "ns", "ca-secret")
+	_, err := loadCABundle(testCtx(), r.Client, "ns", "ca-secret")
 	if err == nil {
 		t.Fatal("invalid PEM should error")
 	}
