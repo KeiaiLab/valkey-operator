@@ -129,6 +129,14 @@
   `internal/controller/encryption_audit.go`、
   `encryption_enforce_test.go`
 
+- [~] **Valkey 官方 module preset (Redis Stack 等价)** — 通过 `ValkeySpec.Modules` turnkey 加载 BSD 许可的 module `valkey-search` / `valkey-json` / `valkey-bloom`。外部 Redis Stack module (RediSearch / RedisJSON,RSALv2 / SSPL) 为 *有意非目标* — 与 Valkey BSD-3 许可不兼容 (ADR-0032)
+  - [x] `ModuleSpec` type + `ValkeySpec.Modules []ModuleSpec` 字段 (PR-C6.1) — `api/v1alpha2/valkey_types.go`
+  - [ ] Controller 接线 — init container `.so` mount (emptyDir) + StatefulSet podSpec 的 `--loadmodule` (PR-C6.2) — `internal/resources/statefulset.go`
+  - [ ] 官方 preset allow-list 校验 + 官方 image 自动 resolve (admission webhook) — `internal/webhook/v1alpha1/valkey_webhook.go`
+  - [ ] chart module 列表暴露 — `charts/valkey-operator/values.yaml`
+  - [ ] e2e — `valkey-search` `FT.SEARCH` 往返 — `test/e2e`
+  - Verify: 应用在 `modules` 中指定 `valkey-search` preset 的 Valkey CR 后,`valkey-cli MODULE LIST` 显示 module 已加载
+
 ### 运维与交付
 
 - [x] Helm chart 已发布 — `keiailab.github.io/valkey-operator`
@@ -217,6 +225,7 @@
 
 | 日期 | 变更 | 引用 |
 |---|---|---|
+| 2026-06-03 | 将 **Valkey 官方 module preset (Redis Stack 等价)** 作为 `[~]` 项添加到"稳定性与成熟度" — `ModuleSpec` / `ValkeySpec.Modules` API 表面已发布 (PR-C6.1),controller init container 接线 / webhook allow-list / chart values / e2e 为 PR-C6.2 剩余。外部 Redis Stack module 保持非目标 (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
 | 2026-06-03 | 引用路径修正 — 修复 2026-05-27 修正遗漏的 phantom 引用路径 (功能实存,仅路径错误): conversion webhook 服务路径未接线 → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helper 实体位于 `statefulset.go` 等 (无 `security.go`); webhook 头 `v1alpha2/`→`v1alpha1/` + "4 个 validating webhook + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, 无 `pvc_resize.go`); smoke-test Verify `hack/`→`scripts/`。新增 `internal/observability/roadmap_citation_test.go` 回归守护 | docs/roadmap-citation-truthup |
 | 2026-05-12 | English 成为正本;韩文保留为 `ROADMAP.ko.md`;ADR-0045 (GH Actions 恢复) + ADR-0046 (SLSA-3 + cosign) 在运维与安全章节标注 | i18n initiative |
 | 2026-05-11 | 添加 webhook `validateStorageClassName` — RBD storageClass DNS-1123 基础校验 `[x]` | ralph-loop iter#2 |

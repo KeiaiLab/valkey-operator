@@ -144,6 +144,25 @@ file used to confirm the checkbox.
   `internal/controller/encryption_audit.go`,
   `encryption_enforce_test.go`
 
+- [~] **Valkey official module presets (Redis Stack equivalent)** —
+  turnkey loading of the BSD-licensed `valkey-search` / `valkey-json` /
+  `valkey-bloom` modules via `ValkeySpec.Modules`. External Redis Stack
+  modules (RediSearch / RedisJSON, RSALv2 / SSPL) are a deliberate
+  non-goal — license-incompatible with Valkey's BSD-3 (ADR-0032)
+  - [x] `ModuleSpec` type + `ValkeySpec.Modules []ModuleSpec` field
+    (PR-C6.1) — `api/v1alpha2/valkey_types.go`
+  - [ ] Controller wiring — init-container `.so` mount (emptyDir) +
+    `--loadmodule` in the StatefulSet podSpec (PR-C6.2) —
+    `internal/resources/statefulset.go`
+  - [ ] Official-preset allow-list validation + official-image
+    auto-resolve in the admission webhook —
+    `internal/webhook/v1alpha1/valkey_webhook.go`
+  - [ ] Chart module-list exposure —
+    `charts/valkey-operator/values.yaml`
+  - [ ] e2e — `valkey-search` `FT.SEARCH` round-trip — `test/e2e`
+  - Verify: apply a Valkey CR with a `valkey-search` preset under
+    `modules`, then `valkey-cli MODULE LIST` shows the module loaded
+
 ### Operations and delivery
 
 - [x] Helm chart published — `keiailab.github.io/valkey-operator`
@@ -240,6 +259,7 @@ file used to confirm the checkbox.
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-03 | Added **Valkey official module presets (Redis Stack equivalent)** as a `[~]` item under "Stability and maturity" — the `ModuleSpec` / `ValkeySpec.Modules` API surface shipped (PR-C6.1); controller init-container wiring, webhook allow-list, chart values, and e2e remain (PR-C6.2). External Redis Stack modules stay out of scope (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
 | 2026-06-03 | Citation truth-up — fix phantom cited paths that the 2026-05-27 pass missed (features real, paths wrong): conversion webhook serving path not wired → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helpers live in `statefulset.go` et al. (no `security.go`); webhook header `v1alpha2/`→`v1alpha1/` + "4 validating webhooks + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, no `pvc_resize.go`); smoke-test Verify `hack/`→`scripts/`. Added `internal/observability/roadmap_citation_test.go` regression guard | docs/roadmap-citation-truthup |
 | 2026-05-27 | Truth-up — flip stale `[ ]`→`[x]`: replicaCount lower-bound (already wired in webhooks), OpenTelemetry trace propagation (`SetupTracing` + 5-controller spans), Production cluster adoption (operator + 4 live CRs, ArgoCD Synced/Healthy); drop merged "(PR open)" tags (Grafana dashboards / SBOM) | lexical-puzzling-graham plan |
 | 2026-05-12 | English becomes canonical; Korean preserved as `ROADMAP.ko.md`; ADR-0045 (GH Actions restoration) + ADR-0046 (SLSA-3 + cosign) noted in Operations and Security sections | i18n initiative |

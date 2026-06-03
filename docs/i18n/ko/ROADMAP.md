@@ -83,6 +83,14 @@
 
 - [x] **Encryption audit (TLS/암호화 감시)** — `internal/controller/encryption_audit.go`, `encryption_enforce_test.go`
 
+- [~] **Valkey 공식 module preset (Redis Stack 대응)** — BSD 라이선스 module `valkey-search` / `valkey-json` / `valkey-bloom` 를 `ValkeySpec.Modules` 로 turnkey 적재. 외부 Redis Stack module (RediSearch / RedisJSON, RSALv2 / SSPL) 은 *의식적 비대상* — Valkey BSD-3 와 라이선스 비호환 (ADR-0032)
+  - [x] `ModuleSpec` type + `ValkeySpec.Modules []ModuleSpec` 필드 (PR-C6.1) — `api/v1alpha2/valkey_types.go`
+  - [ ] Controller 배선 — init container `.so` mount (emptyDir) + StatefulSet podSpec 의 `--loadmodule` (PR-C6.2) — `internal/resources/statefulset.go`
+  - [ ] 공식 preset allow-list 검증 + 공식 image 자동 resolve (admission webhook) — `internal/webhook/v1alpha1/valkey_webhook.go`
+  - [ ] chart module 목록 노출 — `charts/valkey-operator/values.yaml`
+  - [ ] e2e — `valkey-search` `FT.SEARCH` 왕복 — `test/e2e`
+  - Verify: `modules` 에 `valkey-search` preset 지정한 Valkey CR 적용 후 `valkey-cli MODULE LIST` 에 module 적재 확인
+
 ### 운영 / 배포
 
 - [x] Helm chart publish — `keiailab.github.io/valkey-operator`
@@ -152,6 +160,7 @@
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-03 | **Valkey 공식 module preset (Redis Stack 대응)** 을 "안정성 / 성숙도" 에 `[~]` 항목으로 추가 — `ModuleSpec` / `ValkeySpec.Modules` API 표면 출하 (PR-C6.1), controller init container 배선 / webhook allow-list / chart values / e2e 는 PR-C6.2 잔여. 외부 Redis Stack module 은 비대상 유지 (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
 | 2026-06-03 | 인용 경로 정정 — 2026-05-27 정정이 놓친 phantom 인용 경로 fix (기능은 실재, 경로만 오류): conversion webhook 서빙 미배선 → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helper 실 위치 `statefulset.go` 등 (`security.go` 부재); webhook 헤더 `v1alpha2/`→`v1alpha1/` + "4 validating webhook + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, `pvc_resize.go` 부재); smoke-test Verify `hack/`→`scripts/`. `internal/observability/roadmap_citation_test.go` 회귀 가드 추가 | docs/roadmap-citation-truthup |
 | 2026-05-11 | webhook `validateStorageClassName` 추가 — RBD storageClass 기본 검증 (DNS-1123 subdomain) `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 전면 재작성 — 사실 정정 (ServiceMonitor 등) + sub-task 체크리스트 입자도 + 신규 항목 (VolumeSnapshot multipod / conversion webhook) 노출 | parallel-leaping-seal plan |
