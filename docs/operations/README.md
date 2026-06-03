@@ -29,7 +29,7 @@ and has no Korean copy).
 
 | Document | Purpose |
 |---|---|
-| [release-checklist.md](release-checklist.md) | Pre-release gate inventory: build, 47 SSOT gates, supply chain (SLSA + cosign), docs, operations. |
+| [release-checklist.md](release-checklist.md) | Pre-release gate inventory: build, 48 SSOT gates, supply chain (SLSA + cosign), docs, operations. |
 | [post-merge-cleanup.md](post-merge-cleanup.md) | Local-branch hygiene after squash-merge. |
 | [artifacthub-trust.md](artifacthub-trust.md) | Artifact Hub `Signed` and `Official` trust badge operational procedure. |
 

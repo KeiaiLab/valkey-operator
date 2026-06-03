@@ -28,7 +28,9 @@
 ### 安定性と成熟度
 
 - [x] **PodSecurity restricted compliance**
-  - [x] 4 ヶ所の SecurityContext helper 統一 — `internal/resources/security.go`
+  - [x] restricted SecurityContext helper (`buildRestrictedContainerSecurityContext` など) を
+    resources ビルダー全体に適用 — `internal/resources/statefulset.go`、
+    `backup_job.go`、`download_job.go`、`upload_job.go`、`restore.go`
   - [x] resources ビルダーにおける restricted PSA 回帰ガード
   - [x] controller / webhook 側 podSpec 変換経路の完全ガード
     — `internal/webhook/v1alpha1/valkeycluster_webhook.go`
@@ -94,17 +96,25 @@
 
 - [x] **API バージョンの進化**
   - [x] v1alpha2 active — `api/v1alpha2/`
-  - [x] v1alpha1 → v1alpha2 conversion webhook —
-    `api/v1alpha2/conversion.go`
+  - [~] v1alpha1 → v1alpha2 conversion webhook —
+    `api/v1alpha2/conversion.go` (変換関数 + Hub マーカーは存在するが
+    webhook サービング経路が未配線 — config/crd に
+    `spec.conversion.strategy: Webhook` なし / chart webhook に conversion
+    clientConfig なし / cmd/main.go 未登録、`api/v1alpha2/doc.go` 参照)
   - [x] 5 CRD (Valkey、ValkeyCluster、ValkeyBackup、ValkeyRestore、
     ValkeyBackupTarget)
   - Verify: `kubectl apply -f <v1alpha1.yaml>` を実行し、v1alpha2 オブジェクトとして保存されることを確認
 
-- [x] **Online PVC resize** —
-  `internal/controller/pvc_resize.go`
+- [x] **Online PVC resize** — `commonspvc.ExpandDataPVCs`
+  (operator-commons `pkg/pvc`) を
+  `internal/controller/valkey_controller.go` /
+  `internal/controller/valkeycluster_controller.go` から呼び出し (ADR-0049)
 
-- [x] **Webhook admission validation (5 CRD)** —
-  `internal/webhook/v1alpha2/`
+- [x] **Webhook admission validation (4 validating webhook +
+  conversion webhook)** — `internal/webhook/v1alpha1/`
+  (Valkey / ValkeyCluster / ValkeyBackupTarget / ValkeyRestore の
+  validating webhook; ValkeyBackup は validating webhook なし —
+  5 番目の CRD は conversion 経路で処理)
   - [x] RBD storageClass 基本検証 —
     `internal/webhook/v1alpha1/valkeycluster_webhook.go`
     `validateStorageClassName` (DNS-1123 subdomain)
@@ -143,7 +153,7 @@
   - [x] ロールバック手順 — `docs/migration/rollback.md` (PR #136)
   - Verify: staging dry-run + RTO / RPO 測定結果の記録
   - [x] 5 ステージ: image / SBOM / trivy / chart index / smoke — `scripts/release-smoke-test.sh` (PR #136)
-  - Verify: `bash hack/release-smoke-test.sh <tag>` で 12/12 PASS
+  - Verify: `bash scripts/release-smoke-test.sh <tag>` で 12/12 PASS
 
 ### 可観測性とセキュリティ
 
@@ -208,6 +218,7 @@
 
 | 日付 | 変更 | 参照 |
 |---|---|---|
+| 2026-06-03 | 引用パス訂正 — 2026-05-27 の訂正が見落とした phantom 引用パス fix (機能は実在、パスのみ誤り): conversion webhook サービング未配線 → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helper 実体は `statefulset.go` 等 (`security.go` 不在); webhook ヘッダ `v1alpha2/`→`v1alpha1/` + "4 validating webhook + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, `pvc_resize.go` 不在); smoke-test Verify `hack/`→`scripts/`。`internal/observability/roadmap_citation_test.go` 回帰ガード追加 | docs/roadmap-citation-truthup |
 | 2026-05-12 | English を正本に昇格、韓国語は `ROADMAP.ko.md` として保持、ADR-0045 (GH Actions 復元) + ADR-0046 (SLSA-3 + cosign) を Operations と Security セクションに反映 | i18n initiative |
 | 2026-05-11 | webhook `validateStorageClassName` 追加 — RBD storageClass DNS-1123 基本検証 `[x]` | ralph-loop iter#2 |
 | 2026-05-11 | 全面改稿 — 事実訂正 (ServiceMonitor 等)、sub-task の粒度を細分化、新規項目 (VolumeSnapshot multipod、conversion webhook) 露出 | parallel-leaping-seal plan |
