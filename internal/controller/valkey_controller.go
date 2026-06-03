@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"time"
 
@@ -281,7 +280,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	current := &corev1.Pod{}
 	_ = current
 	stsKey := types.NamespacedName{Name: resources.StatefulSetName(v.Name), Namespace: v.Namespace}
-	stsObj, err := r.fetchStatefulSetStatus(ctx, stsKey)
+	stsObj, err := fetchSTSStatus(ctx, r.Client, stsKey)
 	if err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
@@ -598,26 +597,7 @@ type stsStatus struct {
 	totalReplicas int32
 }
 
-func (r *ValkeyReconciler) fetchStatefulSetStatus(ctx context.Context, key types.NamespacedName) (*stsStatus, error) {
-	sts := &corev1.PodList{}
-	_ = sts
-	// Use unstructured / typed approach: fetch StatefulSet via client
-	return r.fetchSTS(ctx, key)
-}
-
-func (r *ValkeyReconciler) fetchSTS(ctx context.Context, key types.NamespacedName) (*stsStatus, error) {
-	obj := &appsv1StatefulSet{}
-	if err := r.Get(ctx, key, obj.Inner()); err != nil {
-		if errors.IsNotFound(err) {
-			return &stsStatus{}, nil
-		}
-		return nil, err
-	}
-	return &stsStatus{
-		readyReplicas: obj.s.Status.ReadyReplicas,
-		totalReplicas: obj.s.Status.Replicas,
-	}, nil
-}
+// fetchSTS 계열 함수는 fetchSTSStatus (sts_helpers.go) 로 통합 — 양 controller 공용.
 
 // ensureReplication — replica pod 들이 *현재 primary* (Status.CurrentPrimary
 // 또는 pod-0) 를 가리키게 한다.
@@ -666,58 +646,9 @@ func dialValkey(addr, password string, tlsCfg *tls.Config) *redis.Client {
 	return vk.NewSingleClient(opts)
 }
 
-// tlsConfigForValkey — ValkeyClusterReconciler.tlsConfigForCluster 와 동일 로직.
-// CustomCert > CertManager 우선순위. 둘 다 ca.crt 미준비 → InsecureSkipVerify fallback.
+// tlsConfigForValkey — control-plane TLS config (buildValkeyTLSConfig 위임).
 func (r *ValkeyReconciler) tlsConfigForValkey(ctx context.Context, v *cachev1alpha1.Valkey) (*tls.Config, error) {
-	if v.Spec.TLS == nil || !v.Spec.TLS.Enabled {
-		return nil, nil
-	}
-	cfg := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		ServerName: resources.HeadlessServiceName(v.Name) + "." + v.Namespace + ".svc",
-	}
-	loadAndAttach := func(secretName string) (bool, error) {
-		s := &corev1.Secret{}
-		if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: v.Namespace}, s); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		caBytes, ok := s.Data["ca.crt"]
-		if !ok || len(caBytes) == 0 {
-			return false, nil
-		}
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(caBytes) {
-			return false, fmt.Errorf("invalid PEM in %s/%s/ca.crt", v.Namespace, secretName)
-		}
-		cfg.RootCAs = pool
-		if crt, hasCrt := s.Data["tls.crt"]; hasCrt {
-			if key, hasKey := s.Data["tls.key"]; hasKey && len(crt) > 0 && len(key) > 0 {
-				if pair, err := tls.X509KeyPair(crt, key); err == nil {
-					cfg.Certificates = []tls.Certificate{pair}
-				}
-			}
-		}
-		return true, nil
-	}
-	if v.Spec.TLS.CustomCert != nil && v.Spec.TLS.CustomCert.SecretName != "" {
-		if ok, err := loadAndAttach(v.Spec.TLS.CustomCert.SecretName); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	if v.Spec.TLS.CertManager != nil && v.Spec.TLS.CertManager.IssuerRef.Name != "" {
-		if ok, err := loadAndAttach(resources.CertificateSecretName(v.Name)); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	cfg.InsecureSkipVerify = true
-	return cfg, nil
+	return buildValkeyTLSConfig(ctx, r.Client, v.Namespace, v.Name, v.Spec.TLS)
 }
 
 func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -725,7 +656,7 @@ func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Recorder = mgr.GetEventRecorder("valkey-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.Valkey{}).
-		Owns((&appsv1StatefulSet{}).Inner()).
+		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).

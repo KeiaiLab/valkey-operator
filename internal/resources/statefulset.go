@@ -79,8 +79,8 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	dataPVC := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "data",
-			Labels:      copyStringMap(p.Storage.Labels),
-			Annotations: copyStringMap(p.Storage.Annotations),
+			Labels:      maps.Clone(p.Storage.Labels),
+			Annotations: maps.Clone(p.Storage.Annotations),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: accessModes,
@@ -296,21 +296,12 @@ func podTemplateAnnotations(p STSParams) map[string]string {
 }
 
 func podTemplateLabels(base map[string]string, pod *cachev1alpha1.PodSpec) map[string]string {
-	labels := copyStringMap(base)
+	labels := maps.Clone(base)
 	if pod == nil {
 		return labels
 	}
 	maps.Copy(labels, pod.Labels)
 	return labels
-}
-
-func copyStringMap(in map[string]string) map[string]string {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	maps.Copy(out, in)
-	return out
 }
 
 // PodSecurity "restricted" 정책을 만족하는 컨테이너 SecurityContext.

@@ -28,15 +28,12 @@ package controller
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -96,12 +93,8 @@ func tlsConfigForClusterRef(
 	ctx context.Context, c client.Client,
 	ref cachev1alpha1.ClusterReference, namespace string,
 ) (*tls.Config, error) {
-	var (
-		tlsSpec  *cachev1alpha1.TLSSpec
-		certName = resources.CertificateSecretName(ref.Name)
-		nsName   = types.NamespacedName{Name: ref.Name, Namespace: namespace}
-		headless = resources.HeadlessServiceName(ref.Name) + "." + namespace + ".svc"
-	)
+	nsName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	var tlsSpec *cachev1alpha1.TLSSpec
 	switch ref.Kind {
 	case cachev1alpha1.KindValkey:
 		obj := &cachev1alpha1.Valkey{}
@@ -116,54 +109,5 @@ func tlsConfigForClusterRef(
 		}
 		tlsSpec = obj.Spec.TLS
 	}
-	if tlsSpec == nil || !tlsSpec.Enabled {
-		return nil, nil
-	}
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: headless}
-
-	loadAttach := func(secretName string) (bool, error) {
-		s := &corev1.Secret{}
-		if err := c.Get(ctx, types.NamespacedName{
-			Name: secretName, Namespace: namespace,
-		}, s); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		caBytes, ok := s.Data["ca.crt"]
-		if !ok || len(caBytes) == 0 {
-			return false, nil
-		}
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(caBytes) {
-			return false, fmt.Errorf("invalid PEM in %s/ca.crt", secretName)
-		}
-		cfg.RootCAs = pool
-		if crt, hasCrt := s.Data["tls.crt"]; hasCrt {
-			if key, hasKey := s.Data["tls.key"]; hasKey && len(crt) > 0 && len(key) > 0 {
-				if pair, err := tls.X509KeyPair(crt, key); err == nil {
-					cfg.Certificates = []tls.Certificate{pair}
-				}
-			}
-		}
-		return true, nil
-	}
-	if tlsSpec.CustomCert != nil && tlsSpec.CustomCert.SecretName != "" {
-		if ok, err := loadAttach(tlsSpec.CustomCert.SecretName); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	if tlsSpec.CertManager != nil && tlsSpec.CertManager.IssuerRef.Name != "" {
-		if ok, err := loadAttach(certName); err != nil {
-			return nil, err
-		} else if ok {
-			return cfg, nil
-		}
-	}
-	log.FromContext(ctx).Info("TLS enabled without CA bundle — using InsecureSkipVerify fallback", "ref", ref.Name)
-	cfg.InsecureSkipVerify = true //nolint:gosec // ADR-0003: CA bundle not ready yet
-	return cfg, nil
+	return buildValkeyTLSConfig(ctx, c, namespace, ref.Name, tlsSpec)
 }

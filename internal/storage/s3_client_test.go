@@ -134,7 +134,7 @@ func TestParseServerSideEncryption(t *testing.T) {
 	cases := []struct {
 		name     string
 		in       string
-		wantNil  bool        // nil ServerSide 기대 (= 암호화 미설정)
+		wantNil  bool         // nil ServerSide 기대 (= 암호화 미설정)
 		wantType encrypt.Type // wantNil=false 시 기대 Type
 		wantErr  bool
 	}{

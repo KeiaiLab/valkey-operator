@@ -16,12 +16,26 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// appsv1StatefulSet — 작은 wrapper 로 Owns/Get 호출 단순화.
-type appsv1StatefulSet struct {
-	s appsv1.StatefulSet
+// fetchSTSStatus — STS 의 readyReplicas / replicas 조회 (Valkey / ValkeyCluster 공용).
+// STS 미존재 시 빈 stsStatus 반환 (생성 전 정상 경로).
+func fetchSTSStatus(ctx context.Context, c client.Client, key types.NamespacedName) (*stsStatus, error) {
+	sts := &appsv1.StatefulSet{}
+	if err := c.Get(ctx, key, sts); err != nil {
+		if apierrors.IsNotFound(err) {
+			return &stsStatus{}, nil
+		}
+		return nil, err
+	}
+	return &stsStatus{
+		readyReplicas: sts.Status.ReadyReplicas,
+		totalReplicas: sts.Status.Replicas,
+	}, nil
 }
-
-func (a *appsv1StatefulSet) Inner() *appsv1.StatefulSet { return &a.s }

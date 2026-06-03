@@ -35,14 +35,7 @@ func BuildHeadlessService(
 	clusterMode, tlsEnabled bool,
 	serviceSpec ...*cachev1alpha1.ServiceSpec,
 ) *corev1.Service {
-	ports := []corev1.ServicePort{
-		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
-	}
-	if tlsEnabled {
-		ports = append(ports, corev1.ServicePort{
-			Name: "client-tls", Port: PortTLS, TargetPort: intstr.FromInt(PortTLS), Protocol: corev1.ProtocolTCP,
-		})
-	}
+	ports := clientPorts(tlsEnabled)
 	if clusterMode {
 		ports = append(ports, corev1.ServicePort{
 			Name: "cluster-bus", Port: PortClusterBus,
@@ -57,7 +50,7 @@ func BuildHeadlessService(
 			Name:        HeadlessServiceName(crName),
 			Namespace:   namespace,
 			Labels:      labels,
-			Annotations: copyStringMap(opts.Annotations),
+			Annotations: maps.Clone(opts.Annotations),
 		},
 		Spec: corev1.ServiceSpec{
 			ClusterIP:                "None",
@@ -107,14 +100,7 @@ func BuildClientService(
 	tlsEnabled bool,
 	serviceSpec ...*cachev1alpha1.ServiceSpec,
 ) *corev1.Service {
-	ports := []corev1.ServicePort{
-		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
-	}
-	if tlsEnabled {
-		ports = append(ports, corev1.ServicePort{
-			Name: "client-tls", Port: PortTLS, TargetPort: intstr.FromInt(PortTLS), Protocol: corev1.ProtocolTCP,
-		})
-	}
+	ports := clientPorts(tlsEnabled)
 	opts := firstServiceSpec(serviceSpec)
 	serviceType := opts.Type
 	if serviceType == "" {
@@ -127,7 +113,7 @@ func BuildClientService(
 			Name:        ClientServiceName(crName),
 			Namespace:   namespace,
 			Labels:      labels,
-			Annotations: copyStringMap(opts.Annotations),
+			Annotations: maps.Clone(opts.Annotations),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:           serviceType,
@@ -144,4 +130,17 @@ func firstServiceSpec(specs []*cachev1alpha1.ServiceSpec) *cachev1alpha1.Service
 		return &cachev1alpha1.ServiceSpec{}
 	}
 	return specs[0]
+}
+
+// clientPorts — client (+ TLS) 포트 리스트. Headless / Client Service 공용.
+func clientPorts(tlsEnabled bool) []corev1.ServicePort {
+	ports := []corev1.ServicePort{
+		{Name: "client", Port: PortClient, TargetPort: intstr.FromInt(PortClient), Protocol: corev1.ProtocolTCP},
+	}
+	if tlsEnabled {
+		ports = append(ports, corev1.ServicePort{
+			Name: "client-tls", Port: PortTLS, TargetPort: intstr.FromInt(PortTLS), Protocol: corev1.ProtocolTCP,
+		})
+	}
+	return ports
 }
