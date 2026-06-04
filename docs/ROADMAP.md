@@ -144,6 +144,19 @@ file used to confirm the checkbox.
   `internal/controller/encryption_audit.go`,
   `encryption_enforce_test.go`
 
+- [~] **AutoUpdate — operator-managed 자동 버전 업데이트** — channel(patch/minor)
+  제약 내 안전 버전을 maintenance window 시간대에 자동 적용. major 상승은 자동 금지.
+  - [x] 순수 결정 로직 (semver 채널 비교 + 자정 넘김 window + 통합) —
+    `internal/autoupdate/autoupdate.go`, `autoupdate_test.go`
+  - [x] `AutoUpdateSpec` API (v1alpha1 reconcile hub + v1alpha2) + 헬퍼 —
+    `api/v1alpha1/autoupdate.go`, `api/v1alpha2/autoupdate.go`
+  - [x] reconcile wiring (Valkey) — effective version in-memory 주입 →
+    STS 이미지 + Status.Version 자동 전파 —
+    `internal/controller/autoupdate_integration.go`
+  - [ ] ValkeyCluster 통합 — `internal/controller/valkeycluster_controller.go`
+  - [ ] 운영자 수동 major 변경 차단 webhook + 버전 카탈로그 레지스트리 폴링
+  - Verify: `go test ./internal/autoupdate/ ./internal/controller/ -run AutoUpdate` PASS (44 케이스)
+
 - [~] **Valkey official module presets (Redis Stack equivalent)** —
   turnkey loading of the BSD-licensed `valkey-search` / `valkey-json` /
   `valkey-bloom` modules via `ValkeySpec.Modules`. External Redis Stack
@@ -259,6 +272,7 @@ file used to confirm the checkbox.
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-04 | Added **AutoUpdate — operator-managed 자동 버전 업데이트** as a `[~]` item — pure decision logic (`internal/autoupdate`), `AutoUpdateSpec` on v1alpha1(reconcile hub)+v1alpha2, and Valkey reconcile wiring (effective version → STS image + Status.Version) shipped; ValkeyCluster integration + major-block webhook remain. channel patch/minor, maintenance window, major auto-upgrade prohibited | PR #254 |
 | 2026-06-03 | Added **Valkey official module presets (Redis Stack equivalent)** as a `[~]` item under "Stability and maturity" — the `ModuleSpec` / `ValkeySpec.Modules` API surface shipped (PR-C6.1); controller init-container wiring, webhook allow-list, chart values, and e2e remain (PR-C6.2). External Redis Stack modules stay out of scope (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
 | 2026-06-03 | Citation truth-up — fix phantom cited paths that the 2026-05-27 pass missed (features real, paths wrong): conversion webhook serving path not wired → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helpers live in `statefulset.go` et al. (no `security.go`); webhook header `v1alpha2/`→`v1alpha1/` + "4 validating webhooks + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, no `pvc_resize.go`); smoke-test Verify `hack/`→`scripts/`. Added `internal/observability/roadmap_citation_test.go` regression guard | docs/roadmap-citation-truthup |
 | 2026-05-27 | Truth-up — flip stale `[ ]`→`[x]`: replicaCount lower-bound (already wired in webhooks), OpenTelemetry trace propagation (`SetupTracing` + 5-controller spans), Production cluster adoption (operator + 4 live CRs, ArgoCD Synced/Healthy); drop merged "(PR open)" tags (Grafana dashboards / SBOM) | lexical-puzzling-graham plan |
