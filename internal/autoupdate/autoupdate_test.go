@@ -112,3 +112,28 @@ func TestResolveVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestIsMajorUpgrade(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		old, new string
+		want     bool
+	}{
+		{"major 상승 9→10 차단", "9.0.4", "10.0.0", true},
+		{"minor 상승은 허용", "9.0.4", "9.1.0", false},
+		{"patch 상승은 허용", "9.0.4", "9.0.5", false},
+		{"동일 버전", "9.0.4", "9.0.4", false},
+		{"major 하락은 별도 검증 위임", "10.0.0", "9.0.4", false},
+		{"new 파싱 불가 → false(다른 검증 위임)", "9.0.4", "bogus", false},
+		{"old 빈 값 → false", "", "10.0.0", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := IsMajorUpgrade(c.old, c.new); got != c.want {
+				t.Fatalf("IsMajorUpgrade(%q,%q): got %v, want %v", c.old, c.new, got, c.want)
+			}
+		})
+	}
+}

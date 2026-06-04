@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +35,7 @@ import (
 	commonswebhook "github.com/keiailab/operator-commons/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/autoupdate"
 )
 
 var valkeyclusterlog = logf.Log.WithName("valkeycluster-resource")
@@ -488,6 +490,15 @@ func validateClusterImmutable(oldObj, newObj *cachev1alpha1.ValkeyCluster) field
 		errs = append(errs, field.Forbidden(
 			p.Child("tls", "enabled"),
 			"tls.enabled cannot be disabled once enabled (would break existing mTLS clients)",
+		))
+	}
+
+	// 수동 major 버전 상승 차단 — AutoUpdate 는 patch/minor 만 자동화한다.
+	if autoupdate.IsMajorUpgrade(oldObj.Spec.Version.Version, newObj.Spec.Version.Version) {
+		errs = append(errs, field.Forbidden(
+			p.Child("version", "version"),
+			fmt.Sprintf("manual major version upgrade (%s → %s) is prohibited; AutoUpdate automates patch/minor only — a major bump requires an explicit migration",
+				oldObj.Spec.Version.Version, newObj.Spec.Version.Version),
 		))
 	}
 

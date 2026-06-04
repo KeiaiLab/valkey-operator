@@ -8,6 +8,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,6 +18,8 @@ import (
 	commonswebhook "github.com/keiailab/operator-commons/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/autoupdate"
+	"github.com/keiailab/valkey-operator/internal/modules"
 )
 
 var valkeylog = logf.Log.WithName("valkey-resource")
@@ -222,6 +225,46 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 			"auth.users requires auth.enabled=true",
 		))
 	}
+
+	// modules allow-list 검증 (ADR-0032) — 외부 Redis Stack 거부.
+	errs = append(errs, validateModules(p.Child("modules"), v.Spec.Modules)...)
+	return errs
+}
+
+// validateModules — ModuleSpec 목록을 ADR-0032 BSD allow-list 로 검증한다.
+// 3중 방어: ① 외부 Redis Stack 이름 거부(BYO image 동반 우회 포함) ② preset 모드
+// (image 미지정)는 공식 allow-list 정확 일치 의무 ③ BYO 모드는 외부 Stack image 거부.
+func validateModules(path *field.Path, mods []cachev1alpha1.ModuleSpec) field.ErrorList {
+	var errs field.ErrorList
+	for i := range mods {
+		m := mods[i]
+		mp := path.Index(i)
+		// ① 외부 Redis Stack 이름 — image 동반 여부 무관 거부 (라이선스 회피 차단).
+		if modules.IsExternalRedisStackModule(m.Name) {
+			errs = append(errs, field.Forbidden(
+				mp.Child("name"),
+				fmt.Sprintf("external Redis Stack module %q is license-incompatible with Valkey BSD-3 (RSALv2/SSPL, ADR-0032); use an official preset: %v",
+					m.Name, modules.OfficialPresetNames()),
+			))
+			continue
+		}
+		if m.Image == "" {
+			// ② preset 모드 — 공식 BSD allow-list 정확 일치 의무.
+			if !modules.IsOfficialPreset(m.Name) {
+				errs = append(errs, field.NotSupported(
+					mp.Child("name"), m.Name, modules.OfficialPresetNames(),
+				))
+			}
+			continue
+		}
+		// ③ BYO 모드 — 외부 Redis Stack image 거부, 임의 사내 image 는 허용.
+		if modules.IsExternalRedisStackImage(m.Image) {
+			errs = append(errs, field.Forbidden(
+				mp.Child("image"),
+				"external Redis Stack image is license-incompatible with Valkey BSD-3 (ADR-0032)",
+			))
+		}
+	}
 	return errs
 }
 
@@ -289,6 +332,14 @@ func validateValkeyImmutable(oldObj, newObj *cachev1alpha1.Valkey) field.ErrorLi
 		errs = append(errs, field.Forbidden(
 			p.Child("tls", "enabled"),
 			"tls.enabled cannot be disabled once enabled (would break existing mTLS clients)",
+		))
+	}
+	// 수동 major 버전 상승 차단 — AutoUpdate 는 patch/minor 만 자동화한다.
+	if autoupdate.IsMajorUpgrade(oldObj.Spec.Version.Version, newObj.Spec.Version.Version) {
+		errs = append(errs, field.Forbidden(
+			p.Child("version", "version"),
+			fmt.Sprintf("manual major version upgrade (%s → %s) is prohibited; AutoUpdate automates patch/minor only — a major bump requires an explicit migration",
+				oldObj.Spec.Version.Version, newObj.Spec.Version.Version),
 		))
 	}
 	return errs

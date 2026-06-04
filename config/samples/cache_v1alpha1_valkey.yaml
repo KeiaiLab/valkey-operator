@@ -89,3 +89,11 @@ spec:
   #     passwordSecretRef:
   #       name: external-redis-password
   #       key: password
+  # modules:                               # ADR-0032 — Valkey 공식 BSD module turnkey 로딩
+  #   - name: valkey-search                # FT.* (RediSearch 대체). 공식 valkey-bundle 에서 .so 자동 추출
+  #   - name: valkey-json                  # JSON.* (RedisJSON 대체)
+  #   - name: valkey-bloom                 # BF.* (RedisBloom 대체)
+  #                                        # 외부 Redis Stack(redisearch/redisjson 등)은 RSALv2/SSPL 라이선스로 admission 거부
+  #   # - name: my-mod                     # BYO: 사내 .so 이미지 (외부 Redis Stack 이미지는 거부)
+  #   #   image: ghcr.io/keiailab/custom-valkey-mod:1.0
+  #   #   loadModuleArgs: ["--arg", "value"]
