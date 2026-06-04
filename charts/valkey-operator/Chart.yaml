@@ -29,7 +29,7 @@ maintainers:
 icon: https://valkey.io/img/valkey-horizontal.svg
 
 annotations:
-  artifacthub.io/license: Apache-2.0
+  artifacthub.io/license: MIT
   artifacthub.io/category: database
   # operatorCapabilities — OperatorHub Phase IV "Deep Insights" (under-claim
   # correction, C-P0-8). User-facing capabilities: Standalone, Replication, and
