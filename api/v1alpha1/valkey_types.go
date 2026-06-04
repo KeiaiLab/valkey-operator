@@ -133,6 +133,11 @@ type ValkeyStatus struct {
 	// +optional
 	PendingScale *PendingScale `json:"pendingScale,omitempty"`
 
+	// LastPasswordRotation — operator-managed 비밀번호 마지막 로테이션 시각.
+	// baseline 기록 + ShouldRotate 비교 기준 (자체 시크릿 로테이션, AuthSpec.RotationInterval).
+	// +optional
+	LastPasswordRotation *metav1.Time `json:"lastPasswordRotation,omitempty"`
+
 	// Capabilities — 본 CR 에서 *활성된 optional features* 의 ordered list.
 	// `kubectl get vk -o wide` 의 printcolumn 으로 한눈에 확인 가능.
 	// reconcile 마다 갱신. 가능 값 (PR #38-#60):
