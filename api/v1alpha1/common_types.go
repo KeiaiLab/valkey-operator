@@ -161,6 +161,12 @@ type AuthSpec struct {
 
 	// +optional
 	Users []ValkeyUser `json:"users,omitempty"`
+
+	// RotationInterval — operator-managed 비밀번호 자동 로테이션 주기 ("720h" 형식,
+	// time.ParseDuration). 빈 값=비활성. 첫 reconcile 은 baseline 만 기록(로테이션 X).
+	// operator 가 *직접 회전 수행* — 자체 재설계(ESO 위임 대체), 외부 회전 반영과 별개.
+	// +optional
+	RotationInterval string `json:"rotationInterval,omitempty"`
 }
 
 // ValkeyUser — ACL v2 사용자 정의 (M5 단계에서 활성).

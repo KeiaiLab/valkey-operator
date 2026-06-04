@@ -168,6 +168,11 @@ type ValkeyStatus struct {
 
 	// +optional
 	PendingScale *PendingScale `json:"pendingScale,omitempty"`
+
+	// LastPasswordRotation — operator-managed 비밀번호 마지막 로테이션 시각.
+	// baseline 기록 + ShouldRotate 비교 기준 (자체 시크릿 로테이션, AuthSpec.RotationInterval).
+	// +optional
+	LastPasswordRotation *metav1.Time `json:"lastPasswordRotation,omitempty"`
 }
 
 // +kubebuilder:object:root=true

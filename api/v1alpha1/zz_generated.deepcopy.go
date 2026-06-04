@@ -1560,6 +1560,10 @@ func (in *ValkeyStatus) DeepCopyInto(out *ValkeyStatus) {
 		*out = new(PendingScale)
 		**out = **in
 	}
+	if in.LastPasswordRotation != nil {
+		in, out := &in.LastPasswordRotation, &out.LastPasswordRotation
+		*out = (*in).DeepCopy()
+	}
 	if in.Capabilities != nil {
 		in, out := &in.Capabilities, &out.Capabilities
 		*out = make([]string, len(*in))

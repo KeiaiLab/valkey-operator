@@ -117,6 +117,23 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "AuthSecret", err, r.Recorder)
 	}
+
+	// 3b. 자체 시크릿 로테이션 (operator-managed, AuthSpec.RotationInterval).
+	//     user-provided secret(PasswordSecretRef)은 외부 소유 — 회전 대상에서 제외.
+	//     회전 시 password 를 재할당해 아래 ConfigMap + auth-secret-hash 에 반영(→ STS 롤링).
+	if v.Spec.Auth.RotationInterval != "" && v.Spec.Auth.PasswordSecretRef == nil && secretRef != nil {
+		newPw, rotated, rerr := r.rotatePasswordIfDue(ctx, v, password, secretRef, time.Now().UTC())
+		if rerr != nil {
+			return applyErrorCondition(ctx, r.Client, v, "PasswordRotation", rerr, r.Recorder)
+		}
+		if rotated {
+			password = newPw
+			logger.Info("password rotated", "name", v.Name)
+			r.Recorder.Eventf(v, nil, "Normal", "PasswordRotated", "PasswordRotated",
+				"auth 비밀번호 자동 로테이션 (interval=%s)", v.Spec.Auth.RotationInterval)
+		}
+	}
+
 	externalReplicaPassword, err := r.externalReplicaPassword(ctx, v)
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ExternalReplica", err, r.Recorder)
