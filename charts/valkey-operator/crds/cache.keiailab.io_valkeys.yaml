@@ -103,6 +103,12 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                  rotationInterval:
+                    description: |-
+                      RotationInterval — operator-managed 비밀번호 자동 로테이션 주기 ("720h" 형식,
+                      time.ParseDuration). 빈 값=비활성. 첫 reconcile 은 baseline 만 기록(로테이션 X).
+                      operator 가 *직접 회전 수행* — 자체 재설계(ESO 위임 대체), 외부 회전 반영과 별개.
+                    type: string
                   users:
                     items:
                       description: ValkeyUser — ACL v2 사용자 정의 (M5 단계에서 활성).
@@ -153,6 +159,31 @@ spec:
                   자동 failover (replica with largest master_repl_offset 선출).
                   ADR-0017. Standalone (replicas=1) 에서는 N/A.
                 type: boolean
+              autoUpdate:
+                description: |-
+                  AutoUpdate — operator-managed 자동 버전 업데이트 정책. channel 제약 내
+                  안전 patch/minor 만 자동 적용하며 major 상승은 운영자 명시를 요구한다.
+                properties:
+                  channel:
+                    default: patch
+                    description: |-
+                      Channel — 자동 업데이트 허용 범위.
+                        "patch": 동일 major.minor 내 최신 patch (기본, 가장 보수적)
+                        "minor": 동일 major 내 최신 minor.patch
+                      major 상승은 어떤 channel 에서도 자동화하지 않는다.
+                    enum:
+                    - patch
+                    - minor
+                    type: string
+                  enabled:
+                    description: Enabled — 자동 버전 업데이트 활성화.
+                    type: boolean
+                  maintenanceWindow:
+                    description: |-
+                      MaintenanceWindow — 업데이트 적용 허용 시간대 "HH:MM-HH:MM"(UTC).
+                      빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
+                    type: string
+                type: object
               autoscaling:
                 description: |-
                   Autoscaling — operator-managed HorizontalPodAutoscaler (HPA v2).
@@ -243,6 +274,35 @@ spec:
                 - Standalone
                 - Replication
                 type: string
+              modules:
+                description: |-
+                  Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+                  외부 Redis Stack(RediSearch/RedisJSON, RSALv2/SSPL)은 라이선스 비호환으로 미지원
+                  (ADR-0032). Name 만 지정 시 공식 preset 자동 resolve, Image 지정 시 BYO.
+                items:
+                  description: "ModuleSpec — Valkey module 정의 (ADR-0032). 컨트롤러 hub(v1alpha1)
+                    미러.\n\n\tName 만: 공식 BSD preset (allow-list 검증 + 공식 image 자동 resolve)\n\tImage:
+                    \  bring-your-own custom module (init container 가 .so 를 emptyDir
+                    mount)"
+                  properties:
+                    image:
+                      description: Image — custom module image (optional). 미지정 시 공식
+                        preset 자동 resolve.
+                      type: string
+                    loadModuleArgs:
+                      description: LoadModuleArgs — `loadmodule <so> <args>` 의 args
+                        (optional).
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: 'Name — module 식별자 (예: "valkey-search").'
+                      pattern: ^[a-z][a-z0-9-]+$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
@@ -2942,6 +3002,12 @@ spec:
                 type: string
               endpoint:
                 type: string
+              lastPasswordRotation:
+                description: |-
+                  LastPasswordRotation — operator-managed 비밀번호 마지막 로테이션 시각.
+                  baseline 기록 + ShouldRotate 비교 기준 (자체 시크릿 로테이션, AuthSpec.RotationInterval).
+                format: date-time
+                type: string
               observedGeneration:
                 format: int64
                 type: integer
@@ -3086,6 +3152,13 @@ spec:
                         - nil (legacy 호환): Enabled fallback. 신규 v1alpha2 사용자는
                           Required 명시 권장.
                     type: boolean
+                  rotationInterval:
+                    description: |-
+                      RotationInterval — operator-managed 비밀번호 자동 로테이션 주기 ("720h" 형식,
+                      time.ParseDuration). 빈 값=비활성. 첫 reconcile 은 baseline 만 기록(로테이션 X).
+                      operator 가 *직접 회전 수행* — 자체 재설계(ESO 위임 대체). RotationPolicy(외부
+                      회전 *반영*만)와 책임 분리.
+                    type: string
                   rotationPolicy:
                     default: Manual
                     description: |-
@@ -3152,6 +3225,31 @@ spec:
                   자동 failover (replica with largest master_repl_offset 선출).
                   ADR-0017. Standalone (replicas=1) 에서는 N/A.
                 type: boolean
+              autoUpdate:
+                description: |-
+                  AutoUpdate — operator-managed 자동 버전 업데이트 정책. channel 제약 내
+                  안전 patch/minor 만 자동 적용하며 major 상승은 운영자 명시를 요구한다.
+                properties:
+                  channel:
+                    default: patch
+                    description: |-
+                      Channel — 자동 업데이트 허용 범위.
+                        "patch": 동일 major.minor 내 최신 patch (기본, 가장 보수적)
+                        "minor": 동일 major 내 최신 minor.patch
+                      major 상승은 어떤 channel 에서도 자동화하지 않는다.
+                    enum:
+                    - patch
+                    - minor
+                    type: string
+                  enabled:
+                    description: Enabled — 자동 버전 업데이트 활성화.
+                    type: boolean
+                  maintenanceWindow:
+                    description: |-
+                      MaintenanceWindow — 업데이트 적용 허용 시간대 "HH:MM-HH:MM"(UTC).
+                      빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
+                    type: string
+                type: object
               autoscaling:
                 description: Autoscaling — operator-managed HPA v2 (ADR-0027, Replication
                   mode 만).
@@ -5944,6 +6042,12 @@ spec:
               currentPrimary:
                 type: string
               endpoint:
+                type: string
+              lastPasswordRotation:
+                description: |-
+                  LastPasswordRotation — operator-managed 비밀번호 마지막 로테이션 시각.
+                  baseline 기록 + ShouldRotate 비교 기준 (자체 시크릿 로테이션, AuthSpec.RotationInterval).
+                format: date-time
                 type: string
               observedGeneration:
                 format: int64

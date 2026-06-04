@@ -20,9 +20,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/operator-commons/pkg/pvc"
@@ -117,6 +120,23 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "AuthSecret", err, r.Recorder)
 	}
+
+	// 3b. 자체 시크릿 로테이션 (operator-managed, AuthSpec.RotationInterval).
+	//     user-provided secret(PasswordSecretRef)은 외부 소유 — 회전 대상에서 제외.
+	//     회전 시 password 를 재할당해 아래 ConfigMap + auth-secret-hash 에 반영(→ STS 롤링).
+	if v.Spec.Auth.RotationInterval != "" && v.Spec.Auth.PasswordSecretRef == nil && secretRef != nil {
+		newPw, rotated, rerr := r.rotatePasswordIfDue(ctx, v, password, secretRef, time.Now().UTC())
+		if rerr != nil {
+			return applyErrorCondition(ctx, r.Client, v, "PasswordRotation", rerr, r.Recorder)
+		}
+		if rotated {
+			password = newPw
+			logger.Info("password rotated", "name", v.Name)
+			r.Recorder.Eventf(v, nil, "Normal", "PasswordRotated", "PasswordRotated",
+				"auth 비밀번호 자동 로테이션 (interval=%s)", v.Spec.Auth.RotationInterval)
+		}
+	}
+
 	externalReplicaPassword, err := r.externalReplicaPassword(ctx, v)
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ExternalReplica", err, r.Recorder)
@@ -161,6 +181,16 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
+	// 5c. AutoUpdate — effective version 을 spec.Version 에 주입.
+	//     아래 imageOrDefault(L STS) + Status.Version 으로 자동 전파된다.
+	if applyAutoUpdate(&v.Spec, cachev1alpha1.SupportedValkeyVersions, time.Now().UTC()) {
+		logger.Info("auto-update applied",
+			"version", v.Spec.Version.Version, "channel", v.Spec.AutoUpdateChannel())
+		r.Recorder.Eventf(v, nil, "Normal", "AutoUpdate", "AutoUpdate",
+			"자동 버전 업데이트: %s channel 내 %s 적용",
+			v.Spec.AutoUpdateChannel(), v.Spec.Version.Version)
+	}
+
 	// 6. StatefulSet
 	stsParams := resources.STSParams{
 		CRName:               v.Name,
@@ -177,6 +207,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Pod:                  v.Spec.Pod,
 		AuthSecretHash:       hashAuthSecret(password),
 		RevisionHistoryLimit: v.Spec.RevisionHistoryLimit,
+		Modules:              v.Spec.Modules,
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		switch {
@@ -650,6 +681,15 @@ func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
+		WithOptions(controller.Options{
+			// Controller v2 (ROADMAP 2.x) — fan-out + rate-limiter tuning.
+			// MaxConcurrentReconciles: 다중 Valkey CR 동시 reconcile (기본 1 → 3).
+			// RateLimiter: per-item exponential backoff (5ms~5m) — 일시 장애 시 과도한
+			// requeue 폭주 억제. overall token-bucket 은 controller-runtime 기본 유지.
+			MaxConcurrentReconciles: 3,
+			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+				5*time.Millisecond, 5*time.Minute),
+		}).
 		Named("valkey").
 		Complete(r)
 }

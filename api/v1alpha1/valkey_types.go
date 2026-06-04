@@ -109,6 +109,35 @@ type ValkeySpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// AutoUpdate — operator-managed 자동 버전 업데이트 정책. channel 제약 내
+	// 안전 patch/minor 만 자동 적용하며 major 상승은 운영자 명시를 요구한다.
+	// +optional
+	AutoUpdate *AutoUpdateSpec `json:"autoUpdate,omitempty"`
+
+	// Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+	// 외부 Redis Stack(RediSearch/RedisJSON, RSALv2/SSPL)은 라이선스 비호환으로 미지원
+	// (ADR-0032). Name 만 지정 시 공식 preset 자동 resolve, Image 지정 시 BYO.
+	// +optional
+	Modules []ModuleSpec `json:"modules,omitempty"`
+}
+
+// ModuleSpec — Valkey module 정의 (ADR-0032). 컨트롤러 hub(v1alpha1) 미러.
+//
+//	Name 만: 공식 BSD preset (allow-list 검증 + 공식 image 자동 resolve)
+//	Image:   bring-your-own custom module (init container 가 .so 를 emptyDir mount)
+type ModuleSpec struct {
+	// Name — module 식별자 (예: "valkey-search").
+	// +kubebuilder:validation:Pattern=`^[a-z][a-z0-9-]+$`
+	Name string `json:"name"`
+
+	// Image — custom module image (optional). 미지정 시 공식 preset 자동 resolve.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// LoadModuleArgs — `loadmodule <so> <args>` 의 args (optional).
+	// +optional
+	LoadModuleArgs []string `json:"loadModuleArgs,omitempty"`
 }
 
 // IsAutoFailoverEnabled — Spec.AutoFailover 가 nil 또는 true 면 true (default
@@ -132,6 +161,11 @@ type ValkeyStatus struct {
 
 	// +optional
 	PendingScale *PendingScale `json:"pendingScale,omitempty"`
+
+	// LastPasswordRotation — operator-managed 비밀번호 마지막 로테이션 시각.
+	// baseline 기록 + ShouldRotate 비교 기준 (자체 시크릿 로테이션, AuthSpec.RotationInterval).
+	// +optional
+	LastPasswordRotation *metav1.Time `json:"lastPasswordRotation,omitempty"`
 
 	// Capabilities — 본 CR 에서 *활성된 optional features* 의 ordered list.
 	// `kubectl get vk -o wide` 의 printcolumn 으로 한눈에 확인 가능.

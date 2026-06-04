@@ -8,6 +8,7 @@ package resources
 import (
 	"fmt"
 	"maps"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +48,10 @@ type STSParams struct {
 	// STS rolling update 가 자동 트리거 (pod 들이 새 password 로 재시작).
 	// 빈 문자열이면 annotation 미설정 (rotation 추적 비활성).
 	AuthSecretHash string
+
+	// Modules — Valkey module 목록. 비어 있지 않으면 BuildModuleInitContainers 가
+	// init-container(.so 를 공유 emptyDir 로 cp) + volume + --loadmodule args 를 생성한다.
+	Modules []cachev1alpha1.ModuleSpec
 }
 
 // BuildStatefulSet — Valkey 데이터 STS.
@@ -182,9 +187,23 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	}
 	volumes = append(volumes, tlsVols...)
 
+	// 모듈 init-container + emptyDir + --loadmodule (ADR-0032, BuildModuleInitContainers).
+	// init-container 가 .so 를 공유 emptyDir 로 cp 하고, valkey container 가 적재한다.
+	moduleInits, moduleVol, moduleLoadArgs := BuildModuleInitContainers(p.Modules)
+	if len(moduleInits) > 0 {
+		for _, la := range moduleLoadArgs {
+			containers[0].Args = append(containers[0].Args, "--loadmodule")
+			containers[0].Args = append(containers[0].Args, strings.Fields(la)...)
+		}
+		containers[0].VolumeMounts = append(containers[0].VolumeMounts,
+			corev1.VolumeMount{Name: ModuleVolumeName, MountPath: moduleMountPath})
+		volumes = append(volumes, moduleVol)
+	}
+
 	podSpec := corev1.PodSpec{
-		Containers: containers,
-		Volumes:    volumes,
+		Containers:     containers,
+		InitContainers: moduleInits,
+		Volumes:        volumes,
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: new(true),
 			RunAsUser:    new(int64(999)),

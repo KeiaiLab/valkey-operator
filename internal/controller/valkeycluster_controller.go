@@ -22,9 +22,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/operator-commons/pkg/pvc"
@@ -187,6 +190,16 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	vc.Status.PendingScale = pendingScale
 	vc.Status.Capabilities = computeClusterCapabilities(vc)
 	SetCapabilityMetrics(vc.Namespace, vc.Name, AllCapabilities, vc.Status.Capabilities)
+
+	// AutoUpdate — effective version 을 spec.Version 에 주입.
+	//     아래 imageOrDefault + Status.Version 으로 자동 전파(샤드 전체 동일 버전).
+	if applyAutoUpdateCluster(&vc.Spec, cachev1alpha1.SupportedValkeyVersions, time.Now().UTC()) {
+		logger.Info("auto-update applied",
+			"version", vc.Spec.Version.Version, "channel", vc.Spec.AutoUpdateChannel())
+		r.Recorder.Eventf(vc, nil, "Normal", "AutoUpdate", "AutoUpdate",
+			"자동 버전 업데이트: %s channel 내 %s 적용",
+			vc.Spec.AutoUpdateChannel(), vc.Spec.Version.Version)
+	}
 
 	stsParams := resources.STSParams{
 		CRName:               vc.Name,
@@ -1000,6 +1013,13 @@ func (r *ValkeyClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&policyv1.PodDisruptionBudget{}).
 		Owns(&networkingv1.NetworkPolicy{}).
+		WithOptions(controller.Options{
+			// Controller v2 — cluster reconcile 은 resharding/rebalance 등 무거우므로
+			// fan-out 을 보수적으로(2). RateLimiter 는 Valkey 와 동일 exponential backoff.
+			MaxConcurrentReconciles: 2,
+			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+				5*time.Millisecond, 5*time.Minute),
+		}).
 		Named("valkeycluster").
 		Complete(r)
 }
