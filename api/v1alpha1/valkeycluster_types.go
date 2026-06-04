@@ -90,6 +90,11 @@ type ValkeyClusterSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// AutoUpdate — operator-managed 자동 버전 업데이트 정책. channel 제약 내
+	// 안전 patch/minor 만 자동 적용하며 major 상승은 운영자 명시를 요구한다.
+	// +optional
+	AutoUpdate *AutoUpdateSpec `json:"autoUpdate,omitempty"`
 }
 
 type ShardStatus struct {

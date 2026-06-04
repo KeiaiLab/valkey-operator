@@ -43,3 +43,16 @@ func (s *ValkeySpec) AutoUpdateChannel() string {
 	}
 	return s.AutoUpdate.Channel
 }
+
+// IsAutoUpdateEnabled — AutoUpdate 가 설정되고 Enabled 면 true (ValkeyCluster).
+func (s *ValkeyClusterSpec) IsAutoUpdateEnabled() bool {
+	return s.AutoUpdate != nil && s.AutoUpdate.Enabled
+}
+
+// AutoUpdateChannel — 설정된 channel(미설정/빈 값이면 "patch") (ValkeyCluster).
+func (s *ValkeyClusterSpec) AutoUpdateChannel() string {
+	if s.AutoUpdate == nil || s.AutoUpdate.Channel == "" {
+		return "patch"
+	}
+	return s.AutoUpdate.Channel
+}

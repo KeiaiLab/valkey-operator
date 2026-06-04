@@ -153,7 +153,8 @@ file used to confirm the checkbox.
   - [x] reconcile wiring (Valkey) — effective version in-memory 주입 →
     STS 이미지 + Status.Version 자동 전파 —
     `internal/controller/autoupdate_integration.go`
-  - [ ] ValkeyCluster 통합 — `internal/controller/valkeycluster_controller.go`
+  - [x] ValkeyCluster 통합 — `applyAutoUpdateCluster`,
+    `internal/controller/valkeycluster_controller.go` (샤드 전체 동일 버전)
   - [ ] 운영자 수동 major 변경 차단 webhook + 버전 카탈로그 레지스트리 폴링
   - Verify: `go test ./internal/autoupdate/ ./internal/controller/ -run AutoUpdate` PASS (44 케이스)
 

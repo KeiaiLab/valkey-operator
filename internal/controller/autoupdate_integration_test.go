@@ -54,3 +54,38 @@ func TestApplyAutoUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyAutoUpdateCluster(t *testing.T) {
+	t.Parallel()
+	catalog := []string{"9.0.4", "9.0.7", "9.1.2"}
+	inWindow, _ := time.Parse("15:04", "03:00")
+	mk := func(ver string, au *cachev1alpha1.AutoUpdateSpec) *cachev1alpha1.ValkeyClusterSpec {
+		return &cachev1alpha1.ValkeyClusterSpec{
+			Version:    cachev1alpha1.ValkeyVersion{Version: ver},
+			AutoUpdate: au,
+		}
+	}
+	cases := []struct {
+		name        string
+		spec        *cachev1alpha1.ValkeyClusterSpec
+		wantVer     string
+		wantApplied bool
+	}{
+		{"비활성 → 불변", mk("9.0.4", nil), "9.0.4", false},
+		{"활성 patch + window 안 → 9.0.7 주입", mk("9.0.4", &cachev1alpha1.AutoUpdateSpec{Enabled: true, MaintenanceWindow: "02:00-04:00"}), "9.0.7", true},
+		{"활성 minor → 9.1.2 주입", mk("9.0.4", &cachev1alpha1.AutoUpdateSpec{Enabled: true, Channel: "minor"}), "9.1.2", true},
+		{"이미 최신 → 불변", mk("9.1.2", &cachev1alpha1.AutoUpdateSpec{Enabled: true, Channel: "minor"}), "9.1.2", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			applied := applyAutoUpdateCluster(c.spec, catalog, inWindow)
+			if applied != c.wantApplied {
+				t.Fatalf("applied: got %v, want %v", applied, c.wantApplied)
+			}
+			if c.spec.Version.Version != c.wantVer {
+				t.Fatalf("version: got %q, want %q", c.spec.Version.Version, c.wantVer)
+			}
+		})
+	}
+}

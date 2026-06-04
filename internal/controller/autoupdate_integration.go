@@ -39,3 +39,23 @@ func applyAutoUpdate(spec *cachev1alpha1.ValkeySpec, catalog []string, now time.
 	spec.Version.Version = eff
 	return true
 }
+
+// applyAutoUpdateCluster — applyAutoUpdate 의 ValkeyCluster 판. 동일 정책을
+// ValkeyClusterSpec.Version 에 in-memory 주입한다(샤드 전체 동일 버전).
+func applyAutoUpdateCluster(spec *cachev1alpha1.ValkeyClusterSpec, catalog []string, now time.Time) (applied bool) {
+	if !spec.IsAutoUpdateEnabled() {
+		return false
+	}
+	eff, ok := autoupdate.ResolveVersion(
+		spec.Version.Version,
+		spec.AutoUpdateChannel(),
+		spec.AutoUpdate.MaintenanceWindow,
+		catalog,
+		now,
+	)
+	if !ok {
+		return false
+	}
+	spec.Version.Version = eff
+	return true
+}

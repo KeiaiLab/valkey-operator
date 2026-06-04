@@ -188,6 +188,16 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	vc.Status.Capabilities = computeClusterCapabilities(vc)
 	SetCapabilityMetrics(vc.Namespace, vc.Name, AllCapabilities, vc.Status.Capabilities)
 
+	// AutoUpdate — effective version 을 spec.Version 에 주입.
+	//     아래 imageOrDefault + Status.Version 으로 자동 전파(샤드 전체 동일 버전).
+	if applyAutoUpdateCluster(&vc.Spec, cachev1alpha1.SupportedValkeyVersions, time.Now().UTC()) {
+		logger.Info("auto-update applied",
+			"version", vc.Spec.Version.Version, "channel", vc.Spec.AutoUpdateChannel())
+		r.Recorder.Eventf(vc, nil, "Normal", "AutoUpdate", "AutoUpdate",
+			"자동 버전 업데이트: %s channel 내 %s 적용",
+			vc.Spec.AutoUpdateChannel(), vc.Spec.Version.Version)
+	}
+
 	stsParams := resources.STSParams{
 		CRName:               vc.Name,
 		Namespace:            vc.Namespace,

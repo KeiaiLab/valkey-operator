@@ -149,6 +149,31 @@ spec:
               autoFailover:
                 default: true
                 type: boolean
+              autoUpdate:
+                description: |-
+                  AutoUpdate — operator-managed 자동 버전 업데이트 정책. channel 제약 내
+                  안전 patch/minor 만 자동 적용하며 major 상승은 운영자 명시를 요구한다.
+                properties:
+                  channel:
+                    default: patch
+                    description: |-
+                      Channel — 자동 업데이트 허용 범위.
+                        "patch": 동일 major.minor 내 최신 patch (기본, 가장 보수적)
+                        "minor": 동일 major 내 최신 minor.patch
+                      major 상승은 어떤 channel 에서도 자동화하지 않는다.
+                    enum:
+                    - patch
+                    - minor
+                    type: string
+                  enabled:
+                    description: Enabled — 자동 버전 업데이트 활성화.
+                    type: boolean
+                  maintenanceWindow:
+                    description: |-
+                      MaintenanceWindow — 업데이트 적용 허용 시간대 "HH:MM-HH:MM"(UTC).
+                      빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
+                    type: string
+                type: object
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
@@ -3091,6 +3116,31 @@ spec:
               autoFailover:
                 default: true
                 type: boolean
+              autoUpdate:
+                description: |-
+                  AutoUpdate — operator-managed 자동 버전 업데이트 정책. channel 제약 내
+                  안전 patch/minor 만 자동 적용하며 major 상승은 운영자 명시를 요구한다.
+                properties:
+                  channel:
+                    default: patch
+                    description: |-
+                      Channel — 자동 업데이트 허용 범위.
+                        "patch": 동일 major.minor 내 최신 patch (기본, 가장 보수적)
+                        "minor": 동일 major 내 최신 minor.patch
+                      major 상승은 어떤 channel 에서도 자동화하지 않는다.
+                    enum:
+                    - patch
+                    - minor
+                    type: string
+                  enabled:
+                    description: Enabled — 자동 버전 업데이트 활성화.
+                    type: boolean
+                  maintenanceWindow:
+                    description: |-
+                      MaintenanceWindow — 업데이트 적용 허용 시간대 "HH:MM-HH:MM"(UTC).
+                      빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
+                    type: string
+                type: object
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
