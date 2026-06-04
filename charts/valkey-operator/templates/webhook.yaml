@@ -7,7 +7,11 @@ Helm 사용자가 .Values.webhook.enabled=true 설정 시:
    필수 (필수 의존성). 미설치 시 helm install 통과하지만 webhook 미작동.
 3. ValidatingWebhookConfiguration + MutatingWebhookConfiguration —
    cert-manager 의 cert-manager.io/inject-ca-from annotation 으로 caBundle 자동
-   주입.
+   주입. failurePolicy=Ignore (chicken-egg 회피, #268): readinessProbe(/readyz)가
+   webhook serving(9443) 을 미반영 + helm 이 CR(ValkeyCluster 등)을 operator rollout
+   전 apply → 502 Bad Gateway. Ignore 로 helm upgrade 중 CR apply 통과, operator
+   ready 후 호출 성공 시 정상 검증 (Fail-equivalent). webhook down 이 cluster 전체
+   admission 차단 안 하는 production best-practice.
 
 cycle 106 의 deployment.yaml 가 webhook.enabled=true 시 *operator container 의
 serving config* (--webhook-cert-path + cert volumeMount + 9443 containerPort) 자동
@@ -79,7 +83,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /mutate-cache-keiailab-io-v1alpha1-valkey
-    failurePolicy: Fail
+    failurePolicy: Ignore
     name: mvalkey-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
@@ -93,7 +97,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /mutate-cache-keiailab-io-v1alpha1-valkeycluster
-    failurePolicy: Fail
+    failurePolicy: Ignore
     name: mvalkeycluster-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
@@ -117,7 +121,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /validate-cache-keiailab-io-v1alpha1-valkey
-    failurePolicy: Fail
+    failurePolicy: Ignore
     name: vvalkey-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
@@ -131,7 +135,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /validate-cache-keiailab-io-v1alpha1-valkeycluster
-    failurePolicy: Fail
+    failurePolicy: Ignore
     name: vvalkeycluster-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]

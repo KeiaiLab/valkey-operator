@@ -2,7 +2,7 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-version: 1.2.0
+version: 1.2.1
 appVersion: "1.2.0"
 kubeVersion: ">=1.26.0-0"
 
