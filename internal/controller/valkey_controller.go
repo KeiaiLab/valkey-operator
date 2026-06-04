@@ -20,9 +20,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/operator-commons/pkg/pvc"
@@ -650,6 +653,15 @@ func (r *ValkeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
+		WithOptions(controller.Options{
+			// Controller v2 (ROADMAP 2.x) — fan-out + rate-limiter tuning.
+			// MaxConcurrentReconciles: 다중 Valkey CR 동시 reconcile (기본 1 → 3).
+			// RateLimiter: per-item exponential backoff (5ms~5m) — 일시 장애 시 과도한
+			// requeue 폭주 억제. overall token-bucket 은 controller-runtime 기본 유지.
+			MaxConcurrentReconciles: 3,
+			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+				5*time.Millisecond, 5*time.Minute),
+		}).
 		Named("valkey").
 		Complete(r)
 }
