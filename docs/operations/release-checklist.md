@@ -44,7 +44,7 @@ These gates block PR merges if any two surfaces drift apart:
 | 12 | `TestSamplesMetadataValid` | `apiVersion` / `kind` / `metadata.name` formats |
 | 13 | `TestClusterRefKindEnumMatchesSSOT` | `ClusterReference.Kind` enum ↔ SSOT slice |
 | 14 | `TestClusterRefKindAllHaveSwitchCase` | Every kind has a controller switch case |
-| 15 | `TestLicenseFileExistsAndIsApache2` | `LICENSE` file present and is Apache-2.0 |
+| 15 | `TestLicenseFileExistsAndIsMIT` | `LICENSE` file present and is MIT |
 | 16 | `TestChartLicenseAnnotationMatchesLicenseFile` | Chart annotation ↔ `LICENSE` file |
 | 17 | `TestChartImagesAnnotationMatchesAppVersion` | `artifacthub.io/images` tag ↔ Chart `AppVersion` |
 | 18 | `TestChartIconURLUsesCurrentValkeyAsset` | Chart icon URL resolves on Artifact Hub today |

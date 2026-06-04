@@ -44,7 +44,7 @@ tag 的 push 同样走这道门禁。
 | 12 | `TestSamplesMetadataValid` | `apiVersion` / `kind` / `metadata.name` 格式 |
 | 13 | `TestClusterRefKindEnumMatchesSSOT` | `ClusterReference.Kind` enum ↔ SSOT slice |
 | 14 | `TestClusterRefKindAllHaveSwitchCase` | 每种 kind 在 controller 中都有 switch case |
-| 15 | `TestLicenseFileExistsAndIsApache2` | `LICENSE` 文件存在且为 Apache-2.0 |
+| 15 | `TestLicenseFileExistsAndIsMIT` | `LICENSE` 文件存在且为 MIT |
 | 16 | `TestChartLicenseAnnotationMatchesLicenseFile` | Chart annotation ↔ `LICENSE` 文件 |
 | 17 | `TestChartImagesAnnotationMatchesAppVersion` | `artifacthub.io/images` tag ↔ Chart `AppVersion` |
 | 18 | `TestChartIconURLUsesCurrentValkeyAsset` | Chart icon URL 当前能在 Artifact Hub 上解析 |

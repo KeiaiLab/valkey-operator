@@ -43,7 +43,7 @@ push も同じゲートを通る。
 | 12 | `TestSamplesMetadataValid` | `apiVersion` / `kind` / `metadata.name` 形式の検証 |
 | 13 | `TestClusterRefKindEnumMatchesSSOT` | `ClusterReference.Kind` enum ↔ SSOT slice |
 | 14 | `TestClusterRefKindAllHaveSwitchCase` | 各 kind に controller の switch case が存在すること |
-| 15 | `TestLicenseFileExistsAndIsApache2` | `LICENSE` ファイル存在 + Apache-2.0 識別子 |
+| 15 | `TestLicenseFileExistsAndIsMIT` | `LICENSE` ファイル存在 + MIT 識別子 |
 | 16 | `TestChartLicenseAnnotationMatchesLicenseFile` | Chart annotation ↔ `LICENSE` ファイル |
 | 17 | `TestChartImagesAnnotationMatchesAppVersion` | `artifacthub.io/images` tag ↔ Chart `AppVersion` |
 | 18 | `TestChartIconURLUsesCurrentValkeyAsset` | Chart icon URL が現時点で Artifact Hub から fetch 可能な Valkey logo asset であること |
