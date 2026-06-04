@@ -22,9 +22,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/operator-commons/pkg/pvc"
@@ -1010,6 +1013,13 @@ func (r *ValkeyClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&policyv1.PodDisruptionBudget{}).
 		Owns(&networkingv1.NetworkPolicy{}).
+		WithOptions(controller.Options{
+			// Controller v2 — cluster reconcile 은 resharding/rebalance 등 무거우므로
+			// fan-out 을 보수적으로(2). RateLimiter 는 Valkey 와 동일 exponential backoff.
+			MaxConcurrentReconciles: 2,
+			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+				5*time.Millisecond, 5*time.Minute),
+		}).
 		Named("valkeycluster").
 		Complete(r)
 }
