@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func TestLicenseFileExistsAndIsApache2(t *testing.T) {
+func TestLicenseFileExistsAndIsMIT(t *testing.T) {
 	candidates := []string{"LICENSE", "../../LICENSE", "../../../LICENSE"}
 	var path string
 	for _, c := range candidates {
@@ -37,15 +37,15 @@ func TestLicenseFileExistsAndIsApache2(t *testing.T) {
 		t.Fatalf("read LICENSE: %v", err)
 	}
 	content := string(raw)
-	// Apache-2.0 의 표준 식별 markers.
+	// MIT License 의 표준 식별 markers (프로젝트는 Apache-2.0 → MIT 전환, 커밋 eaebf17/f11e07a).
 	must := []string{
-		"Apache License",
-		"Version 2.0",
-		"http://www.apache.org/licenses/",
+		"MIT License",
+		"Permission is hereby granted",
+		`THE SOFTWARE IS PROVIDED "AS IS"`,
 	}
 	for _, m := range must {
 		if !strings.Contains(content, m) {
-			t.Errorf("LICENSE 파일에 Apache-2.0 식별자 %q 누락", m)
+			t.Errorf("LICENSE 파일에 MIT 식별자 %q 누락", m)
 		}
 	}
 }
@@ -75,7 +75,7 @@ func TestChartLicenseAnnotationMatchesLicenseFile(t *testing.T) {
 		t.Fatalf("parse Chart.yaml: %v", err)
 	}
 	got := ch.Annotations["artifacthub.io/license"]
-	if got != "Apache-2.0" {
-		t.Errorf("Chart.yaml annotation artifacthub.io/license=%q (want Apache-2.0 — LICENSE 파일과 일치)", got)
+	if got != "MIT" {
+		t.Errorf("Chart.yaml annotation artifacthub.io/license=%q (want MIT — LICENSE 파일과 일치)", got)
 	}
 }

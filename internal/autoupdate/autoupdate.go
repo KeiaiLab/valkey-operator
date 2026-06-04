@@ -36,6 +36,18 @@ func parseSemver(v string) (maj, min, pat int, ok bool) {
 	return maj, min, pat, true
 }
 
+// IsMajorUpgrade — oldV → newV 가 major 상승인지. AutoUpdate 는 patch/minor 만
+// 자동화하므로(major 자동 상승 금지) 운영자의 *수동* major 상승을 admission webhook 이
+// 거부하는 데 쓴다. 파싱 불가 / 다운그레이드 / 동일은 false (다른 검증에 위임).
+func IsMajorUpgrade(oldV, newV string) bool {
+	omaj, _, _, ok1 := parseSemver(oldV)
+	nmaj, _, _, ok2 := parseSemver(newV)
+	if !ok1 || !ok2 {
+		return false
+	}
+	return nmaj > omaj
+}
+
 // semverLess — (amaj,amin,apat) < (bmaj,bmin,bpat).
 func semverLess(amaj, amin, apat, bmaj, bmin, bpat int) bool {
 	if amaj != bmaj {

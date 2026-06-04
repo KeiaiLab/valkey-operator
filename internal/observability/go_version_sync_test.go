@@ -94,7 +94,7 @@ func TestKubernetesVersionSync(t *testing.T) {
 
 	// 2. README badge: "Kubernetes-X.Y+".
 	readmeRaw, _ := os.ReadFile(filepath.Join(repo, "README.md"))
-	badgeRe := regexp.MustCompile(`Kubernetes-(\d+)\.(\d+)\+`)
+	badgeRe := regexp.MustCompile(`Kubernetes[-\s](\d+)\.(\d+)\+`)
 	rm := badgeRe.FindStringSubmatch(string(readmeRaw))
 	if rm == nil {
 		t.Fatal("README.md K8s badge 추출 실패")

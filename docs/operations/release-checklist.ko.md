@@ -42,7 +42,7 @@ push 도 동일 통과 필수.
 | 12 | `TestSamplesMetadataValid` | apiVersion/kind/metadata.name 형식 |
 | 13 | `TestClusterRefKindEnumMatchesSSOT` | ClusterReference.Kind enum ↔ SSOT 슬라이스 |
 | 14 | `TestClusterRefKindAllHaveSwitchCase` | 각 kind 가 controller switch case 보유 |
-| 15 | `TestLicenseFileExistsAndIsApache2` | LICENSE 파일 존재 + Apache-2.0 식별자 |
+| 15 | `TestLicenseFileExistsAndIsMIT` | LICENSE 파일 존재 + MIT 식별자 |
 | 16 | `TestChartLicenseAnnotationMatchesLicenseFile` | Chart annotation ↔ LICENSE 파일 |
 | 17 | `TestChartImagesAnnotationMatchesAppVersion` | artifacthub.io/images tag ↔ Chart.AppVersion |
 | 18 | `TestChartIconURLUsesCurrentValkeyAsset` | Chart icon URL 이 현재 Artifact Hub 에서 fetch 가능한 Valkey logo asset |
