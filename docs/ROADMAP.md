@@ -155,8 +155,10 @@ file used to confirm the checkbox.
     `internal/controller/autoupdate_integration.go`
   - [x] ValkeyCluster 통합 — `applyAutoUpdateCluster`,
     `internal/controller/valkeycluster_controller.go` (샤드 전체 동일 버전)
-  - [ ] 운영자 수동 major 변경 차단 webhook + 버전 카탈로그 레지스트리 폴링
-  - Verify: `go test ./internal/autoupdate/ ./internal/controller/ -run AutoUpdate` PASS (44 케이스)
+  - [x] 운영자 수동 major 변경 차단 webhook (Valkey + ValkeyCluster, v1.2.0) —
+    `autoupdate.IsMajorUpgrade` → `validateValkeyImmutable`/`validateClusterImmutable`
+  - [ ] 버전 카탈로그 레지스트리 폴링 (정적 catalog → ghcr 태그 폴링, #263)
+  - Verify: `go test ./internal/autoupdate/ ./internal/webhook/v1alpha1/ -run 'AutoUpdate|Major'` PASS
 
 - [~] **Valkey official module presets (Redis Stack equivalent)** —
   turnkey loading of the BSD-licensed `valkey-search` / `valkey-json` /
@@ -165,14 +167,16 @@ file used to confirm the checkbox.
   non-goal — license-incompatible with Valkey's BSD-3 (ADR-0032)
   - [x] `ModuleSpec` type + `ValkeySpec.Modules []ModuleSpec` field
     (PR-C6.1) — `api/v1alpha2/valkey_types.go`
-  - [ ] Controller wiring — init-container `.so` mount (emptyDir) +
-    `--loadmodule` in the StatefulSet podSpec (PR-C6.2) —
-    `internal/resources/statefulset.go`
-  - [ ] Official-preset allow-list validation + official-image
-    auto-resolve in the admission webhook —
-    `internal/webhook/v1alpha1/valkey_webhook.go`
-  - [ ] Chart module-list exposure —
-    `charts/valkey-operator/values.yaml`
+  - [x] Controller wiring — init-container `.so` mount (emptyDir) +
+    `--loadmodule` in the StatefulSet podSpec (PR-C6.2, live since 1.1.0) —
+    `internal/resources/module_init.go` `BuildModuleInitContainers`,
+    `internal/controller/valkey_controller.go` `Modules: v.Spec.Modules`
+  - [x] Official-preset allow-list validation (외부 Redis Stack 거부, v1.2.0 unit test) —
+    `internal/webhook/v1alpha1/valkey_webhook.go` `validateModules`.
+    ⚠️ 클러스터 admission 실작동은 webhook 활성화 필요 (현재 `ENABLE_WEBHOOKS=false` —
+    chart hook 순서 chicken-egg, 별도 이슈)
+  - [x] Chart module-list exposure (v1.2.0) — `charts/valkey-operator/values.yaml`
+    module preset 문서 + `config/samples/cache_v1alpha1_valkey.yaml` modules 예시
   - [ ] e2e — `valkey-search` `FT.SEARCH` round-trip — `test/e2e`
   - Verify: apply a Valkey CR with a `valkey-search` preset under
     `modules`, then `valkey-cli MODULE LIST` shows the module loaded
@@ -249,9 +253,9 @@ file used to confirm the checkbox.
 
 ### Architecture
 
-- [ ] **Controller v2**
-  - [ ] workqueue rate-limiter tuning
-  - [ ] reconcile fan-out optimization
+- [x] **Controller v2** (live since 1.1.0)
+  - [x] workqueue rate-limiter tuning — typed rate-limiter, log `valkeycluster worker count:2`
+  - [x] reconcile fan-out optimization — `MaxConcurrentReconciles` (valkey:3 / valkeycluster:2)
 - [ ] **CRD v1 graduation**
   - [ ] Schema stabilization
   - [ ] v1alpha2 → v1 conversion webhook
@@ -273,6 +277,7 @@ file used to confirm the checkbox.
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-04 | **v1.2.0** — module admission allow-list (외부 Redis Stack 거부 3중) + 수동 major-block webhook (Valkey+ValkeyCluster) shipped; Module controller wiring + Controller v2 마커 truth-up `[x]` (live since 1.1.0, reconcile path 실측); webhook admission 실작동은 `ENABLE_WEBHOOKS=false` (chart hook chicken-egg, #268) | PR #262, #263-268 |
 | 2026-06-04 | Added **AutoUpdate — operator-managed 자동 버전 업데이트** as a `[~]` item — pure decision logic (`internal/autoupdate`), `AutoUpdateSpec` on v1alpha1(reconcile hub)+v1alpha2, and Valkey reconcile wiring (effective version → STS image + Status.Version) shipped; ValkeyCluster integration + major-block webhook remain. channel patch/minor, maintenance window, major auto-upgrade prohibited | PR #254 |
 | 2026-06-03 | Added **Valkey official module presets (Redis Stack equivalent)** as a `[~]` item under "Stability and maturity" — the `ModuleSpec` / `ValkeySpec.Modules` API surface shipped (PR-C6.1); controller init-container wiring, webhook allow-list, chart values, and e2e remain (PR-C6.2). External Redis Stack modules stay out of scope (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
 | 2026-06-03 | Citation truth-up — fix phantom cited paths that the 2026-05-27 pass missed (features real, paths wrong): conversion webhook serving path not wired → `[~]` (`api/v1alpha2/doc.go`); PodSecurity helpers live in `statefulset.go` et al. (no `security.go`); webhook header `v1alpha2/`→`v1alpha1/` + "4 validating webhooks + conversion"; Online PVC resize → `commonspvc.ExpandDataPVCs` (ADR-0049, no `pvc_resize.go`); smoke-test Verify `hack/`→`scripts/`. Added `internal/observability/roadmap_citation_test.go` regression guard | docs/roadmap-citation-truthup |
