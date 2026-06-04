@@ -243,6 +243,35 @@ spec:
                 - Standalone
                 - Replication
                 type: string
+              modules:
+                description: |-
+                  Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+                  외부 Redis Stack(RediSearch/RedisJSON, RSALv2/SSPL)은 라이선스 비호환으로 미지원
+                  (ADR-0032). Name 만 지정 시 공식 preset 자동 resolve, Image 지정 시 BYO.
+                items:
+                  description: "ModuleSpec — Valkey module 정의 (ADR-0032). 컨트롤러 hub(v1alpha1)
+                    미러.\n\n\tName 만: 공식 BSD preset (allow-list 검증 + 공식 image 자동 resolve)\n\tImage:
+                    \  bring-your-own custom module (init container 가 .so 를 emptyDir
+                    mount)"
+                  properties:
+                    image:
+                      description: Image — custom module image (optional). 미지정 시 공식
+                        preset 자동 resolve.
+                      type: string
+                    loadModuleArgs:
+                      description: LoadModuleArgs — `loadmodule <so> <args>` 의 args
+                        (optional).
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: 'Name — module 식별자 (예: "valkey-search").'
+                      pattern: ^[a-z][a-z0-9-]+$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
