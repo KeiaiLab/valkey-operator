@@ -7,11 +7,13 @@ Helm 사용자가 .Values.webhook.enabled=true 설정 시:
    필수 (필수 의존성). 미설치 시 helm install 통과하지만 webhook 미작동.
 3. ValidatingWebhookConfiguration + MutatingWebhookConfiguration —
    cert-manager 의 cert-manager.io/inject-ca-from annotation 으로 caBundle 자동
-   주입. failurePolicy=Ignore (chicken-egg 회피, #268): readinessProbe(/readyz)가
-   webhook serving(9443) 을 미반영 + helm 이 CR(ValkeyCluster 등)을 operator rollout
-   전 apply → 502 Bad Gateway. Ignore 로 helm upgrade 중 CR apply 통과, operator
-   ready 후 호출 성공 시 정상 검증 (Fail-equivalent). webhook down 이 cluster 전체
-   admission 차단 안 하는 production best-practice.
+   주입. failurePolicy=Fail (강한 admission 방어 — module allow-list / major-block /
+   Auth / PSS). 활성화(webhook.enabled=true) 시 chicken-egg 주의 (#268): helm 이
+   ValkeyCluster CR 을 operator webhook serving(9443) ready 전 apply → 502. 해결 =
+   CR 을 operator HelmRelease 와 분리(Flux dependsOn) 후 활성화. fail-open(Ignore) 은
+   보안 우회 위험으로 미채택 — PSS 는 reconcile 이 항상 restricted SecurityContext
+   강제(statefulset.go, defense-in-depth), version 은 CRD enum(supportedValkeyList)
+   으로 거부.
 
 cycle 106 의 deployment.yaml 가 webhook.enabled=true 시 *operator container 의
 serving config* (--webhook-cert-path + cert volumeMount + 9443 containerPort) 자동
@@ -83,7 +85,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /mutate-cache-keiailab-io-v1alpha1-valkey
-    failurePolicy: Ignore
+    failurePolicy: Fail
     name: mvalkey-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
@@ -97,7 +99,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /mutate-cache-keiailab-io-v1alpha1-valkeycluster
-    failurePolicy: Ignore
+    failurePolicy: Fail
     name: mvalkeycluster-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
@@ -121,7 +123,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /validate-cache-keiailab-io-v1alpha1-valkey
-    failurePolicy: Ignore
+    failurePolicy: Fail
     name: vvalkey-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
@@ -135,7 +137,7 @@ webhooks:
         name: {{ $serviceName }}
         namespace: {{ .Release.Namespace }}
         path: /validate-cache-keiailab-io-v1alpha1-valkeycluster
-    failurePolicy: Ignore
+    failurePolicy: Fail
     name: vvalkeycluster-v1alpha1.kb.io
     rules:
       - apiGroups: [cache.keiailab.io]
