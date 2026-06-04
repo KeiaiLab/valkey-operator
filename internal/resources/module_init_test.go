@@ -71,3 +71,42 @@ func TestBuildModuleInitContainers(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildStatefulSet_ModulesIntegration(t *testing.T) {
+	t.Parallel()
+	sts := BuildStatefulSet(STSParams{
+		CRName:    "x",
+		Namespace: "ns",
+		Replicas:  1,
+		Image:     "valkey:9",
+		Modules:   []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}},
+	})
+	ps := sts.Spec.Template.Spec
+
+	if len(ps.InitContainers) != 1 {
+		t.Fatalf("module init-container 1 기대, got %d", len(ps.InitContainers))
+	}
+	hasLoad := false
+	for _, a := range ps.Containers[0].Args {
+		if a == "--loadmodule" {
+			hasLoad = true
+		}
+	}
+	if !hasLoad {
+		t.Fatalf("valkey container args 에 --loadmodule 기대: %v", ps.Containers[0].Args)
+	}
+	hasVol := false
+	for _, v := range ps.Volumes {
+		if v.Name == ModuleVolumeName {
+			hasVol = true
+		}
+	}
+	if !hasVol {
+		t.Fatalf("modules emptyDir volume 기대: %v", ps.Volumes)
+	}
+	// 모듈 없으면 init-container 0 (회귀)
+	stsNone := BuildStatefulSet(STSParams{CRName: "y", Namespace: "ns", Replicas: 1, Image: "valkey:9"})
+	if len(stsNone.Spec.Template.Spec.InitContainers) != 0 {
+		t.Fatalf("모듈 없으면 init-container 0 기대, got %d", len(stsNone.Spec.Template.Spec.InitContainers))
+	}
+}

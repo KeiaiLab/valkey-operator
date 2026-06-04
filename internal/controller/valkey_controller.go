@@ -177,6 +177,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Pod:                  v.Spec.Pod,
 		AuthSecretHash:       hashAuthSecret(password),
 		RevisionHistoryLimit: v.Spec.RevisionHistoryLimit,
+		Modules:              v.Spec.Modules,
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		switch {
