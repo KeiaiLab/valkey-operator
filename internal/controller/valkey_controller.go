@@ -161,6 +161,16 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
+	// 5c. AutoUpdate — effective version 을 spec.Version 에 주입.
+	//     아래 imageOrDefault(L STS) + Status.Version 으로 자동 전파된다.
+	if applyAutoUpdate(&v.Spec, cachev1alpha1.SupportedValkeyVersions, time.Now().UTC()) {
+		logger.Info("auto-update applied",
+			"version", v.Spec.Version.Version, "channel", v.Spec.AutoUpdateChannel())
+		r.Recorder.Eventf(v, nil, "Normal", "AutoUpdate", "AutoUpdate",
+			"자동 버전 업데이트: %s channel 내 %s 적용",
+			v.Spec.AutoUpdateChannel(), v.Spec.Version.Version)
+	}
+
 	// 6. StatefulSet
 	stsParams := resources.STSParams{
 		CRName:               v.Name,
