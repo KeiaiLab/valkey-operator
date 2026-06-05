@@ -26,6 +26,10 @@ spec:
       # accessKeyIDKey: AWS_ACCESS_KEY_ID   # default
       # secretAccessKeyKey: AWS_SECRET_ACCESS_KEY  # default
     # serverSideEncryption: AES256          # 옵션 (AWS:kms 등)
+  # retention:                              # 자동 보존 정책 (cross-region backup lifecycle)
+  #   maxCount: 7                           # 이 target 참조 완료 backup 7개 초과 시 오래된 것부터 만료
+  #   maxAgeDays: 30                        # 30일 초과 backup 만료 (maxCount 와 합집합)
+  #                                         # 둘 다 미설정 시 자동 만료 없음
 # ---
 # GCS 예시 (PR #42):
 # spec:

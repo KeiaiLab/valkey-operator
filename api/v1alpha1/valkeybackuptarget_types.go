@@ -155,6 +155,28 @@ type ValkeyBackupTargetSpec struct {
 	// Type=Azure 시 필수.
 	// +optional
 	Azure *AzureSpec `json:"azure,omitempty"`
+
+	// Retention — 이 target 을 참조하는 완료된 ValkeyBackup 의 자동 보존 정책
+	// (cross-region backup lifecycle, ROADMAP 2.x). 미설정 시 자동 만료 없음.
+	// +optional
+	Retention *RetentionSpec `json:"retention,omitempty"`
+}
+
+// RetentionSpec — backup 자동 보존 정책. maxCount + maxAge 합집합(둘 다 0이면 비활성).
+// internal/backuplifecycle.SelectExpired 가 결정 로직을 담당한다.
+type RetentionSpec struct {
+	// MaxCount — 보존할 최대 backup 개수. 초과 시 가장 오래된 것부터 만료.
+	// 0(미설정)이면 개수 제한 없음.
+	//
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxCount int `json:"maxCount,omitempty"`
+
+	// MaxAgeDays — backup 최대 보존 일수. 초과분 만료. 0(미설정)이면 나이 제한 없음.
+	//
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxAgeDays int `json:"maxAgeDays,omitempty"`
 }
 
 // BackupTargetPhase — reachability 라이프사이클.

@@ -239,17 +239,24 @@ file used to confirm the checkbox.
 
 - [ ] **Valkey 9.x feature follow-up** — flags / cluster-mode
   changes
-- [ ] **Multi-cluster federation**
+- [~] **Multi-cluster federation** (#266)
+  - [~] Topology-aware routing — pure decision logic `internal/federation/routing.go`
+    `SelectPrimary` (PR #258); ClusterRole 분리 + `ValkeyFederation` CRD +
+    cross-cluster kubeconfig wiring 남음
   - [ ] Separate ClusterRoles
-  - [ ] Topology-aware routing
   - [ ] New CRD `ValkeyFederation`
-- [ ] **Cross-region backup replication**
-  - [ ] S3 SSE-KMS key management
-  - [ ] Automatic lifecycle policies
-- [ ] **Online schema-less migration**
+- [~] **Cross-region backup replication**
+  - [x] Automatic lifecycle policies — `ValkeyBackupTarget.Spec.Retention`
+    {maxCount, maxAgeDays} → target controller 가 참조 backup 을
+    `internal/backuplifecycle.SelectExpired` 로 만료
+    (`internal/controller/valkeybackuptarget_retention.go`)
+  - [ ] S3 SSE-KMS key management (#248 부분)
+  - Verify: `go test ./internal/controller/ -run 'Retention'` PASS (단위 6 + 통합 List/Delete)
+- [~] **Online schema-less migration** (#266)
+  - [~] LWW conflict resolution — pure logic `internal/migration/lww.go`
+    `ResolveLWW` (PR #259); RDB diff tool + cross-cluster wiring 남음
   - [ ] RDB diff tool
-  - [ ] LWW conflict resolution
-- [ ] **Weighted read-replica routing** (latency-aware)
+- [ ] **Weighted read-replica routing** (latency-aware) (#267)
 
 ### Architecture
 
@@ -277,6 +284,7 @@ file used to confirm the checkbox.
 
 | Date | Change | Refs |
 |---|---|---|
+| 2026-06-05 | **Cross-region backup retention** `[x]` — `ValkeyBackupTarget.Spec.Retention`{maxCount,maxAgeDays} + target controller wiring(`SelectExpired` 만료) TDD(단위 6 + 통합 List/Delete). federation(#258)/migration(#259) pure-logic 토대 머지 → `[~]` truth-up | PR #258/#259/#260, #273 |
 | 2026-06-04 | **v1.2.0** — module admission allow-list (외부 Redis Stack 거부 3중) + 수동 major-block webhook (Valkey+ValkeyCluster) shipped; Module controller wiring + Controller v2 마커 truth-up `[x]` (live since 1.1.0, reconcile path 실측); webhook admission 실작동은 `ENABLE_WEBHOOKS=false` (chart hook chicken-egg, #268) | PR #262, #263-268 |
 | 2026-06-04 | Added **AutoUpdate — operator-managed 자동 버전 업데이트** as a `[~]` item — pure decision logic (`internal/autoupdate`), `AutoUpdateSpec` on v1alpha1(reconcile hub)+v1alpha2, and Valkey reconcile wiring (effective version → STS image + Status.Version) shipped; ValkeyCluster integration + major-block webhook remain. channel patch/minor, maintenance window, major auto-upgrade prohibited | PR #254 |
 | 2026-06-03 | Added **Valkey official module presets (Redis Stack equivalent)** as a `[~]` item under "Stability and maturity" — the `ModuleSpec` / `ValkeySpec.Modules` API surface shipped (PR-C6.1); controller init-container wiring, webhook allow-list, chart values, and e2e remain (PR-C6.2). External Redis Stack modules stay out of scope (RSALv2 / SSPL ↔ BSD-3) | ADR-0032 |
