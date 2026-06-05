@@ -169,6 +169,18 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 		r.Recorder.Eventf(t, nil, eventType, reason, reason, "%s", msg)
 	}
 
+	// retention 정책 적용 — 이 target 을 참조하는 완료된 backup 의 자동 만료
+	// (cross-region backup lifecycle, ROADMAP 2.x). target 도달 가능 시에만 적용해
+	// 일시적 endpoint 장애 중 backup 을 삭제하지 않는다.
+	if t.Spec.Retention != nil && t.Status.Phase == cachev1alpha1.BackupTargetPhaseReachable {
+		if deleted, rerr := r.applyRetention(ctx, t, time.Now().Unix()); rerr != nil {
+			logf.FromContext(ctx).Error(rerr, "retention 적용 실패", "target", t.Name)
+		} else if deleted > 0 && r.Recorder != nil {
+			r.Recorder.Eventf(t, nil, "Normal", "RetentionApplied", "RetentionApplied",
+				"%d backup 만료 삭제", deleted)
+		}
+	}
+
 	// 5분마다 재검증 (Secret 회전 / endpoint 변경 감지).
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }

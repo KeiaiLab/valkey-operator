@@ -88,6 +88,27 @@ type ValkeyBackupTargetSpec struct {
 	//
 	// +optional
 	S3 *S3Spec `json:"s3,omitempty"`
+
+	// Retention — 이 target 을 참조하는 완료된 ValkeyBackup 의 자동 보존 정책
+	// (cross-region backup lifecycle, ROADMAP 2.x). v1alpha1 reconcile hub 미러.
+	// +optional
+	Retention *RetentionSpec `json:"retention,omitempty"`
+}
+
+// RetentionSpec — backup 자동 보존 정책. maxCount + maxAge 합집합(둘 다 0이면 비활성).
+// v1alpha1.RetentionSpec 미러 (conversion 정합).
+type RetentionSpec struct {
+	// MaxCount — 보존할 최대 backup 개수. 초과 시 가장 오래된 것부터 만료. 0=무제한.
+	//
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxCount int `json:"maxCount,omitempty"`
+
+	// MaxAgeDays — backup 최대 보존 일수. 초과분 만료. 0=무제한.
+	//
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxAgeDays int `json:"maxAgeDays,omitempty"`
 }
 
 // BackupTargetPhase — reachability 라이프사이클.
