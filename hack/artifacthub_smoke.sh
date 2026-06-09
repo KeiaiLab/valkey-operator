@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
 set -euo pipefail
 
 artifacthub_api_url="${ARTIFACTHUB_API_URL:-https://artifacthub.io/api/v1}"
@@ -6,6 +7,8 @@ artifacthub_org="${ARTIFACTHUB_ORG:-keiailab}"
 artifacthub_package_name="${ARTIFACTHUB_PACKAGE_NAME:-valkey-operator}"
 artifacthub_repository_name="${ARTIFACTHUB_REPOSITORY_NAME:-keiailab-valkey-operator}"
 helm_repo_url="${HELM_REPO_URL:-https://keiailab.github.io/valkey-operator}"
+require_provenance="${REQUIRE_PROVENANCE:-1}"
+check_container_images="${CHECK_CONTAINER_IMAGES:-1}"
 
 curl_bin="${CURL_BIN:-curl}"
 helm_bin="${HELM_BIN:-helm}"
@@ -105,9 +108,10 @@ fi
 "$jq_bin" -e --arg name "$artifacthub_package_name" '.name == $name' "$tmpdir/package.json" >/dev/null
 echo "Artifact Hub package OK: https://artifacthub.io/packages/helm/${artifacthub_repository_name}/${artifacthub_package_name}"
 
-echo "=== Provenance (.prov) 도달성 ==="
 # VERSION: Chart.yaml에서 추출 (TAG 환경변수가 없을 때 fallback)
 VERSION="${TAG:-}"
+VERSION="${VERSION#refs/tags/}"
+VERSION="${VERSION#v}"
 if [[ -z "$VERSION" ]]; then
 	chart_yaml="$(dirname "$0")/../charts/${artifacthub_package_name}/Chart.yaml"
 	if [[ -f "$chart_yaml" ]]; then
@@ -115,18 +119,62 @@ if [[ -z "$VERSION" ]]; then
 	fi
 fi
 
+if [[ -z "$VERSION" ]]; then
+	echo "ERROR: VERSION 미확인 — Chart.yaml 또는 TAG 값을 확인하세요." >&2
+	exit 5
+fi
+
+echo "=== Helm/Artifact Hub target version 정합성 ==="
+if command -v "$helm_bin" >/dev/null 2>&1; then
+	if ! "$helm_bin" show chart "${artifacthub_repository_name}/${artifacthub_package_name}" --version "$VERSION" >/dev/null; then
+		echo "ERROR: Helm index에 target chart version이 없습니다: ${artifacthub_repository_name}/${artifacthub_package_name}:${VERSION}" >&2
+		echo "  fix: chart ${VERSION}을 gh-pages Helm index에 publish하세요." >&2
+		exit 5
+	fi
+	echo "Helm index version OK: ${VERSION}"
+fi
+
+indexed_version="$("$jq_bin" -r '.version // empty' "$tmpdir/package.json")"
+if [[ "$indexed_version" != "$VERSION" ]]; then
+	echo "ERROR: Artifact Hub 최신 패키지 버전 불일치" >&2
+	echo "  expected: ${VERSION}" >&2
+	echo "  actual:   ${indexed_version:-<empty>}" >&2
+	echo "  fix: chart ${VERSION}을 gh-pages Helm index에 publish한 뒤 Artifact Hub tracker 재동기화 대기" >&2
+	exit 6
+fi
+echo "Artifact Hub indexed version OK: ${VERSION}"
+
+echo "=== Artifact Hub container image 도달성 ==="
+if [[ "$check_container_images" == "1" ]]; then
+	if command -v docker >/dev/null 2>&1 && docker buildx version >/dev/null 2>&1; then
+		while IFS= read -r image; do
+			[[ -z "$image" ]] && continue
+			echo "→ image 확인: ${image}"
+			if ! docker buildx imagetools inspect "$image" >/dev/null; then
+				echo "ERROR: Artifact Hub 메타데이터가 존재하지 않는 컨테이너 이미지를 참조합니다: ${image}" >&2
+				exit 7
+			fi
+		done < <("$jq_bin" -r '.containers_images[]?.image // empty' "$tmpdir/package.json")
+		echo "Container images OK"
+	else
+		echo "WARN: docker buildx unavailable; container image reachability skipped" >&2
+	fi
+fi
+
+echo "=== Provenance (.prov) 도달성 ==="
+
 verify_provenance() {
 	local prov="${helm_repo_url%/}/${artifacthub_package_name}-${VERSION}.tgz.prov"
 	echo "→ provenance 확인: ${prov}"
 	if "$curl_bin" -fsSL -o "$tmpdir/chart.tgz.prov" "${prov}" 2>/dev/null; then
 		echo "✓ .prov 도달 가능 (Signed badge 전제 충족)"
 	else
-		echo "::warning::.prov 부재 — Signed badge 미달성(로컬 helm-publish.sh --sign 필요). warn-only, 통과."
+		if [[ "$require_provenance" == "1" ]]; then
+			echo "ERROR: .prov 부재 — Signed badge 미달성(로컬 helm-publish.sh --sign 필요)." >&2
+			exit 8
+		fi
+		echo "::warning::.prov 부재 — Signed badge 미달성(로컬 helm-publish.sh --sign 필요). REQUIRE_PROVENANCE=0 이므로 warn-only."
 	fi
 }
 
-if [[ -n "$VERSION" ]]; then
-	verify_provenance
-else
-	echo "WARN: VERSION 미확인 — .prov 검증 건너뜀" >&2
-fi
+verify_provenance
