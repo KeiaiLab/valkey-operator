@@ -158,5 +158,5 @@ Security Advisory and a PGP-signed email address).
 
 ## License
 
-This project is Apache License 2.0. By contributing you agree that your
+This project is MIT License. By contributing you agree that your
 contribution is distributed under the same license.

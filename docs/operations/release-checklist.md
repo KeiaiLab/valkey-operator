@@ -121,7 +121,7 @@ Run command: `go test ./internal/observability/`
 
 These accumulate as OSS trust signals:
 
-- LICENSE Apache-2.0 (gates #15 and #16)
+- LICENSE MIT (gates #15 and #16)
 - SECURITY.md with the PGP fingerprint
 - CONTRIBUTING.md with prerequisites + PR workflow
 - `.github/PULL_REQUEST_TEMPLATE.md` (gate #23)

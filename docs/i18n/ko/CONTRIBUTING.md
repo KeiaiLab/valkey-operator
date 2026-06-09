@@ -133,4 +133,4 @@ INDEX 갱신 의무 — `docs/kb/adr/INDEX.md`.
 
 ## 라이선스
 
-본 프로젝트는 Apache License 2.0. 기여한 코드도 동일 라이선스로 배포됩니다.
+본 프로젝트는 MIT License. 기여한 코드도 동일 라이선스로 배포됩니다.

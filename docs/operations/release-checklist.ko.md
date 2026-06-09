@@ -109,7 +109,7 @@ push 도 동일 통과 필수.
 ## 6. 사용자 가시 표면 (자동 검증)
 
 다음이 *모두* OSS 신뢰 지표로 누적:
-- LICENSE Apache-2.0 (게이트 #15-16)
+- LICENSE MIT (게이트 #15-16)
 - SECURITY.md PGP fingerprint 명시
 - CONTRIBUTING.md 환경 요구사항 + PR 절차
 - .github/PULL_REQUEST_TEMPLATE.md (게이트 #23 검증)

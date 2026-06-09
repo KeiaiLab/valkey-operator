@@ -248,7 +248,7 @@ file used to confirm the checkbox.
 - [~] **Cross-region backup replication**
   - [x] Automatic lifecycle policies — `ValkeyBackupTarget.Spec.Retention`
     {maxCount, maxAgeDays} → target controller 가 참조 backup 을
-    `internal/backuplifecycle.SelectExpired` 로 만료
+    `internal/backuplifecycle/retention.go` 의 `SelectExpired` 로 만료
     (`internal/controller/valkeybackuptarget_retention.go`). 라이브 실측
     (operator 1.3.0, Ceph RGW): maxCount=2 + 완료 backup 3 → `RetentionApplied:
     1 backup 만료 삭제` Event, 3→2 (가장 오래된 만료)

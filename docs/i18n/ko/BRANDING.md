@@ -15,9 +15,9 @@
 
 ## 1. Identity (정체성)
 
-**Organization**: [keiailab](https://keiailab.com) — Kubernetes-native 데이터 플랫폼 operator (Apache-2.0, license-clean, vanilla-upstream 호환).
+**Organization**: [keiailab](https://keiailab.com) — Kubernetes-native 데이터 플랫폼 operator (MIT-licensed, license-clean, vanilla-upstream 호환).
 
-**Project**: `valkey-operator` — Kubernetes 용 Apache-2.0 Valkey Operator — Standalone + Cluster + Backup/Restore, BSD-3 license-clean.
+**Project**: `valkey-operator` — Kubernetes 용 MIT-licensed Valkey Operator — Standalone + Cluster + Backup/Restore, BSD-3 license-clean.
 
 ## 2. Logo & Visual Assets (로고 및 시각 자산)
 
@@ -66,7 +66,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 - **Direct (직접적)** — 가능한 경우 단락보다 bullet-point
 - **Evidence-based (근거 기반)** — 주장에는 benchmark / SLA / 링크 포함
 - **Vendor-neutral (벤더 중립)** — upstream (PostgreSQL, MongoDB, Valkey) 참조는 하되 제 3 자 operator 를 embed / wrap 하지 않음
-- **License-aware (라이선스 인지)** — Apache-2.0 + BSD/MIT/PG-license 의존성만 사용
+- **License-aware (라이선스 인지)** — MIT/BSD/Apache-2.0/PG-license 의존성만 사용
 
 **피해야 할 것**:
 - 마케팅적 최상급 표현 ("blazing fast", "revolutionary", "best-in-class")
@@ -84,7 +84,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 
 # valkey-operator
 
-> **Apache-2.0 Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
+> **MIT-licensed Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"/></a>
@@ -109,7 +109,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 
 README 의 shield.io badge 순서 (좌→우):
 
-1. License (Apache-2.0)
+1. License (MIT)
 2. Go Version (1.25+)
 3. Database (e.g. PostgreSQL 18+ / MongoDB 7.0+ / Valkey 8.0+)
 4. Kubernetes Version (1.26+)
@@ -133,6 +133,6 @@ README 의 shield.io badge 순서 (좌→우):
 
 ## 11. License & Attribution (라이선스 및 출처 표기)
 
-- License: [Apache-2.0](../../../LICENSE)
+- License: [MIT](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: [NOTICE](../../../NOTICE) 참조 (해당 시)

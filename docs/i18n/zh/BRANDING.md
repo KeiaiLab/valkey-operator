@@ -13,9 +13,9 @@
 
 ## 1. 身份标识 (Identity)
 
-**Organization**: [keiailab](https://keiailab.com) — Kubernetes-native 数据平台 operator (Apache-2.0、license-clean、vanilla-upstream 兼容)。
+**Organization**: [keiailab](https://keiailab.com) — Kubernetes-native 数据平台 operator (MIT 许可、license-clean、vanilla-upstream 兼容)。
 
-**Project**: `valkey-operator` — Kubernetes 的 Apache-2.0 Valkey Operator — Standalone + Cluster + Backup/Restore,BSD-3 license-clean。
+**Project**: `valkey-operator` — Kubernetes 的 MIT-licensed Valkey Operator — Standalone + Cluster + Backup/Restore,BSD-3 license-clean。
 
 ## 2. Logo 与视觉资源 (Visual Assets)
 
@@ -64,7 +64,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 - **Direct (直接)** — 尽可能使用 bullet-point 代替段落
 - **Evidence-based (基于证据)** — 论断需附 benchmark / SLA / 链接
 - **Vendor-neutral (厂商中立)** — 引用 upstream (PostgreSQL、MongoDB、Valkey),但不 embed / wrap 第三方 operator
-- **License-aware (许可证意识)** — 仅使用 Apache-2.0 + BSD/MIT/PG-license 依赖
+- **License-aware (许可证意识)** — 仅使用 MIT/BSD/Apache-2.0/PG-license 依赖
 
 **应避免的表达**:
 - 市场化的最高级表述 ("blazing fast"、"revolutionary"、"best-in-class")
@@ -82,7 +82,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 
 # valkey-operator
 
-> **Apache-2.0 Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
+> **MIT-licensed Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"/></a>
@@ -107,7 +107,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 
 README 中 shield.io badge 的顺序 (左→右):
 
-1. License (Apache-2.0)
+1. License (MIT)
 2. Go Version (1.25+)
 3. Database (e.g. PostgreSQL 18+ / MongoDB 7.0+ / Valkey 8.0+)
 4. Kubernetes Version (1.26+)
@@ -131,6 +131,6 @@ README 中 shield.io badge 的顺序 (左→右):
 
 ## 11. 许可证与归属 (License & Attribution)
 
-- License: [Apache-2.0](../../../LICENSE)
+- License: [MIT](../../../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: 见 [NOTICE](../../../NOTICE) (如适用)

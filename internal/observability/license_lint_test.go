@@ -37,7 +37,7 @@ func TestLicenseFileExistsAndIsMIT(t *testing.T) {
 		t.Fatalf("read LICENSE: %v", err)
 	}
 	content := string(raw)
-	// MIT License 의 표준 식별 markers (프로젝트는 Apache-2.0 → MIT 전환, 커밋 eaebf17/f11e07a).
+	// MIT License 의 표준 식별 markers (프로젝트는 MIT 라이선스, 커밋 eaebf17/f11e07a).
 	must := []string{
 		"MIT License",
 		"Permission is hereby granted",

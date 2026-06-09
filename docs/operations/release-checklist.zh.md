@@ -117,7 +117,7 @@ tag 的 push 同样走这道门禁。
 
 这些都会沉淀为 OSS 的信任信号:
 
-- LICENSE Apache-2.0 (门禁 #15 与 #16)
+- LICENSE MIT (门禁 #15 与 #16)
 - SECURITY.md 含 PGP 指纹
 - CONTRIBUTING.md 含前置要求 + PR 流程
 - `.github/PULL_REQUEST_TEMPLATE.md` (门禁 #23)

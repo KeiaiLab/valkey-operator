@@ -10,7 +10,7 @@
 - **범위**: Standalone / Replication / Cluster (16384-slot) 토폴로지 + 백업·복구 + S3 호환 외부 스토리지.
 - **안정성 등급**: v1.0.13 (standalone + replication + cluster GA; federation 계획됨 — 미착수)
 - **최신 릴리즈**: v1.0.13 (2026-05-13)
-- **라이선스**: Apache-2.0
+- **라이선스**: MIT
 - **모듈 경로**: `github.com/keiailab/valkey-operator`
 
 ## CRD 표면 (5 CRD)

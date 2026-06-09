@@ -63,7 +63,7 @@ pkg:golang/github.com%2Fminio%2Fminio-go%2Fv7
   field 직접 매핑.
 - **F-prefix 파일 API**: PutObject/GetObject 와 별개로 FPutObject/FGetObject
   가 파일 경로 직접 받음 — 메모리 streaming 거치지 않음, 8GB+ RDB 안전.
-- **Apache-2.0 + BSD 라이선스**: valkey-operator 의 Apache-2.0 과 호환,
+- **Apache-2.0 + BSD 라이선스**: valkey-operator 의 MIT 라이선스와 호환,
   GPL 오염 없음.
 
 부정:

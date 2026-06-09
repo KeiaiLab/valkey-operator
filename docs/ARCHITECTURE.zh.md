@@ -10,7 +10,7 @@
 - **范围**: Standalone / Replication / Cluster (16384-slot) 三种拓扑 + 备份/恢复 + S3 兼容的外部存储。
 - **稳定度等级**: v1.0.13 (standalone + replication + cluster 已 GA; federation 计划中 — 尚未启动)
 - **最新发布**: v1.0.13 (2026-05-13)
-- **许可证**: Apache-2.0
+- **许可证**: MIT
 - **模块路径**: `github.com/keiailab/valkey-operator`
 
 ## CRD 表面 (5 个 CRD)

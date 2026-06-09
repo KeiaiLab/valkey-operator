@@ -11,7 +11,7 @@ abstract: >-
   Kubernetes operator for Valkey (Redis fork) — manages Standalone, Replication
   (primary + replicas), and Cluster (16384 slot, sharded) topologies via
   CRD-driven reconciliation. Cosign-signed images with SLSA L2 provenance
-  attestation. Apache 2.0 licensed, ArtifactHub published.
+  attestation. MIT licensed, ArtifactHub published.
 keywords:
   - kubernetes
   - operator
@@ -20,5 +20,5 @@ keywords:
   - cluster
   - cache
   - replication
-license: Apache-2.0
+license: MIT
 version: v1.0.9

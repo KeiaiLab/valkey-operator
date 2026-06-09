@@ -117,7 +117,7 @@ push も同じゲートを通る。
 
 これらは OSS の信頼指標として積み上がる:
 
-- LICENSE Apache-2.0 (ゲート #15、#16)
+- LICENSE MIT (ゲート #15、#16)
 - SECURITY.md に PGP fingerprint
 - CONTRIBUTING.md に前提条件 + PR ワークフロー
 - `.github/PULL_REQUEST_TEMPLATE.md` (ゲート #23)

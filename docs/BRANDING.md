@@ -13,9 +13,9 @@ This document is the canonical reference for `valkey-operator` branding decision
 
 ## 1. Identity
 
-**Organization**: [keiailab](https://keiailab.com) — Kubernetes-native data platform operators (Apache-2.0, license-clean, vanilla-upstream compatible).
+**Organization**: [keiailab](https://keiailab.com) — Kubernetes-native data platform operators (MIT-licensed, license-clean, vanilla-upstream compatible).
 
-**Project**: `valkey-operator` — Apache-2.0 Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean.
+**Project**: `valkey-operator` — MIT-licensed Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean.
 
 ## 2. Logo & Visual Assets
 
@@ -64,7 +64,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 - **Direct** — bullet-point over paragraph where possible
 - **Evidence-based** — claims include benchmark / SLA / link
 - **Vendor-neutral** — reference upstream Valkey but do not embed/wrap third-party operators
-- **License-aware** — Apache-2.0 + BSD/MIT/PG-license dependencies only
+- **License-aware** — MIT/BSD/Apache-2.0/PG-license dependencies only
 
 **Avoid**:
 - Marketing superlatives ("blazing fast", "revolutionary", "best-in-class")
@@ -82,7 +82,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 
 # valkey-operator
 
-> **Apache-2.0 Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
+> **MIT-licensed Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"/></a>
@@ -107,7 +107,7 @@ GitHub README 의 shield.io badge 는 위 hex 사용 권장.
 
 README 의 shield.io badge 순서 (좌→우):
 
-1. License (Apache-2.0)
+1. License (MIT)
 2. Go Version (1.25+)
 3. Database (Valkey 8.0+)
 4. Kubernetes Version (1.26+)
@@ -131,6 +131,6 @@ README 의 shield.io badge 순서 (좌→우):
 
 ## 11. License & Attribution
 
-- License: [Apache-2.0](../LICENSE)
+- License: [MIT](../LICENSE)
 - Copyright: © 2026 keiailab contributors
 - Third-party attributions: see [NOTICE](../NOTICE) (if applicable)

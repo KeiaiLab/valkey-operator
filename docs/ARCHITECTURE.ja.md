@@ -10,7 +10,7 @@
 - **スコープ**: Standalone / Replication / Cluster (16384-slot) トポロジー + バックアップ・リストア + S3 互換外部ストレージ。
 - **安定度ティア**: v1.0.13 (standalone + replication + cluster は GA; federation は計画中 — 未着手)
 - **最新リリース**: v1.0.13 (2026-05-13)
-- **ライセンス**: Apache-2.0
+- **ライセンス**: MIT
 - **モジュールパス**: `github.com/keiailab/valkey-operator`
 
 ## CRD 表面 (5 CRD)

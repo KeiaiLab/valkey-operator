@@ -154,5 +154,5 @@ Advisory 与一个 PGP 签名邮箱地址)。
 
 ## 许可证 (License)
 
-本项目采用 Apache License 2.0。提交贡献即表示您同意您的贡献
+本项目采用 MIT License。提交贡献即表示您同意您的贡献
 按相同许可证分发。
