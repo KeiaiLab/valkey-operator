@@ -58,3 +58,8 @@ spec:
   # slowLog:                               # PR #45 — slowlog-log-slower-than directive 주입
   #   thresholdMicros: 5000                # 5ms 보다 오래 걸린 명령 기록
   #   maxEntries: 256
+  # modules:                               # ADR-0032 — 모든 shard pod 에 동일 module set 로딩
+  #   - name: valkey-search                # FT.* (RediSearch 대체)
+  #   - name: valkey-json                  # JSON.* (RedisJSON 대체)
+  #   - name: valkey-bloom                 # BF.* (RedisBloom 대체)
+  #                                        # TS.*/GRAPH.*/Gears 계열 외부 Redis Stack module/image 는 admission 거부

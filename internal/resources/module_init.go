@@ -38,8 +38,8 @@ func BuildModuleInitContainers(mods []cachev1alpha1.ModuleSpec) ([]corev1.Contai
 		Name:         ModuleVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
-	var initContainers []corev1.Container
-	var loadArgs []string
+	initContainers := make([]corev1.Container, 0, len(mods))
+	loadArgs := make([]string, 0, len(mods))
 
 	for _, m := range mods {
 		var image, soPath string

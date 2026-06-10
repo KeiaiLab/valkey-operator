@@ -180,6 +180,37 @@ spec:
                       빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
                     type: string
                 type: object
+              modules:
+                description: |-
+                  Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+                  외부 Redis Stack(RediSearch/RedisJSON/RedisBloom/RedisTimeSeries/RedisGraph/
+                  RedisGears, RSALv2/SSPL)은 라이선스 비호환으로 미지원(ADR-0032).
+                  Cluster mode 에서는 모든 shard pod 에 동일 module set 을 로딩한다.
+                items:
+                  description: "ModuleSpec — Valkey module 정의 (ADR-0032). 컨트롤러 hub(v1alpha1)
+                    미러.\n\n\tName 만: 공식 BSD preset (allow-list 검증 + 공식 image 자동 resolve)\n\tImage:
+                    \  bring-your-own custom module (init container 가 .so 를 emptyDir
+                    mount)"
+                  properties:
+                    image:
+                      description: Image — custom module image (optional). 미지정 시 공식
+                        preset 자동 resolve.
+                      type: string
+                    loadModuleArgs:
+                      description: LoadModuleArgs — `loadmodule <so> <args>` 의 args
+                        (optional).
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: 'Name — module 식별자 (예: "valkey-search").'
+                      pattern: ^[a-z][a-z0-9-]+$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                maxItems: 16
+                type: array
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
@@ -2827,6 +2858,7 @@ spec:
               capabilities:
                 description: |-
                   Capabilities — 활성 optional features. Valkey CR Status.Capabilities 와 동일 패턴.
+                  예: TLS, Auth, Monitoring, Modules.
                   `kubectl get vc -o wide` 의 priority=1 printcolumn 으로 노출.
                 items:
                   type: string
@@ -2974,6 +3006,10 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .status.capabilities
+      name: Capabilities
+      priority: 1
+      type: string
     name: v1alpha2
     schema:
       openAPIV3Schema:
@@ -3154,6 +3190,52 @@ spec:
                       빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
                     type: string
                 type: object
+              modules:
+                description: |-
+                  Modules — Valkey 공식 module 활성화 (ADR-0032).
+
+                  지원 preset:
+                    - Name 만 지정: Valkey 공식 module preset (예: "valkey-search",
+                      "valkey-json", "valkey-bloom") 을 operator 가 valkey-bundle 에서
+                      추출해 loadmodule 로 적재.
+                    - 사용자 커스텀 module 은 ModuleSpec.Image 로 *bring-your-own*
+                      이미지 지정 가능. 단 외부 Redis Stack module/image 는 라이선스
+                      비호환으로 admission 에서 거부.
+                  Cluster mode 에서는 모든 shard pod 에 동일 module set 을 로딩한다.
+                items:
+                  description: |-
+                    ModuleSpec — Valkey module 정의 (Plan §2 D9, ADR-0032).
+
+                    두 모드:
+                      - Name 만 지정: Valkey 공식 module preset (예: "valkey-search",
+                        "valkey-json", "valkey-bloom"). operator 가 alllow-list 검증 +
+                        공식 image 자동 resolve.
+                      - Image 명시: bring-your-own custom module. init container 가
+                        해당 image 의 /modules/<name>.so 를 emptyDir 로 mount, valkey
+                        container 가 `--loadmodule /modules/<name>.so <args>` 로 적재.
+
+                    보안: PSS Restricted (ADR-0036) 와 정합 — module image 가 privileged
+                    syscall 요구 시 webhook 거부. Sonatype Trust Score 검증 권장.
+                  properties:
+                    image:
+                      description: Image — custom module image (optional). 미지정 시 공식
+                        preset 자동 resolve.
+                      type: string
+                    loadModuleArgs:
+                      description: LoadModuleArgs — `loadmodule <so> <args>` 의 args
+                        (optional).
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: 'Name — module 식별자 (예: "valkey-search").'
+                      pattern: ^[a-z][a-z0-9-]+$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                maxItems: 16
+                type: array
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
@@ -5784,6 +5866,13 @@ spec:
               assignedSlots:
                 format: int32
                 type: integer
+              capabilities:
+                description: |-
+                  Capabilities — 활성 optional features. Valkey CR Status.Capabilities 와 동일 패턴.
+                  예: TLS, Auth, Monitoring, Modules.
+                items:
+                  type: string
+                type: array
               clusterInitialized:
                 type: boolean
               clusterState:

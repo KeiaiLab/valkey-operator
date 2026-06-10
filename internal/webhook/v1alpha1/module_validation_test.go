@@ -23,6 +23,15 @@ func standaloneValkeyWithModules(mods ...cachev1alpha1.ModuleSpec) *cachev1alpha
 	return v
 }
 
+func clusterValkeyWithModules(mods ...cachev1alpha1.ModuleSpec) *cachev1alpha1.ValkeyCluster {
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.Version = cachev1alpha1.ValkeyVersion{Version: cachev1alpha1.DefaultValkeyVersion}
+	vc.Spec.Modules = mods
+	return vc
+}
+
 func TestValidateModules(t *testing.T) {
 	t.Parallel()
 
@@ -80,6 +89,46 @@ func TestValidateModules(t *testing.T) {
 		v := standaloneValkeyWithModules()
 		if errs := validateValkeySpec(v); len(errs) > 0 {
 			t.Errorf("modules 없음 → expected ok, got %v", errs)
+		}
+	})
+}
+
+func TestValidateClusterModules(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Cluster official Redis Stack-compatible presets → ok", func(t *testing.T) {
+		t.Parallel()
+		vc := clusterValkeyWithModules(
+			cachev1alpha1.ModuleSpec{Name: "valkey-search"},
+			cachev1alpha1.ModuleSpec{Name: "valkey-json"},
+			cachev1alpha1.ModuleSpec{Name: "valkey-bloom"},
+		)
+		if errs := validateClusterSpec(vc); len(errs) > 0 {
+			t.Errorf("Cluster 공식 module preset → expected no error, got %v", errs)
+		}
+	})
+
+	t.Run("Cluster unsupported Redis Stack families → reject", func(t *testing.T) {
+		t.Parallel()
+		for _, name := range []string{"redistimeseries", "redisgraph", "redisgears"} {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				vc := clusterValkeyWithModules(cachev1alpha1.ModuleSpec{Name: name})
+				if errs := validateClusterSpec(vc); len(errs) == 0 {
+					t.Errorf("%s 는 외부 Redis Stack module 이므로 Cluster 에서도 reject 기대", name)
+				}
+			})
+		}
+	})
+
+	t.Run("Cluster BYO Redis Stack image → reject", func(t *testing.T) {
+		t.Parallel()
+		vc := clusterValkeyWithModules(cachev1alpha1.ModuleSpec{
+			Name:  "custom-mod",
+			Image: "redis/redis-stack-server:7.2.0",
+		})
+		if errs := validateClusterSpec(vc); len(errs) == 0 {
+			t.Error("Cluster BYO redis-stack image → reject 기대")
 		}
 	})
 }

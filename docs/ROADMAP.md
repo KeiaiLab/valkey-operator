@@ -162,21 +162,29 @@ file used to confirm the checkbox.
 
 - [~] **Valkey official module presets (Redis Stack equivalent)** —
   turnkey loading of the BSD-licensed `valkey-search` / `valkey-json` /
-  `valkey-bloom` modules via `ValkeySpec.Modules`. External Redis Stack
-  modules (RediSearch / RedisJSON, RSALv2 / SSPL) are a deliberate
-  non-goal — license-incompatible with Valkey's BSD-3 (ADR-0032)
+  `valkey-bloom` modules via `spec.modules`. Runtime compatibility is
+  explicit: `JSON.*`, `FT.*`, and `BF.*` are supported through Valkey
+  official modules; `TS.*`, `GRAPH.*`, and Gears remain unsupported until
+  Valkey-compatible official modules exist. External Redis Stack modules
+  (RediSearch / RedisJSON / RedisTimeSeries / RedisGraph / RedisGears,
+  RSALv2 / SSPL) are a deliberate non-goal — license-incompatible with
+  Valkey's BSD-3 (ADR-0032)
   - [x] `ModuleSpec` type + `ValkeySpec.Modules []ModuleSpec` field
     (PR-C6.1) — `api/v1alpha2/valkey_types.go`
+  - [x] `ValkeyClusterSpec.Modules []ModuleSpec` field — same `spec.modules`
+    API for Standalone, Replication, and Cluster topologies
   - [x] Controller wiring — init-container `.so` mount (emptyDir) +
     `--loadmodule` in the StatefulSet podSpec (PR-C6.2, live since 1.1.0) —
     `internal/resources/module_init.go` `BuildModuleInitContainers`,
-    `internal/controller/valkey_controller.go` `Modules: v.Spec.Modules`
+    `internal/controller/valkey_controller.go` `Modules: v.Spec.Modules`,
+    `internal/controller/valkeycluster_controller.go` `Modules: vc.Spec.Modules`
   - [x] Official-preset allow-list validation (외부 Redis Stack 거부, v1.2.0 unit test) —
     `internal/webhook/v1alpha1/valkey_webhook.go` `validateModules`.
+    Cluster webhook uses the same validator.
     ⚠️ 클러스터 admission 실작동은 webhook 활성화 필요 (현재 `ENABLE_WEBHOOKS=false` —
     chart hook 순서 chicken-egg, 별도 이슈)
   - [x] Chart module-list exposure (v1.2.0) — `charts/valkey-operator/values.yaml`
-    module preset 문서 + `config/samples/cache_v1alpha1_valkey.yaml` modules 예시
+    module preset 문서 + Valkey/ValkeyCluster sample `modules` 예시
   - [ ] e2e — `valkey-search` `FT.SEARCH` round-trip — `test/e2e`
   - Verify: apply a Valkey CR with a `valkey-search` preset under
     `modules`, then `valkey-cli MODULE LIST` shows the module loaded

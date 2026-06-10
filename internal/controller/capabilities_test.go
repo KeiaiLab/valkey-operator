@@ -60,6 +60,7 @@ func TestComputeValkeyCapabilities_full_features(t *testing.T) {
 	}
 	v.Spec.NetworkPolicy = &cachev1alpha1.NetworkPolicySpec{Enabled: true}
 	v.Spec.Monitoring = &cachev1alpha1.MonitoringSpec{Enabled: true}
+	v.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}}
 
 	got := computeValkeyCapabilities(v)
 	want := []string{
@@ -68,6 +69,7 @@ func TestComputeValkeyCapabilities_full_features(t *testing.T) {
 		CapabilitySlowLog,
 		CapabilityEncryptionAudit, CapabilityEncryptionEnforce,
 		CapabilityNetworkPolicy, CapabilityMonitoring,
+		CapabilityModules,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("full features:\n got: %v\nwant: %v", got, want)
@@ -112,6 +114,7 @@ func TestComputeClusterCapabilities_full_features(t *testing.T) {
 	vc.Spec.Storage = cachev1alpha1.StorageSpec{EncryptionRequired: true}
 	vc.Spec.NetworkPolicy = &cachev1alpha1.NetworkPolicySpec{Enabled: true}
 	vc.Spec.Monitoring = &cachev1alpha1.MonitoringSpec{Enabled: true}
+	vc.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}}
 
 	got := computeClusterCapabilities(vc)
 	want := []string{
@@ -119,6 +122,7 @@ func TestComputeClusterCapabilities_full_features(t *testing.T) {
 		CapabilitySlowLog,
 		CapabilityEncryptionAudit,
 		CapabilityNetworkPolicy, CapabilityMonitoring,
+		CapabilityModules,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v want %v", got, want)

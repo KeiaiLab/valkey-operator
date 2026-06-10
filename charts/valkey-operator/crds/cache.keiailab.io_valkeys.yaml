@@ -2939,6 +2939,7 @@ spec:
                     "Monitoring"      — Spec.Monitoring.Enabled
                     "ExternalReplica" — Spec.ExternalReplica.Enabled
                     "EphemeralStorage" — Spec.Storage.Ephemeral
+                    "Modules"         — Spec.Modules non-empty (ADR-0032)
                 items:
                   type: string
                 type: array
@@ -3063,6 +3064,10 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .status.capabilities
+      name: Capabilities
+      priority: 1
+      type: string
     name: v1alpha2
     schema:
       openAPIV3Schema:
@@ -5983,6 +5988,13 @@ spec:
           status:
             description: ValkeyStatus — observed state.
             properties:
+              capabilities:
+                description: |-
+                  Capabilities — 본 CR 에서 활성된 optional features 의 ordered list.
+                  예: TLS, Auth, Monitoring, Modules.
+                items:
+                  type: string
+                type: array
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current

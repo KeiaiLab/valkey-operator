@@ -86,6 +86,14 @@ type ValkeyClusterSpec struct {
 	// +optional
 	SlowLog *SlowLogSpec `json:"slowLog,omitempty"`
 
+	// Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+	// 외부 Redis Stack(RediSearch/RedisJSON/RedisBloom/RedisTimeSeries/RedisGraph/
+	// RedisGears, RSALv2/SSPL)은 라이선스 비호환으로 미지원(ADR-0032).
+	// Cluster mode 에서는 모든 shard pod 에 동일 module set 을 로딩한다.
+	// +kubebuilder:validation:MaxItems=16
+	// +optional
+	Modules []ModuleSpec `json:"modules,omitempty"`
+
 	// RevisionHistoryLimit — StatefulSet rollout history 보존 개수.
 	// +kubebuilder:validation:Minimum=0
 	// +optional
@@ -123,6 +131,7 @@ type ValkeyClusterStatus struct {
 	ClusterInitialized bool `json:"clusterInitialized,omitempty"`
 
 	// Capabilities — 활성 optional features. Valkey CR Status.Capabilities 와 동일 패턴.
+	// 예: TLS, Auth, Monitoring, Modules.
 	// `kubectl get vc -o wide` 의 priority=1 printcolumn 으로 노출.
 	// +optional
 	Capabilities []string `json:"capabilities,omitempty"`

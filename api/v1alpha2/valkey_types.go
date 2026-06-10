@@ -173,6 +173,11 @@ type ValkeyStatus struct {
 	// baseline 기록 + ShouldRotate 비교 기준 (자체 시크릿 로테이션, AuthSpec.RotationInterval).
 	// +optional
 	LastPasswordRotation *metav1.Time `json:"lastPasswordRotation,omitempty"`
+
+	// Capabilities — 본 CR 에서 활성된 optional features 의 ordered list.
+	// 예: TLS, Auth, Monitoring, Modules.
+	// +optional
+	Capabilities []string `json:"capabilities,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -183,6 +188,7 @@ type ValkeyStatus struct {
 // +kubebuilder:printcolumn:name="Ready",type="integer",JSONPath=".status.readyReplicas"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version.version"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Capabilities",type="string",JSONPath=".status.capabilities",priority=1
 
 // Valkey is the Schema for the valkeys API.
 type Valkey struct {
