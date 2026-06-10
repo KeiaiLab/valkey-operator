@@ -47,7 +47,7 @@ func selectExpiredBackupsForTarget(
 		}
 		infos = append(infos, backuplifecycle.BackupInfo{
 			Name:      b.Name,
-			CreatedAt: b.Status.CompletedAt.Time.Unix(),
+			CreatedAt: b.Status.CompletedAt.Unix(),
 		})
 	}
 	maxAgeSec := int64(retention.MaxAgeDays) * secondsPerDay
