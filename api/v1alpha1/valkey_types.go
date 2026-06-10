@@ -181,6 +181,7 @@ type ValkeyStatus struct {
 	//   "Monitoring"      — Spec.Monitoring.Enabled
 	//   "ExternalReplica" — Spec.ExternalReplica.Enabled
 	//   "EphemeralStorage" — Spec.Storage.Ephemeral
+	//   "Modules"         — Spec.Modules non-empty (ADR-0032)
 	// +optional
 	Capabilities []string `json:"capabilities,omitempty"`
 }

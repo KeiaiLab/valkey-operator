@@ -1162,6 +1162,13 @@ func (in *ValkeyClusterSpec) DeepCopyInto(out *ValkeyClusterSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Modules != nil {
+		in, out := &in.Modules, &out.Modules
+		*out = make([]ModuleSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
 		*out = new(int32)
@@ -1205,6 +1212,11 @@ func (in *ValkeyClusterStatus) DeepCopyInto(out *ValkeyClusterStatus) {
 		in, out := &in.PendingScale, &out.PendingScale
 		*out = new(PendingScale)
 		**out = **in
+	}
+	if in.Capabilities != nil {
+		in, out := &in.Capabilities, &out.Capabilities
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 }
 
@@ -1472,6 +1484,11 @@ func (in *ValkeyStatus) DeepCopyInto(out *ValkeyStatus) {
 	if in.LastPasswordRotation != nil {
 		in, out := &in.LastPasswordRotation, &out.LastPasswordRotation
 		*out = (*in).DeepCopy()
+	}
+	if in.Capabilities != nil {
+		in, out := &in.Capabilities, &out.Capabilities
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 }
 

@@ -214,6 +214,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		PasswordRef:          secretRef,
 		ClusterMode:          true,
 		Pod:                  vc.Spec.Pod,
+		Modules:              vc.Spec.Modules,
 		AuthSecretHash:       hashAuthSecret(password),
 		RevisionHistoryLimit: vc.Spec.RevisionHistoryLimit,
 	}

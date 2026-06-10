@@ -219,6 +219,9 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	// auth.users[].passwordSecretRef cross-cut (Valkey single-CR webhook 와 동일).
 	errs = append(errs, validateUsersSecretRefs(specPath.Child("auth", "users"), vc.Spec.Auth.Users)...)
 
+	// modules allow-list 검증 (ADR-0032) — Valkey single-CR 와 동일하게 외부 Redis Stack 거부.
+	errs = append(errs, validateModules(specPath.Child("modules"), vc.Spec.Modules)...)
+
 	// pod.topologySpreadConstraints 일관성 검증 (ROADMAP topology spread).
 	if vc.Spec.Pod != nil {
 		errs = append(errs, validateTopologySpread(

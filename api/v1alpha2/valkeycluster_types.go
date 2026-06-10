@@ -83,6 +83,20 @@ type ValkeyClusterSpec struct {
 	// +optional
 	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
 
+	// Modules — Valkey 공식 module 활성화 (ADR-0032).
+	//
+	// 지원 preset:
+	//   - Name 만 지정: Valkey 공식 module preset (예: "valkey-search",
+	//     "valkey-json", "valkey-bloom") 을 operator 가 valkey-bundle 에서
+	//     추출해 loadmodule 로 적재.
+	//   - 사용자 커스텀 module 은 ModuleSpec.Image 로 *bring-your-own*
+	//     이미지 지정 가능. 단 외부 Redis Stack module/image 는 라이선스
+	//     비호환으로 admission 에서 거부.
+	// Cluster mode 에서는 모든 shard pod 에 동일 module set 을 로딩한다.
+	// +kubebuilder:validation:MaxItems=16
+	// +optional
+	Modules []ModuleSpec `json:"modules,omitempty"`
+
 	// RevisionHistoryLimit — StatefulSet rollout history 보존 개수.
 	// +kubebuilder:validation:Minimum=0
 	// +optional
@@ -118,6 +132,11 @@ type ValkeyClusterStatus struct {
 	PendingScale *PendingScale `json:"pendingScale,omitempty"`
 
 	ClusterInitialized bool `json:"clusterInitialized,omitempty"`
+
+	// Capabilities — 활성 optional features. Valkey CR Status.Capabilities 와 동일 패턴.
+	// 예: TLS, Auth, Monitoring, Modules.
+	// +optional
+	Capabilities []string `json:"capabilities,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -129,6 +148,7 @@ type ValkeyClusterStatus struct {
 // +kubebuilder:printcolumn:name="Slots",type="integer",JSONPath=".status.assignedSlots"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version.version"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Capabilities",type="string",JSONPath=".status.capabilities",priority=1
 
 // ValkeyCluster is the Schema for the valkeyclusters API.
 type ValkeyCluster struct {

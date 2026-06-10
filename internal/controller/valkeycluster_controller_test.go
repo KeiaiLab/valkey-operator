@@ -127,4 +127,48 @@ var _ = Describe("ValkeyCluster Controller", func() {
 			Expect(sts.Spec.Template.Spec.Containers[0].Image).To(Equal(cachev1alpha1.DefaultValkeyImage + ":9.0.4"))
 		})
 	})
+
+	Context("When reconciling Cluster modules", func() {
+		const resourceName = "test-valkeycluster-modules-20260610"
+
+		ctx := context.Background()
+		key := types.NamespacedName{Name: resourceName, Namespace: "default"}
+
+		AfterEach(func() {
+			resource := &cachev1alpha1.ValkeyCluster{}
+			if err := k8sClient.Get(ctx, key, resource); err == nil {
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+				reconciler := &ValkeyClusterReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+				_, _ = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			}
+		})
+
+		It("spec.modules를 StatefulSet init-container와 loadmodule args로 전달한다", func() {
+			reconciler := &ValkeyClusterReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+
+			resource := &cachev1alpha1.ValkeyCluster{
+				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+				Spec: cachev1alpha1.ValkeyClusterSpec{
+					Shards:           3,
+					ReplicasPerShard: 1,
+					Version:          cachev1alpha1.ValkeyVersion{Version: "9.0.4"},
+					Modules: []cachev1alpha1.ModuleSpec{
+						{Name: "valkey-search"},
+						{Name: "valkey-json"},
+						{Name: "valkey-bloom"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+
+			stsKey := types.NamespacedName{Name: resources.StatefulSetName(resourceName), Namespace: "default"}
+			sts := &appsv1.StatefulSet{}
+			Expect(k8sClient.Get(ctx, stsKey, sts)).To(Succeed())
+			Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(3))
+			Expect(sts.Spec.Template.Spec.Containers[0].Args).To(ContainElement("--loadmodule"))
+			Expect(sts.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", resources.ModuleVolumeName)))
+		})
+	})
 })
