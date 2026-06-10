@@ -28,7 +28,7 @@ func TestArtifactHubRepositoryMetadataEnablesVerifiedPublisherAndSigningKey(t *t
 	for _, want := range []string{
 		"repositoryID: 16085dd0-0f19-4c6b-ab90-bd97105bdf42",
 		"signingKey:",
-		`fingerprint: "89A409476828CB992338C378651E51AF520BCB78"`,
+		`fingerprint: "F1A6893583E632A757FF6767F3CC8C6AEC9CEB08"`,
 		"-----BEGIN PGP PUBLIC KEY BLOCK-----",
 		"-----END PGP PUBLIC KEY BLOCK-----",
 		"owners:",
@@ -46,7 +46,7 @@ func TestReleasePipelineRequiresSignedHelmCharts(t *testing.T) {
 	for _, want := range []string{
 		"HELM_SIGN     ?= 1",
 		"HELM_GPG_KEY  ?= Keiailab Helm",
-		"HELM_GPG_FINGERPRINT ?= 89A409476828CB992338C378651E51AF520BCB78",
+		"HELM_GPG_FINGERPRINT ?= F1A6893583E632A757FF6767F3CC8C6AEC9CEB08",
 		".PHONY: helm-signing-preflight",
 		"helm-signing-preflight:",
 		`helm package --sign --key "$(HELM_GPG_KEY)" --keyring "$(HELM_KEYRING)"`,
@@ -61,7 +61,7 @@ func TestReleasePipelineRequiresSignedHelmCharts(t *testing.T) {
 
 	for _, forbidden := range []string{
 		"HELM_SIGN     ?= 0",
-		"HELM_GPG_KEY  ?= 89A409476828CB992338C378651E51AF520BCB78",
+		"HELM_GPG_KEY  ?= F1A6893583E632A757FF6767F3CC8C6AEC9CEB08",
 	} {
 		if strings.Contains(makefile, forbidden) {
 			t.Fatalf("unsigned or fingerprint-as-key release default remains: %q", forbidden)

@@ -511,7 +511,7 @@ release: require-version ## 전체 로컬 릴리스 파이프라인. VERSION=vX.
 # Helm --key 는 fingerprint 가 아니라 UID substring 을 요구한다.
 HELM_SIGN     ?= 1
 HELM_GPG_KEY  ?= Keiailab Helm
-HELM_GPG_FINGERPRINT ?= 89A409476828CB992338C378651E51AF520BCB78
+HELM_GPG_FINGERPRINT ?= F1A6893583E632A757FF6767F3CC8C6AEC9CEB08
 HELM_KEYRING  ?= $(HOME)/.gnupg/secring.gpg
 
 .PHONY: helm-signing-preflight

@@ -39,7 +39,7 @@ following prerequisites are present:
 
 - `~/.gnupg/secring.gpg`
 - `HELM_GPG_KEY=Keiailab Helm`
-- `HELM_GPG_FINGERPRINT=89A409476828CB992338C378651E51AF520BCB78`
+- `HELM_GPG_FINGERPRINT=F1A6893583E632A757FF6767F3CC8C6AEC9CEB08`
 
 Preparing the secret key on a new development machine:
 

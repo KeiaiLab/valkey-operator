@@ -12,7 +12,7 @@ keiailab operator 4종(mongodb-operator / postgres-operator / valkey-operator + 
 - **GitOps overlay 경로 drift**: mongodb는 `examples/gitops/`, postgres/valkey는
   `deploy/overlays/prod/` — 동일 GitOps 패턴이 서로 다른 경로에 분산.
 - **ArtifactHub 검증 자동화 부재**: ArtifactHub Signed badge 전제 조건인 PGP
-  signingKey(`89A409476828CB992338C378651E51AF520BCB78`) 메타데이터 검증이 smoke 테스트
+  signingKey(`F1A6893583E632A757FF6767F3CC8C6AEC9CEB08`) 메타데이터 검증이 smoke 테스트
   없이 `ah lint`에만 의존.
 - **CI 게이트 비대칭**: valkey가 4종 중 가장 성숙한 reference 구현.
 
@@ -21,7 +21,7 @@ valkey-operator는 이 표준화의 **reference 구현**이다:
 - ADR-0024(Helm chart manual pattern + ArtifactHub): `charts/valkey-operator/` +
   `charts/artifacthub-repo.yml` + `scripts/helm-publish.sh --sign` 패턴.
 - ADR-0044(ArtifactHub Signed + Official trust badges): PGP signingKey fingerprint
-  `89A409476828CB992338C378651E51AF520BCB78` 등록 + ArtifactHub REST 확인.
+  `F1A6893583E632A757FF6767F3CC8C6AEC9CEB08` 등록 + ArtifactHub REST 확인.
 
 본 ADR은 ADR-0024/0044의 **계승 + `artifacthub-verify.yml` smoke 자동화 추가**를
 공식 기록한다.
@@ -32,7 +32,7 @@ valkey-operator는 이 표준화의 **reference 구현**이다:
 
 - **Layer 1 — ArtifactHub publish** (4종 모두): helm chart(`charts/<name>/`) → gh-pages
   → ArtifactHub Signed badge. 공통 PGP signingKey fingerprint
-  `89A409476828CB992338C378651E51AF520BCB78`를 `charts/artifacthub-repo.yml`에 등록.
+  `F1A6893583E632A757FF6767F3CC8C6AEC9CEB08`를 `charts/artifacthub-repo.yml`에 등록.
 - **Layer 2 — GitOps 배포 overlay** (operator 3종만, operator-commons 제외):
   kustomize(`deploy/overlays/prod/`), namespace=`data`, base namespace delete patch 적용.
   operator-commons는 `type: library`로 배포 대상이 아니므로 Layer 2에서 제외.
