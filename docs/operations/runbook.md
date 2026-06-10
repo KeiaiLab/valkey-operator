@@ -20,6 +20,10 @@ kubectl -n valkey-operator-system port-forward \
 curl -k https://localhost:8443/metrics | grep valkey_cluster_state_ok
 ```
 
+Current default runtime version is Valkey `9.1.0`. Existing clusters on
+`9.0.4`, `8.1.7`, `8.1.6`, or `8.0.9` remain valid for compatibility and
+controlled upgrade testing.
+
 ## 2. General failure response
 
 ### 2.1 `Phase=Failed` on a CR
@@ -49,6 +53,15 @@ Common root causes:
   (`/tls/tls.crt: No such file`).
 - Auth-password mismatch → regenerate the Auth Secret (delete +
   recreate the CR).
+
+If the Secret is sourced by External Secrets Operator, inspect the
+`ExternalSecret` status first and avoid decoding the password in logs:
+
+```sh
+kubectl get externalsecret -A | grep valkey
+kubectl describe externalsecret <name>
+kubectl get secret <target-secret> -o jsonpath='{.metadata.name}{"\n"}'
+```
 
 ### 2.3 `ValkeyCluster cluster_state=fail`
 
