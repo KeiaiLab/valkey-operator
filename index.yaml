@@ -95,10 +95,10 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.3.0
-    created: "2026-06-10T07:56:42.528417+09:00"
+    created: "2026-06-10T16:28:50.170364+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
-    digest: 4ce9844e5f488e7e100802994d319ece0215d88b9e50524565bbd34499a32b25
+    digest: 6f7404fdf4e8f1e379b9b36b864868f1e86e933407853542aecb356bf87dc93e
     home: https://github.com/keiailab/valkey-operator
     icon: https://valkey.io/img/valkey-horizontal.svg
     keywords:
@@ -458,7 +458,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.10
-    created: "2026-06-10T07:56:42.515246+09:00"
+    created: "2026-06-10T16:28:50.158925+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: acf707b0c2e4066f17b9a57feff3fbbe29ce9f573efd02c47fb591272cd54ba3
@@ -579,7 +579,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.7
-    created: "2026-06-10T07:56:42.525569+09:00"
+    created: "2026-06-10T16:28:50.167488+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 519d0722789fa15a3c8ba409a3875530933b5dc99de86a30ac8a05bd49fb1f35
@@ -700,7 +700,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.6
-    created: "2026-06-10T07:56:42.523268+09:00"
+    created: "2026-06-10T16:28:50.166139+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 80e962806e25b8ecbccc4ea617d2b8bee1942e80da0a7b1d2ad91cde7a710fbb
@@ -821,7 +821,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.5
-    created: "2026-06-10T07:56:42.521917+09:00"
+    created: "2026-06-10T16:28:50.164753+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 4696a61822415f6bada8b93d8990690ff0e42455e7b6339198fd3595d7cfbfc6
@@ -942,7 +942,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.4
-    created: "2026-06-10T07:56:42.520012+09:00"
+    created: "2026-06-10T16:28:50.163073+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 22db863a16f052dd0fab959217ac8c55258992d6416deb4b2c7bd003affdce85
@@ -1065,7 +1065,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.3
-    created: "2026-06-10T07:56:42.518348+09:00"
+    created: "2026-06-10T16:28:50.16179+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 1b88d6ff21f3a32a7fb8fb966845e5514a040e45ea78bb948ea568e4b7c92d24
@@ -1188,7 +1188,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.2
-    created: "2026-06-10T07:56:42.516942+09:00"
+    created: "2026-06-10T16:28:50.160177+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 81468585f0eddae8083a02556e43c6382d5e8fac58ecbbc431f3ef8d5385b3fd
@@ -1311,7 +1311,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.1
-    created: "2026-06-10T07:56:42.512652+09:00"
+    created: "2026-06-10T16:28:50.156485+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 036262f9558d68a9cbe3330eb0d96add0d50e2a2df138eb6dddcece44a5c43ae
@@ -1432,7 +1432,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-06-10T07:56:42.511072+09:00"
+    created: "2026-06-10T16:28:50.155204+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 8977adb17d4744615cb7f42a042be9122a8b937e9c9d5a25b2d1007cee47f939
@@ -1553,7 +1553,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.5
-    created: "2026-06-10T07:56:42.509002+09:00"
+    created: "2026-06-10T16:28:50.153908+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 1067269d0484f8f714941000e116e97c39add9ebcaf235c364bed5bc94c935f0
@@ -1684,7 +1684,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.4
-    created: "2026-06-10T07:56:42.50748+09:00"
+    created: "2026-06-10T16:28:50.152219+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 94e92379f9f23d68701233681fa6e1d6c6157c67f4d178b3bc9545183b55bacd
@@ -1815,7 +1815,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.3
-    created: "2026-06-10T07:56:42.506091+09:00"
+    created: "2026-06-10T16:28:50.150938+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 40eb9baa3e355260c2f709952fae98273cdf74bb86226b1eea9ff17f17836d88
@@ -1946,7 +1946,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-06-10T07:56:42.503828+09:00"
+    created: "2026-06-10T16:28:50.149585+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: 8a6e526db8b94621fcb5f5b11620b64b4dce55ac9141b451e8fbae20298ff5c0
@@ -2075,7 +2075,7 @@ entries:
         - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
     apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-06-10T07:56:42.502125+09:00"
+    created: "2026-06-10T16:28:50.147655+09:00"
     description: A Kubernetes Operator for managing Valkey instances and Clusters
       (Redis OSS fork, BSD-licensed)
     digest: d6b0e861dd560cd51d1c86e0d0f0da83c825b916945a87129516043a1b58001f
@@ -2102,4 +2102,4 @@ entries:
     urls:
     - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-06-10T07:56:42.500674+09:00"
+generated: "2026-06-10T16:28:50.146406+09:00"

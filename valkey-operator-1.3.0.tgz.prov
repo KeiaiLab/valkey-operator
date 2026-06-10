@@ -1,0 +1,142 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/category: database
+  artifacthub.io/changes: |
+    - kind: fixed
+      description: Refresh Artifact Hub metadata with the Alpine 3.23 Valkey runtime image and chart release 1.0.12.
+  artifacthub.io/containsSecurityUpdates: "true"
+  artifacthub.io/crds: |
+    - kind: Valkey
+      version: v1alpha1
+      name: valkeys.cache.keiailab.io
+      displayName: Valkey Instance
+      description: Deploys and manages a Valkey standalone or replica instance
+    - kind: ValkeyCluster
+      version: v1alpha1
+      name: valkeyclusters.cache.keiailab.io
+      displayName: Valkey Cluster
+      description: Deploys and manages a Valkey Cluster (Redis Cluster compatible)
+    - kind: ValkeyBackup
+      version: v1alpha1
+      name: valkeybackups.cache.keiailab.io
+      displayName: Valkey Backup
+      description: Creates point-in-time backups of Valkey instances/clusters
+    - kind: ValkeyBackupTarget
+      version: v1alpha1
+      name: valkeybackuptargets.cache.keiailab.io
+      displayName: Valkey Backup Target
+      description: Defines S3 / PVC backup destinations
+    - kind: ValkeyRestore
+      version: v1alpha1
+      name: valkeyrestores.cache.keiailab.io
+      displayName: Valkey Restore
+      description: Restores a Valkey instance/cluster from a backup
+  artifacthub.io/crdsExamples: |
+    - apiVersion: cache.keiailab.io/v1alpha1
+      kind: Valkey
+      metadata:
+        name: my-valkey
+        namespace: cache
+      spec:
+        mode: Standalone
+        replicas: 1
+        version:
+          version: "9.0.4"
+        storage:
+          storageClassName: standard
+          size: 5Gi
+    - apiVersion: cache.keiailab.io/v1alpha1
+      kind: ValkeyCluster
+      metadata:
+        name: my-valkey-cluster
+        namespace: cache
+      spec:
+        version:
+          version: "9.0.4"
+        shards: 3
+        replicasPerShard: 1
+        storage:
+          storageClassName: standard
+          size: 10Gi
+    - apiVersion: cache.keiailab.io/v1alpha1
+      kind: ValkeyBackup
+      metadata:
+        name: my-valkey-backup
+        namespace: cache
+      spec:
+        clusterRef:
+          name: my-valkey
+          kind: Valkey
+        type: RDB
+        destination:
+          type: TargetRef
+          targetRef:
+            name: s3-target
+  artifacthub.io/images: |
+    - name: valkey-operator
+      image: ghcr.io/keiailab/valkey-operator:1.3.0
+    - name: valkey
+      image: docker.io/valkey/valkey:9.0.4-alpine3.23
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/keiailab/valkey-operator/blob/main/README.md
+    - name: Source Code
+      url: https://github.com/keiailab/valkey-operator
+    - name: Valkey Project
+      url: https://valkey.io/
+  artifacthub.io/maturity: stable
+  artifacthub.io/operatorCapabilities: Deep Insights
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/recommendations: |
+    - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+    - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+apiVersion: v2
+appVersion: 1.3.0
+description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis
+  OSS fork, BSD-licensed)
+home: https://github.com/keiailab/valkey-operator
+icon: https://valkey.io/img/valkey-horizontal.svg
+keywords:
+- - valkey
+- - redis
+- - cache
+- - key-value
+- - in-memory
+- - operator
+- - cluster
+- - kubernetes
+kubeVersion: '>=1.26.0-0'
+maintainers:
+- - email: support@keiailab.com
+  name: Keiailab
+  url: https://keiailab.com
+name: valkey-operator
+sources:
+- - https://github.com/keiailab/valkey-operator
+type: application
+version: 1.3.0
+
+...
+files:
+  valkey-operator-1.3.0.tgz: sha256:6f7404fdf4e8f1e379b9b36b864868f1e86e933407853542aecb356bf87dc93e
+
+-----BEGIN PGP SIGNATURE-----
+
+wsG5BAEBCgBtBYJqKRIwCRDzzIxq7JzrCEUUAAAAAAAcACBzYWx0QG5vdGF0aW9u
+cy5vcGVucGdwanMub3Jn0uGpWSfZ1EU8Sk8rd8y+nSshXxjQqIOk7YnCSLyrJHMW
+IQTxpok1g+Yyp1f/Z2fzzIxq7JzrCAAAIyoP/jmkuEGdwbLrDx6MQe1Aqm5XSlfX
+zz+KQ4IPi+35WeRW2+wgIqGOdkcuwf6WDfYMYy+pCZn7USwUGnLD4e3+bS6sCflS
+vO0pvIAluHjj2xtcFXFoUOVKKsoNKzUSHyW2OZWiIpmf+6dqU0xzld6MrhCZvR9f
+15Ne7Hrv9Lmv0oQnPDal/kWL2srpEnmeiO9JtJKPfcR4UhWNQPg57S6B3K4+Bhys
+qItNsW4VLRaBK4krEV0MNnegDdA+fhQTLN/FfeYIp7DPrJMfI2EHFsUxLnQoFld4
+U2ixV7SOr/sQeXMcK+R4gnGdZG4zUGkAEwR52lOoEKpfGQ2GHASha38vbt0PS0De
+9gMXAnH7jfoxQvbev+u+q3bIoriivafsBwrtNEukGsPnvr9KavwCKAUivFDRiq6L
+hT/d0sHzOT0re77KDKEjulj+N9OS7sQQjPDBHUthwjrNbqWb6l/YJFKq+ke6TCBM
+rzYaBgizbj54HJlTufgpnN0X00VZSNedya9eYrP4JsEJsGGpglg5oHXso0D5iMxg
+VUGhni8aKQByy7Q4vehwjthYXQwsUjfNYzYUn15x9neVLqcU70zDwbMiIeqdTzaT
+T8y4XKfrNilxN/iXWSQMyf8nK0pAQIIqP7ECAlIv4VEbHyyew8xwg9gmFzcZBTM2
+Hc3aOJb2sbs2EH3S
+-----END PGP SIGNATURE-----
