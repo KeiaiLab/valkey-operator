@@ -29,8 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
-	commonspvc "github.com/keiailab/operator-commons/pkg/pvc"
+	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
+	commonspvc "github.com/keiailab/keiailab-commons/pkg/pvc"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"

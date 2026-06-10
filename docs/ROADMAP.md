@@ -115,7 +115,7 @@ file used to confirm the checkbox.
     as a v1alpha2 object
 
 - [x] **Online PVC resize** — `commonspvc.ExpandDataPVCs`
-  (operator-commons `pkg/pvc`) invoked from
+  (keiailab-commons `pkg/pvc`) invoked from
   `internal/controller/valkey_controller.go` and
   `internal/controller/valkeycluster_controller.go` (ADR-0049)
 

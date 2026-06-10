@@ -15,7 +15,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	commonswebhook "github.com/keiailab/operator-commons/pkg/webhook"
+	commonswebhook "github.com/keiailab/keiailab-commons/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/autoupdate"
@@ -123,7 +123,7 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 	var errs field.ErrorList
 	p := field.NewPath("spec")
 
-	// iteration 31 (2026-05-07): operator-commons/pkg/webhook v0.4.0 위임.
+	// iteration 31 (2026-05-07): keiailab-commons/pkg/webhook v0.4.0 위임.
 	// 인라인 IsSupportedValkeyVersion + field.NotSupported → ValidateWithPredicate.
 	if err := commonswebhook.ValidateWithPredicate(
 		p.Child("version", "version"), v.Spec.Version.Version,

@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	commonsversion "github.com/keiailab/operator-commons/pkg/version"
+	commonsversion "github.com/keiailab/keiailab-commons/pkg/version"
 )
 
 // DefaultValkeyVersion / DefaultValkeyImage — defaulting webhook 이 spec.version

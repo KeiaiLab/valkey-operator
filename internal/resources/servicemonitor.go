@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	commonsmonitoring "github.com/keiailab/operator-commons/pkg/monitoring"
+	commonsmonitoring "github.com/keiailab/keiailab-commons/pkg/monitoring"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -22,7 +22,7 @@ import (
 // 의존성 폭발 회피 + ServiceMonitor CRD 가 클러스터에 미설치 시 생성 시도가 NotFound
 // 로 자연스럽게 fail-soft.
 //
-// iteration 23 (2026-05-07): operator-commons/pkg/monitoring 위임 — 3 operator
+// iteration 23 (2026-05-07): keiailab-commons/pkg/monitoring 위임 — 3 operator
 // 가 동일 builder 사용. 본 함수는 valkey 특화 옵션 (label / interval / nsScope)
 // 만 결정 후 commons.NewServiceMonitor 호출.
 var ServiceMonitorGVK = schema.GroupVersionKind{

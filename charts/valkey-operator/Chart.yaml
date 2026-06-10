@@ -127,4 +127,7 @@ annotations:
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
 
-dependencies: []
+dependencies:
+  - name: keiailab-commons
+    version: 0.8.0
+    repository: oci://ghcr.io/keiailab/charts

@@ -96,7 +96,7 @@ Negative / trade-offs:
   external Valkey state)?
 - Does increased reconcile concurrency create Kubernetes API-server or
   Valkey control-plane pressure that nets out worse?
-- Should tuning be operator-family-wide (operator-commons) or
+- Should tuning be operator-family-wide (keiailab-commons) or
   per-operator?
 
 ## Refs

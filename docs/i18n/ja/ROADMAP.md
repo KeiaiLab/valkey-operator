@@ -106,7 +106,7 @@
   - Verify: `kubectl apply -f <v1alpha1.yaml>` を実行し、v1alpha2 オブジェクトとして保存されることを確認
 
 - [x] **Online PVC resize** — `commonspvc.ExpandDataPVCs`
-  (operator-commons `pkg/pvc`) を
+  (keiailab-commons `pkg/pvc`) を
   `internal/controller/valkey_controller.go` /
   `internal/controller/valkeycluster_controller.go` から呼び出し (ADR-0049)
 

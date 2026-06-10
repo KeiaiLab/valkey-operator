@@ -106,7 +106,7 @@
   - Verify: `kubectl apply -f <v1alpha1.yaml>` 后确认其作为 v1alpha2 对象保存
 
 - [x] **PVC 在线扩容 (Online PVC resize)** — `commonspvc.ExpandDataPVCs`
-  (operator-commons `pkg/pvc`) 由
+  (keiailab-commons `pkg/pvc`) 由
   `internal/controller/valkey_controller.go` /
   `internal/controller/valkeycluster_controller.go` 调用 (ADR-0049)
 

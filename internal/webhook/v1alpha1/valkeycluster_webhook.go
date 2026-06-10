@@ -32,7 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	commonswebhook "github.com/keiailab/operator-commons/pkg/webhook"
+	commonswebhook "github.com/keiailab/keiailab-commons/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/autoupdate"
@@ -129,7 +129,7 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 	var errs field.ErrorList
 	specPath := field.NewPath("spec")
 
-	// iteration 31 (2026-05-07): operator-commons/pkg/webhook v0.4.0 위임.
+	// iteration 31 (2026-05-07): keiailab-commons/pkg/webhook v0.4.0 위임.
 	if err := commonswebhook.ValidateWithPredicate(
 		specPath.Child("version", "version"), vc.Spec.Version.Version,
 		cachev1alpha1.IsSupportedValkeyVersion,

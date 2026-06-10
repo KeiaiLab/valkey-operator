@@ -11,7 +11,7 @@ package resources
 import (
 	"fmt"
 
-	commonslabels "github.com/keiailab/operator-commons/pkg/labels"
+	commonslabels "github.com/keiailab/keiailab-commons/pkg/labels"
 )
 
 const (
@@ -39,7 +39,7 @@ const (
 
 // CommonLabels — Valkey 인스턴스의 공통 라벨.
 //
-// iteration 29 (2026-05-07): operator-commons/pkg/labels v0.3.0 위임. 5-key
+// iteration 29 (2026-05-07): keiailab-commons/pkg/labels v0.3.0 위임. 5-key
 // app.kubernetes.io/* convention (mongodb / postgres 와 통일). PartOfValue 명시
 // 하여 commons Set 의 PartOf 자동 omit 회피.
 func CommonLabels(instanceName, component string) map[string]string {

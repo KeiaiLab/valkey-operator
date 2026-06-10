@@ -16,8 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/keiailab/operator-commons/pkg/security"
-	commonstopology "github.com/keiailab/operator-commons/pkg/topology"
+	"github.com/keiailab/keiailab-commons/pkg/security"
+	commonstopology "github.com/keiailab/keiailab-commons/pkg/topology"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )

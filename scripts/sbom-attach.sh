@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sbom-attach.sh — Generate SPDX SBOM + trivy scan + attach to release.
 #
-# 3-repo (mongodb/valkey/postgres) 공유 패턴. operator-commons/scripts 도
+# 3-repo (mongodb/valkey/postgres) 공유 패턴. keiailab-commons/scripts 도
 # 동일 stub 제공 가능.
 #
 # Usage: bash scripts/sbom-attach.sh <image-tag> <release-tag>

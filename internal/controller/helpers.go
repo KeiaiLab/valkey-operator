@@ -12,7 +12,7 @@ import (
 	"context"
 	"fmt"
 
-	commonsfinalizer "github.com/keiailab/operator-commons/pkg/finalizer"
+	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"

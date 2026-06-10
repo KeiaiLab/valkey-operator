@@ -8,7 +8,7 @@ package resources
 import (
 	networkingv1 "k8s.io/api/networking/v1"
 
-	commonsnp "github.com/keiailab/operator-commons/pkg/networkpolicy"
+	commonsnp "github.com/keiailab/keiailab-commons/pkg/networkpolicy"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -16,7 +16,7 @@ import (
 // BuildNetworkPolicy — deny-by-default + 같은 인스턴스 pod 간 6379(/16379) 허용 +
 // AdditionalIngressFrom peers 허용.
 //
-// iteration 25 (2026-05-07): operator-commons/pkg/networkpolicy v0.3.0 위임.
+// iteration 25 (2026-05-07): keiailab-commons/pkg/networkpolicy v0.3.0 위임.
 // 이전 인라인 패턴 (한 rule 에 self+extra peers 합침) → commons 의 별-rule 패턴
 // (WithSelfIngress + WithIngressFromPeers). K8s NetworkPolicy OR 규약상 동작 동등.
 func BuildNetworkPolicy(crName, namespace string, clusterMode bool, spec *cachev1alpha1.NetworkPolicySpec) *networkingv1.NetworkPolicy {

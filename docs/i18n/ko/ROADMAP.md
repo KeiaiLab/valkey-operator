@@ -73,7 +73,7 @@
   - [x] 5 CRD (Valkey, ValkeyCluster, ValkeyBackup, ValkeyRestore, ValkeyBackupTarget)
   - Verify: `kubectl apply -f <v1alpha1.yaml>` 후 v1alpha2 객체로 변환 확인
 
-- [x] **PVC online resize** — `commonspvc.ExpandDataPVCs` (operator-commons `pkg/pvc`) 를 `internal/controller/valkey_controller.go` / `internal/controller/valkeycluster_controller.go` 에서 호출 (ADR-0049)
+- [x] **PVC online resize** — `commonspvc.ExpandDataPVCs` (keiailab-commons `pkg/pvc`) 를 `internal/controller/valkey_controller.go` / `internal/controller/valkeycluster_controller.go` 에서 호출 (ADR-0049)
 
 - [x] **Webhook admission validation (4 validating webhook + conversion webhook)** — `internal/webhook/v1alpha1/` (Valkey / ValkeyCluster / ValkeyBackupTarget / ValkeyRestore validating webhook; ValkeyBackup 은 validating webhook 없음 — 5번째 CRD 는 conversion 경로로 처리)
   - [x] RBD storageClass 기본 검증 — `internal/webhook/v1alpha1/valkeycluster_webhook.go` `validateStorageClassName` (DNS-1123 subdomain)

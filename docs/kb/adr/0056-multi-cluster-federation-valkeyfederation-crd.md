@@ -109,7 +109,7 @@ Negative / trade-offs:
   multi-tenancy exclusion — single-tenant fabric only?
 - Failure semantics: what happens to a spoke when the hub (or a peer) is
   unreachable? Split-brain handling for cross-cluster Valkey topology?
-- Does this require operator-commons changes (shared multi-cluster
+- Does this require keiailab-commons changes (shared multi-cluster
   client), affecting the other operators in the family?
 
 ## Refs

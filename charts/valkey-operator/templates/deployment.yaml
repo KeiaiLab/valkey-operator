@@ -33,7 +33,7 @@ spec:
       serviceAccountName: {{ include "valkey-operator.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml . | nindent 8 }}
+        {{- include "keiailab.security.podSecurityContext" (dict "override" .) | nindent 8 }}
       {{- end }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
@@ -107,7 +107,7 @@ spec:
             {{- end }}
           {{- with .Values.securityContext }}
           securityContext:
-            {{- toYaml . | nindent 12 }}
+            {{- include "keiailab.security.containerSecurityContext" (dict "override" .) | nindent 12 }}
           {{- end }}
           {{- if .Values.customLivenessProbe }}
           livenessProbe:

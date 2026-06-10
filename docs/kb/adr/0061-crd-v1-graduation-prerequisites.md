@@ -111,7 +111,7 @@ Negative / trade-offs:
 - Does the storage flip to v1alpha2 require a migration/backfill of
   already-stored v1alpha1 objects, or does on-read conversion suffice?
 - 3-repo compatibility: are mongodb-operator / postgres-operator /
-  operator-commons consumers affected by the version bump, and how is
+  keiailab-commons consumers affected by the version bump, and how is
   that validated?
 - Should v1 graduation be coordinated across the operator family for a
   consistent stability story?

@@ -6,7 +6,7 @@
 
 ## Context
 
-keiailab operator 4종(mongodb-operator / postgres-operator / valkey-operator + operator-commons
+keiailab operator 4종(mongodb-operator / postgres-operator / valkey-operator + keiailab-commons
 라이브러리)의 cross-repo 표준이 비일치 상태였다:
 
 - **GitOps overlay 경로 drift**: mongodb는 `examples/gitops/`, postgres/valkey는
@@ -33,9 +33,9 @@ valkey-operator는 이 표준화의 **reference 구현**이다:
 - **Layer 1 — ArtifactHub publish** (4종 모두): helm chart(`charts/<name>/`) → gh-pages
   → ArtifactHub Signed badge. 공통 PGP signingKey fingerprint
   `F1A6893583E632A757FF6767F3CC8C6AEC9CEB08`를 `charts/artifacthub-repo.yml`에 등록.
-- **Layer 2 — GitOps 배포 overlay** (operator 3종만, operator-commons 제외):
+- **Layer 2 — GitOps 배포 overlay** (operator 3종만, keiailab-commons 제외):
   kustomize(`deploy/overlays/prod/`), namespace=`data`, base namespace delete patch 적용.
-  operator-commons는 `type: library`로 배포 대상이 아니므로 Layer 2에서 제외.
+  keiailab-commons는 `type: library`로 배포 대상이 아니므로 Layer 2에서 제외.
 
 **ArtifactHub 검증 파이프라인**:
 - `.github/workflows/artifacthub-verify.yml`: `ah lint`(메타데이터 린트) + smoke 테스트
