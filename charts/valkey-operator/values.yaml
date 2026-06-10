@@ -205,7 +205,7 @@ crds:
 valkey:
   # -- Default Valkey version (Redis OSS fork; AGPL-free baseline).
   # api/v1alpha1 ValkeyVersion default 와 동기 — 변경 시 양쪽 갱신.
-  version: "9.0.4"
+  version: "9.1.0"
   # -- Default storage class for persistent volumes
   storageClassName: ""
   # Supported BSD module presets (ADR-0032) — 활성화는 chart 가 아니라 개별
@@ -272,6 +272,35 @@ extraVolumes: []
 # CRD 가 직접 소유하지 않는 TCPRoute, NetworkPolicy, SecretProviderClass 등은
 # 여기서 명시하고 GitOps 로 추적한다.
 extraObjects: []
+
+# External Secrets Operator / Infisical integration.
+# 기본값은 disabled. 활성화 시 chart 가 Valkey auth 및 backup-target
+# credential Secret 을 직접 만들지 않고 ExternalSecret 만 생성한다.
+externalSecrets:
+  enabled: false
+  # ClusterSecretStore 또는 SecretStore.
+  secretStoreKind: ClusterSecretStore
+  # KeiaiLab 운영 기본값: Infisical-backed ClusterSecretStore.
+  secretStoreName: infisical
+  refreshInterval: 1h
+  # auth.enabled=true 이면 Valkey / ValkeyCluster spec.auth.passwordSecretRef
+  # 가 참조할 Kubernetes Secret 을 materialize 한다.
+  auth:
+    enabled: false
+    name: valkey-auth
+    targetName: valkey-auth
+    passwordKey: password
+    remoteKey: /data/valkey/auth/password
+  # backupTarget.enabled=true 이면 ValkeyBackupTarget S3 credentials Secret 을
+  # materialize 한다.
+  backupTarget:
+    enabled: false
+    name: valkey-backup-s3
+    targetName: valkey-backup-s3
+    accessKeyIdKey: access_key_id
+    secretAccessKeyKey: secret_access_key
+    accessKeyIdRemoteKey: /data/valkey/backup/access-key-id
+    secretAccessKeyRemoteKey: /data/valkey/backup/secret-access-key
 
 # ----------------------------------------------------------------------------
 # Carve-out feature gates (v0.1.0-alpha)

@@ -17,7 +17,7 @@ import (
 // DefaultValkeyVersion / DefaultValkeyImage — defaulting webhook 이 spec.version
 // 통째 누락 케이스에서 채워 넣는 값. CRD 의 kubebuilder default 와 동기화 유지.
 const (
-	DefaultValkeyVersion = "9.0.4"
+	DefaultValkeyVersion = "9.1.0"
 	DefaultValkeyImage   = "docker.io/valkey/valkey"
 )
 
@@ -35,9 +35,9 @@ const DefaultStorageSize = "8Gi"
 
 // supportedValkeyList — webhook validation 화이트리스트 (commons 위임).
 // 신규 추가 시 호환성 검증 (RDB format, replication wire protocol) 후 추가.
-// 9.0.4 = current stable, 8.1.7/8.0.9 = milestone patch baseline. 8.1.6 은
-// 기존 설치 호환 위해 유지.
-var supportedValkeyList = commonsversion.MustList("8.0.9", "8.1.6", "8.1.7", "9.0.4")
+// 9.1.0 = current stable, 9.0.4 = previous stable, 8.1.7/8.0.9 =
+// milestone patch baseline. 8.1.6 은 기존 설치 호환 위해 유지.
+var supportedValkeyList = commonsversion.MustList("8.0.9", "8.1.6", "8.1.7", "9.0.4", "9.1.0")
 
 // SupportedValkeyVersions — 외부 노출 슬라이스 (chart values / docs / 기존 호환).
 var SupportedValkeyVersions = supportedValkeyList.Strings()
@@ -50,7 +50,7 @@ func IsSupportedValkeyVersion(v string) bool {
 // ValkeyVersion 은 Valkey 컨테이너 이미지 / 버전 지정.
 type ValkeyVersion struct {
 	// +kubebuilder:validation:Pattern=`^\d+\.\d+(\.\d+)?$`
-	// +kubebuilder:default="9.0.4"
+	// +kubebuilder:default="9.1.0"
 	Version string `json:"version"`
 
 	// +kubebuilder:default="docker.io/valkey/valkey"

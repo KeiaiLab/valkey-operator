@@ -183,6 +183,19 @@ func TestValidateValkeySpec(t *testing.T) {
 			}
 		}
 	})
+	t.Run("supported version 9.1.0 → ok", func(t *testing.T) {
+		t.Parallel()
+		v := &cachev1alpha1.Valkey{}
+		v.Spec.Mode = cachev1alpha1.ModeStandalone
+		v.Spec.Replicas = 1
+		v.Spec.Version.Version = "9.1.0"
+		errs := validateValkeySpec(v)
+		for _, e := range errs {
+			if strings.Contains(e.Error(), "version") {
+				t.Errorf("9.1.0 should be supported, got %v", e)
+			}
+		}
+	})
 	t.Run("unsupported version 8.0.0 → error", func(t *testing.T) {
 		t.Parallel()
 		v := &cachev1alpha1.Valkey{}

@@ -82,7 +82,7 @@ annotations:
         mode: Standalone
         replicas: 1
         version:
-          version: "9.0.4"
+          version: "9.1.0"
         storage:
           storageClassName: standard
           size: 5Gi
@@ -93,7 +93,7 @@ annotations:
         namespace: cache
       spec:
         version:
-          version: "9.0.4"
+          version: "9.1.0"
         shards: 3
         replicasPerShard: 1
         storage:
@@ -118,11 +118,11 @@ annotations:
     - name: valkey-operator
       image: ghcr.io/keiailab/valkey-operator:1.3.0
     - name: valkey
-      image: docker.io/valkey/valkey:9.0.4-alpine3.23
+      image: docker.io/valkey/valkey:9.1.0-alpine3.23
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
     - kind: fixed
-      description: Refresh Artifact Hub metadata with the Alpine 3.23 Valkey runtime image and chart release 1.0.12.
+      description: Refresh operational defaults for Valkey 9.1.0 and document ExternalSecret-based credential sourcing.
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager

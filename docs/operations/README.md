@@ -17,6 +17,7 @@ and has no Korean copy).
 | [capacity-planning.md](capacity-planning.md) | Sizing guide — memory, replication factor, shard count, p95/p99 latency targets per topology. |
 | [webhook.md](webhook.md) | Admission-webhook architecture, cert-manager certificate path, debugging webhook denials. |
 | [pdb-per-shard.md](pdb-per-shard.md) | Per-shard `PodDisruptionBudget` operations for sharded `ValkeyCluster` — drain scenarios, mode transitions, write-availability guarantees. |
+| [credential-sourcing.md](credential-sourcing.md) | External Secrets / Infisical pattern for Valkey auth and backup-target credentials. |
 
 ## Backup, restore, recovery
 
