@@ -21,6 +21,12 @@ const (
 	DefaultValkeyImage   = "docker.io/valkey/valkey"
 )
 
+// DefaultExporterImage — metrics sidecar (redis_exporter) 의 기본 이미지 SSOT.
+// 구체 버전 pin (구 `:latest` 폐기 — 재현 불가능한 pull + 예고 없는 동작 변화 차단).
+// v1.86.0 = 2026-06-11 GitHub release 확인 최신 stable. ExporterSpec.Image 의
+// kubebuilder default marker (리터럴 강제) 와 동기 의무.
+const DefaultExporterImage = "oliver006/redis_exporter:v1.86.0"
+
 // ClusterRef.Kind 표준 식별자 — RFC-0017 audit 후 4-repo cross-cut goconst
 // 추출 (valkeybackup_controller / valkeybackuptarget_controller 가 9 + 6 occurrences
 // 사용).
@@ -261,7 +267,8 @@ type ServiceMonitorSpec struct {
 
 // ExporterSpec — prometheus-valkey-exporter sidecar.
 type ExporterSpec struct {
-	// +kubebuilder:default="oliver006/redis_exporter:latest"
+	// Image — DefaultExporterImage const 와 동기 의무 (marker 는 리터럴 강제).
+	// +kubebuilder:default="oliver006/redis_exporter:v1.86.0"
 	Image string `json:"image,omitempty"`
 	// +optional
 	Resources ResourcesSpec `json:"resources,omitempty"`

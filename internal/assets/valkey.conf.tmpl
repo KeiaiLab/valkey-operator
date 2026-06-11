@@ -1,5 +1,5 @@
 # valkey.conf — operator 가 ConfigMap 으로 렌더하여 /etc/valkey/valkey.conf 마운트.
-# Bitnami valkey-cluster 차트의 templates/scripts-configmap.yaml 의 핵심 directive 만 추림.
+# 커뮤니티 valkey-cluster 차트 계열의 표준 핵심 directive 만 추림.
 
 bind 0.0.0.0
 port 6379
@@ -62,7 +62,7 @@ tls-cluster {{ if .ClusterEnabled }}yes{{ else }}no{{ end }}
 tls-replication yes
 {{- end }}
 
-# Default tunings (Bitnami chart defaults)
+# Default tunings (커뮤니티 차트 표준 기본값)
 maxmemory-policy noeviction
 timeout 0
 tcp-keepalive 300

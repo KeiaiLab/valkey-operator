@@ -10,108 +10,36 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
-	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	commonsreconcile "github.com/keiailab/keiailab-commons/pkg/reconcile"
 )
 
-// reconcileSecretIfNotExists — Secret 멱등 생성 (password Secret 처럼 immutable).
-func reconcileSecretIfNotExists(
-	ctx context.Context,
-	c client.Client,
-	scheme *runtime.Scheme,
-	owner client.Object,
-	secretName string,
-	build func() *corev1.Secret,
-) error {
-	existing := &corev1.Secret{}
-	err := c.Get(ctx, client.ObjectKey{Name: secretName, Namespace: owner.GetNamespace()}, existing)
-	if err == nil {
-		return nil
-	}
-	if !errors.IsNotFound(err) {
-		return err
-	}
-
-	secret := build()
-	if err := controllerutil.SetControllerReference(owner, secret, scheme); err != nil {
-		return fmt.Errorf("set owner ref: %w", err)
-	}
-	return c.Create(ctx, secret)
-}
-
-// handleFinalizerCleanup — deletionTimestamp 설정된 객체 정리 패턴.
+// applyErrorCondition — reconcile 에러 표준 처리. commons
+// reconcile.ApplyErrorCondition 위임 (MetricReconcileErrors hook 주입).
 //
-//nolint:unparam // controller-runtime 표준 (ctrl.Result, error) 시그니처 보존 — 호출자 일관성.
-func handleFinalizerCleanup(
-	ctx context.Context,
-	c client.Client,
-	obj client.Object,
-	finalizer string,
-	cleanup func(context.Context) error,
-) (ctrl.Result, error) {
-	if !commonsfinalizer.Has(obj, finalizer) {
-		return ctrl.Result{}, nil
-	}
-	if cleanup != nil {
-		if err := cleanup(ctx); err != nil {
-			return ctrl.Result{}, fmt.Errorf("finalizer cleanup: %w", err)
-		}
-	}
-	commonsfinalizer.Remove(obj, finalizer)
-	if err := c.Update(ctx, obj); err != nil {
-		return ctrl.Result{}, err
-	}
-	return ctrl.Result{}, nil
-}
-
-// Statusable — Valkey / ValkeyCluster 가 모두 구현하는 status 추상화.
-type Statusable interface {
-	client.Object
-	GetConditions() *[]metav1.Condition
-	SetPhase(phase string)
-}
-
-// applyErrorCondition — reconcile 에러 표준 처리.
+// Statusable 추상화 / Secret 멱등 생성 / finalizer cleanup 자체구현은
+// commons pkg/reconcile 로 폐기 — 본 adapter 는 34 콜사이트의 metric hook
+// 주입점만 담당한다. 기본값 (RequeueAfter 30s / condition Type
+// "ReconcileError" / Reason "ReconcileFailed") 은 commons 기본값과 동일.
 func applyErrorCondition(
 	ctx context.Context,
 	c client.Client,
-	obj Statusable,
+	obj commonsreconcile.Statusable,
 	component string,
 	reconcileErr error,
 	rec events.EventRecorder,
 ) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-	logger.Error(reconcileErr, "Failed to reconcile component", "component", component)
-	MetricReconcileErrors.WithLabelValues(obj.GetNamespace(), obj.GetName(), component).Inc()
-	if rec != nil {
-		rec.Eventf(obj, nil, corev1.EventTypeWarning, "ReconcileError", "ReconcileError",
-			"Failed to reconcile %s: %v", component, reconcileErr)
-	}
-	obj.SetPhase("Failed")
-	conds := obj.GetConditions()
-	*conds = filterConditionsByType(*conds, "ReconcileError")
-	*conds = append(*conds, metav1.Condition{
-		Type:               "ReconcileError",
-		Status:             metav1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-		Reason:             "ReconcileFailed",
-		Message:            fmt.Sprintf("Failed to reconcile %s: %v", component, reconcileErr),
-	})
-	if statusErr := updateStatusWithRetry(ctx, c, obj); statusErr != nil {
-		logger.Error(statusErr, "Failed to update status")
-	}
-	return ctrl.Result{RequeueAfter: requeueSteady}, reconcileErr
+	return commonsreconcile.ApplyErrorCondition(ctx, c, obj, component, reconcileErr, rec,
+		commonsreconcile.WithMetricHook(func(ns, name, comp string) {
+			MetricReconcileErrors.WithLabelValues(ns, name, comp).Inc()
+		}),
+	)
 }
 
 func filterConditionsByType(conds []metav1.Condition, t string) []metav1.Condition {

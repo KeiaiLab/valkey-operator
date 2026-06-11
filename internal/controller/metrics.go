@@ -13,10 +13,30 @@ package controller
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	"github.com/keiailab/keiailab-commons/pkg/reconcilemetrics"
 )
 
 const (
 	metricSubsystem = "valkey_cluster"
+)
+
+// reconMetrics — commons reconcile SLO trio (reconcile_total / reconcile_duration_seconds /
+// reconcile_errors_total). subsystem 에 기존 상수를 그대로 주입해 fqName
+// (valkey_cluster_reconcile_*) byte-동일 보존. 자체 trio 정의는 commons 로 폐기
+// (공존 시 duplicate registration panic).
+var reconMetrics = reconcilemetrics.New(metricSubsystem)
+
+// trio alias — 기존 콜사이트/테스트 호환 (fqName + 라벨 불변).
+var (
+	// MetricReconcileTotal — Reconcile 호출 횟수. 라벨: namespace, name.
+	MetricReconcileTotal = reconMetrics.Total
+	// MetricReconcileLatency — Reconcile wall-clock duration (초) SLO histogram.
+	// 라벨: namespace, name, result (success | error).
+	MetricReconcileLatency = reconMetrics.Latency
+	// MetricReconcileErrors — component 별 reconcile 실패 횟수.
+	// 라벨: namespace, name, component.
+	MetricReconcileErrors = reconMetrics.Errors
 )
 
 // 라벨: namespace, name — Prometheus 시계열 cardinality 제어를 위해 namespace/name 만.
@@ -62,44 +82,6 @@ var (
 			Help:      "Number of pods in StatefulSet that report Ready",
 		},
 		labelNamespaceName,
-	)
-
-	// MetricReconcileTotal — Reconcile 호출 횟수.
-	MetricReconcileTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Subsystem: metricSubsystem,
-			Name:      "reconcile_total",
-			Help:      "Total Reconcile invocations",
-		},
-		labelNamespaceName,
-	)
-
-	// MetricReconcileLatency — Reconcile 함수의 wall-clock 시간 (초).
-	// SLO 추적용 Histogram. p50/p95/p99 percentile 을 PromQL 의
-	// histogram_quantile 로 산출.
-	//
-	// Buckets: 5ms ~ 30s (typical reconcile + cluster API roundtrip 범위 커버).
-	// 하위는 빠른 phase=Steady reconcile, 상위는 init/scale/upgrade 등 무거운 분기.
-	MetricReconcileLatency = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Subsystem: metricSubsystem,
-			Name:      "reconcile_duration_seconds",
-			Help:      "Reconcile function wall-clock duration in seconds",
-			Buckets: []float64{
-				0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0,
-			},
-		},
-		[]string{"namespace", "name", "result"}, // result: success | error
-	)
-
-	// MetricReconcileErrors — component 별 reconcile 실패 횟수.
-	MetricReconcileErrors = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Subsystem: metricSubsystem,
-			Name:      "reconcile_errors_total",
-			Help:      "Total Reconcile component failures",
-		},
-		[]string{"namespace", "name", "component"},
 	)
 
 	// MetricPhase — phase 라벨 + value 1 (active phase). 다른 phase 는 0.
@@ -176,14 +158,13 @@ var (
 )
 
 func init() {
+	// reconcile trio 는 commons 가 생성 — commons 경유 1회만 등록 (중복 등록 panic 차단).
+	reconMetrics.MustRegister(metrics.Registry)
 	metrics.Registry.MustRegister(
 		MetricClusterStateOK,
 		MetricClusterAssignedSlots,
 		MetricClusterShards,
 		MetricReadyReplicas,
-		MetricReconcileTotal,
-		MetricReconcileErrors,
-		MetricReconcileLatency,
 		MetricPhase,
 		MetricBackupTotal,
 		MetricRestoreTotal,
@@ -212,21 +193,21 @@ func SetPhaseMetric(namespace, name, activePhase string) {
 }
 
 // DeleteMetricsFor — CR 삭제 시 cardinality 누적 방지를 위해 모든 시계열 제거.
+//
+// reconcile trio 는 commons DeleteFor 위임 — 기존 자체 구현이 누락하던
+// MetricReconcileLatency (reconcile_duration_seconds) 시계열도 함께 제거된다
+// (삭제된 CR 의 latency 시계열 영구 잔존 누수 fix).
 func DeleteMetricsFor(namespace, name string) {
+	reconMetrics.DeleteFor(namespace, name)
 	MetricClusterStateOK.DeleteLabelValues(namespace, name)
 	MetricClusterAssignedSlots.DeleteLabelValues(namespace, name)
 	MetricClusterShards.DeleteLabelValues(namespace, name)
 	MetricReadyReplicas.DeleteLabelValues(namespace, name)
-	MetricReconcileTotal.DeleteLabelValues(namespace, name)
 	allPhases := []string{"Pending", "Initializing", "Running", "Resharding", "Failed", "Upgrading"}
 	for _, p := range allPhases {
 		MetricPhase.DeleteLabelValues(namespace, name, p)
 	}
-	// MetricReconcileErrors / MetricCapabilityActive 는 component / capability
-	// 차원이 추가되어 label-match-delete 사용.
-	MetricReconcileErrors.DeletePartialMatch(prometheus.Labels{
-		"namespace": namespace, "name": name,
-	})
+	// MetricCapabilityActive 는 capability 차원이 추가되어 label-match-delete 사용.
 	MetricCapabilityActive.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace, "name": name,
 	})

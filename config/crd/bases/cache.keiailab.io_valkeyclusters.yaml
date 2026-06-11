@@ -190,7 +190,9 @@ spec:
                     description: ExporterSpec — prometheus-valkey-exporter sidecar.
                     properties:
                       image:
-                        default: oliver006/redis_exporter:latest
+                        default: oliver006/redis_exporter:v1.86.0
+                        description: Image — DefaultExporterImage const 와 동기 의무 (marker
+                          는 리터럴 강제).
                         type: string
                       resources:
                         description: ResourcesSpec — pod resource requests/limits.
@@ -3164,7 +3166,9 @@ spec:
                     description: ExporterSpec — prometheus-valkey-exporter sidecar.
                     properties:
                       image:
-                        default: oliver006/redis_exporter:latest
+                        default: oliver006/redis_exporter:v1.86.0
+                        description: Image — DefaultExporterImage const 와 동기 의무 (marker
+                          는 리터럴 강제).
                         type: string
                       resources:
                         description: ResourcesSpec — pod resource requests/limits.

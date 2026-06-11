@@ -26,12 +26,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/keiailab/keiailab-commons/pkg/storageclass"
 	commonswebhook "github.com/keiailab/keiailab-commons/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -302,14 +302,10 @@ func validateStorageMode(path *field.Path, s cachev1alpha1.StorageSpec) field.Er
 // 정책: zero (unset) → cluster default class 사용 → 통과. non-empty →
 // DNS-1123 subdomain (lowercase alphanumeric / '-' / '.', 253자 이하) 검증.
 func validateStorageClassName(path *field.Path, name string) field.ErrorList {
-	if name == "" {
-		return nil
-	}
-	if msgs := validation.IsDNS1123Subdomain(name); len(msgs) > 0 {
-		return field.ErrorList{field.Invalid(
-			path, name,
-			"storage.storageClassName must be a DNS-1123 subdomain: "+msgs[0],
-		)}
+	// commons storageclass.Validate — 빈 값 = cluster default 허용 + DNS-1123
+	// subdomain 검증 (동일 정책). 거절 메시지는 commons 표준 문구로 통일.
+	if err := storageclass.Validate(name); err != nil {
+		return field.ErrorList{field.Invalid(path, name, err.Error())}
 	}
 	return nil
 }

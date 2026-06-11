@@ -30,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
+	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -145,17 +146,22 @@ func (r *ValkeyRestoreReconciler) transitionToPending(
 	ctx context.Context, rest *cachev1alpha1.ValkeyRestore,
 ) (ctrl.Result, error) {
 	now := metav1.Now()
-	rest.Status.Phase = cachev1alpha1.RestorePhasePending
-	rest.Status.StartedAt = &now
-	rest.Status.ObservedGeneration = rest.Generation
-	setCondition(rest.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Pending",
-		Message:            "validating ClusterRef + Source",
-		ObservedGeneration: rest.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
+	// status mutation 은 클로저로 전달 — conflict 시 refetch 후 재적용
+	// (commons UpdateWithRetry).
+	applyStatus := func() {
+		rest.Status.Phase = cachev1alpha1.RestorePhasePending
+		rest.Status.StartedAt = &now
+		rest.Status.ObservedGeneration = rest.Generation
+		setCondition(rest.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "Pending",
+			Message:            "validating ClusterRef + Source",
+			ObservedGeneration: rest.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, rest, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
@@ -261,16 +267,19 @@ func (r *ValkeyRestoreReconciler) handlePending(
 	}
 
 	// → Mounting.
-	rest.Status.Phase = cachev1alpha1.RestorePhaseMounting
-	rest.Status.Message = "ClusterRef + Source validated — entering Mounting"
-	setCondition(rest.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Mounting",
-		Message:            rest.Status.Message,
-		ObservedGeneration: rest.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
+	applyStatus := func() {
+		rest.Status.Phase = cachev1alpha1.RestorePhaseMounting
+		rest.Status.Message = "ClusterRef + Source validated — entering Mounting"
+		setCondition(rest.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "Mounting",
+			Message:            rest.Status.Message,
+			ObservedGeneration: rest.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, rest, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
@@ -329,17 +338,20 @@ func (r *ValkeyRestoreReconciler) handleMounting(
 	}
 
 	// → Restoring.
-	rest.Status.Phase = cachev1alpha1.RestorePhaseRestoring
-	rest.Status.Message = fmt.Sprintf("Source PVC %s ready, target paused — STS patch pending",
-		sourcePVCName(rest))
-	setCondition(rest.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Restoring",
-		Message:            rest.Status.Message,
-		ObservedGeneration: rest.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
+	applyStatus := func() {
+		rest.Status.Phase = cachev1alpha1.RestorePhaseRestoring
+		rest.Status.Message = fmt.Sprintf("Source PVC %s ready, target paused — STS patch pending",
+			sourcePVCName(rest))
+		setCondition(rest.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "Restoring",
+			Message:            rest.Status.Message,
+			ObservedGeneration: rest.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, rest, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
@@ -767,17 +779,20 @@ func (r *ValkeyRestoreReconciler) handleRestoring(
 	}
 
 	// → Verifying.
-	rest.Status.Phase = cachev1alpha1.RestorePhaseVerifying
-	rest.Status.Message = fmt.Sprintf("STS pods Ready (%d/%d) — verifying",
-		sts.Status.ReadyReplicas, sts.Status.Replicas)
-	setCondition(rest.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Verifying",
-		Message:            rest.Status.Message,
-		ObservedGeneration: rest.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
+	applyStatus := func() {
+		rest.Status.Phase = cachev1alpha1.RestorePhaseVerifying
+		rest.Status.Message = fmt.Sprintf("STS pods Ready (%d/%d) — verifying",
+			sts.Status.ReadyReplicas, sts.Status.Replicas)
+		setCondition(rest.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "Verifying",
+			Message:            rest.Status.Message,
+			ObservedGeneration: rest.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, rest, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{Requeue: true}, nil
@@ -839,17 +854,20 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 		r.Recorder.Eventf(rest, nil, "Normal", "Completed", "Completed", "ValkeyRestore completed")
 	}
 	now := metav1.Now()
-	rest.Status.Phase = cachev1alpha1.RestorePhaseCompleted
-	rest.Status.CompletedAt = &now
-	rest.Status.Message = "Restore completed — STS reverted, paused removed"
-	setCondition(rest.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionTrue,
-		Reason:             "Completed",
-		Message:            rest.Status.Message,
-		ObservedGeneration: rest.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
+	applyStatus := func() {
+		rest.Status.Phase = cachev1alpha1.RestorePhaseCompleted
+		rest.Status.CompletedAt = &now
+		rest.Status.Message = "Restore completed — STS reverted, paused removed"
+		setCondition(rest.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionTrue,
+			Reason:             "Completed",
+			Message:            rest.Status.Message,
+			ObservedGeneration: rest.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, rest, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	logger.Info("Restore Completed", "name", rest.Name)
@@ -906,17 +924,20 @@ func (r *ValkeyRestoreReconciler) markFailed(
 		r.Recorder.Eventf(rest, nil, "Warning", reason, reason, "%s", msg)
 	}
 	now := metav1.Now()
-	rest.Status.Phase = cachev1alpha1.RestorePhaseFailed
-	rest.Status.CompletedAt = &now
-	rest.Status.Message = msg
-	setCondition(rest.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             reason,
-		Message:            msg,
-		ObservedGeneration: rest.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, rest); err != nil {
+	applyStatus := func() {
+		rest.Status.Phase = cachev1alpha1.RestorePhaseFailed
+		rest.Status.CompletedAt = &now
+		rest.Status.Message = msg
+		setCondition(rest.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             reason,
+			Message:            msg,
+			ObservedGeneration: rest.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, rest, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{}, nil

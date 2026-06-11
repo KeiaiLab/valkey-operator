@@ -49,7 +49,8 @@ func TestPrimaryOrdinal(t *testing.T) {
 
 func TestExporterImage(t *testing.T) {
 	t.Parallel()
-	const defaultImg = "oliver006/redis_exporter:latest"
+	// 의도된 거동 변화 (latest → 구체 버전 pin): SSOT = api DefaultExporterImage.
+	const defaultImg = cachev1alpha1.DefaultExporterImage
 
 	if got := exporterImage(nil); got != defaultImg {
 		t.Errorf("nil monitoring → default, got %q", got)

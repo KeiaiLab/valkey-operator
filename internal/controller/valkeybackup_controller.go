@@ -26,6 +26,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
+	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -106,17 +107,21 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// 2. Phase 전이.
 	switch b.Status.Phase {
 	case "":
-		// 신규 — Pending 으로 시작.
-		b.Status.Phase = cachev1alpha1.BackupPhasePending
-		b.Status.ObservedGeneration = b.Generation
-		setCondition(b.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "Pending",
-			Message:            "Backup queued",
-			ObservedGeneration: b.Generation,
-		})
-		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+		// 신규 — Pending 으로 시작. status mutation 은 클로저로 전달 —
+		// conflict 시 refetch 후 재적용 (commons UpdateWithRetry).
+		applyStatus := func() {
+			b.Status.Phase = cachev1alpha1.BackupPhasePending
+			b.Status.ObservedGeneration = b.Generation
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "Pending",
+				Message:            "Backup queued",
+				ObservedGeneration: b.Generation,
+			})
+		}
+		applyStatus()
+		if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		return ctrl.Result{RequeueAfter: time.Second}, nil
@@ -129,17 +134,20 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				return r.markFailed(ctx, b, "VolumeSnapshotApplyFailed", err.Error())
 			}
 			now := metav1.Now()
-			b.Status.Phase = cachev1alpha1.BackupPhaseInProgress
-			b.Status.StartedAt = &now
-			b.Status.Message = "VolumeSnapshot CR applied — polling readyToUse"
-			setCondition(b.GetConditions(), metav1.Condition{
-				Type:               "Ready",
-				Status:             metav1.ConditionFalse,
-				Reason:             "InProgress",
-				Message:            "VolumeSnapshot in progress",
-				ObservedGeneration: b.Generation,
-			})
-			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+			applyStatus := func() {
+				b.Status.Phase = cachev1alpha1.BackupPhaseInProgress
+				b.Status.StartedAt = &now
+				b.Status.Message = "VolumeSnapshot CR applied — polling readyToUse"
+				setCondition(b.GetConditions(), metav1.Condition{
+					Type:               "Ready",
+					Status:             metav1.ConditionFalse,
+					Reason:             "InProgress",
+					Message:            "VolumeSnapshot in progress",
+					ObservedGeneration: b.Generation,
+				})
+			}
+			applyStatus()
+			if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 				return ctrl.Result{RequeueAfter: requeueProgress}, nil
 			}
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
@@ -150,19 +158,22 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return r.markFailed(ctx, b, "BackupTriggerFailed", err.Error())
 		}
 		now := metav1.Now()
-		b.Status.Phase = cachev1alpha1.BackupPhaseInProgress
-		b.Status.StartedAt = &now
-		// preLastSave 를 message 에 인코딩 — 다음 phase 에서 비교용. 별도 status 필드를
-		// 추가하지 않기 위한 간단한 prologue. (대안: annotation 사용, 더 깔끔 — 후속.)
-		b.Status.Message = fmt.Sprintf("preLastSave=%d", preLastSave.Unix())
-		setCondition(b.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "InProgress",
-			Message:            fmt.Sprintf("Backup %s issued for %s/%s", b.Spec.Type, b.Spec.ClusterRef.Kind, b.Spec.ClusterRef.Name),
-			ObservedGeneration: b.Generation,
-		})
-		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+		applyStatus := func() {
+			b.Status.Phase = cachev1alpha1.BackupPhaseInProgress
+			b.Status.StartedAt = &now
+			// preLastSave 를 message 에 인코딩 — 다음 phase 에서 비교용. 별도 status 필드를
+			// 추가하지 않기 위한 간단한 prologue. (대안: annotation 사용, 더 깔끔 — 후속.)
+			b.Status.Message = fmt.Sprintf("preLastSave=%d", preLastSave.Unix())
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "InProgress",
+				Message:            fmt.Sprintf("Backup %s issued for %s/%s", b.Spec.Type, b.Spec.ClusterRef.Kind, b.Spec.ClusterRef.Name),
+				ObservedGeneration: b.Generation,
+			})
+		}
+		applyStatus()
+		if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Backup BGSAVE/BGREWRITEAOF issued",
@@ -187,18 +198,22 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 			// 완료. RDB/AOF 와 달리 별도 Copy/Upload 단계 없음 (storage 가 in-cluster snapshot).
 			now := metav1.Now()
-			b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
-			b.Status.CompletedAt = &now
-			b.Status.Message = "VolumeSnapshot ready"
-			setCondition(b.GetConditions(), metav1.Condition{
-				Type:               "Ready",
-				Status:             metav1.ConditionTrue,
-				Reason:             "Completed",
-				Message:            "VolumeSnapshot.status.readyToUse=true",
-				ObservedGeneration: b.Generation,
-			})
+			applyStatus := func() {
+				b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
+				b.Status.CompletedAt = &now
+				b.Status.Message = "VolumeSnapshot ready"
+				setCondition(b.GetConditions(), metav1.Condition{
+					Type:               "Ready",
+					Status:             metav1.ConditionTrue,
+					Reason:             "Completed",
+					Message:            "VolumeSnapshot.status.readyToUse=true",
+					ObservedGeneration: b.Generation,
+				})
+			}
+			applyStatus()
+			// metric 은 클로저 밖 — conflict 재적용 시 이중 카운트 차단.
 			MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
-			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+			if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 				return ctrl.Result{RequeueAfter: requeueProgress}, nil
 			}
 			return ctrl.Result{RequeueAfter: requeueSteady}, nil
@@ -222,17 +237,20 @@ func (r *ValkeyBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		// LASTSAVE advanced — RDB 가 노드 에 생성됨. 다음 단계: PVC 복사 Job spawn.
-		b.Status.Phase = cachev1alpha1.BackupPhaseCopying
-		b.Status.Message = fmt.Sprintf("RDB snapshot at %s — copying to PVC",
-			curLastSave.Format(time.RFC3339))
-		setCondition(b.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "Copying",
-			Message:            b.Status.Message,
-			ObservedGeneration: b.Generation,
-		})
-		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+		applyStatus := func() {
+			b.Status.Phase = cachev1alpha1.BackupPhaseCopying
+			b.Status.Message = fmt.Sprintf("RDB snapshot at %s — copying to PVC",
+				curLastSave.Format(time.RFC3339))
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "Copying",
+				Message:            b.Status.Message,
+				ObservedGeneration: b.Generation,
+			})
+		}
+		applyStatus()
+		if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Backup LASTSAVE advanced — transitioning to Copying",
@@ -291,18 +309,21 @@ func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha
 	if r.Recorder != nil {
 		r.Recorder.Eventf(b, nil, "Warning", reason, reason, "%s", msg)
 	}
-	b.Status.Phase = cachev1alpha1.BackupPhaseFailed
-	b.Status.Message = msg
 	now := metav1.Now()
-	b.Status.CompletedAt = &now
-	setCondition(b.GetConditions(), metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             reason,
-		Message:            msg,
-		ObservedGeneration: b.Generation,
-	})
-	if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+	applyStatus := func() {
+		b.Status.Phase = cachev1alpha1.BackupPhaseFailed
+		b.Status.Message = msg
+		b.Status.CompletedAt = &now
+		setCondition(b.GetConditions(), metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             reason,
+			Message:            msg,
+			ObservedGeneration: b.Generation,
+		})
+	}
+	applyStatus()
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 	return ctrl.Result{}, nil
@@ -419,17 +440,20 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 	if existingJob.Status.Succeeded > 0 {
 		// Destination=TargetRef 시 → Uploading, 그 외 → Completed (M3.5 호환).
 		if hasExternalDestination(b) {
-			b.Status.Phase = cachev1alpha1.BackupPhaseUploading
-			b.Status.PVCName = pvcName
-			b.Status.Message = fmt.Sprintf("RDB on PVC %s — uploading to external target", pvcName)
-			setCondition(b.GetConditions(), metav1.Condition{
-				Type:               "Ready",
-				Status:             metav1.ConditionFalse,
-				Reason:             "Uploading",
-				Message:            b.Status.Message,
-				ObservedGeneration: b.Generation,
-			})
-			if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+			applyStatus := func() {
+				b.Status.Phase = cachev1alpha1.BackupPhaseUploading
+				b.Status.PVCName = pvcName
+				b.Status.Message = fmt.Sprintf("RDB on PVC %s — uploading to external target", pvcName)
+				setCondition(b.GetConditions(), metav1.Condition{
+					Type:               "Ready",
+					Status:             metav1.ConditionFalse,
+					Reason:             "Uploading",
+					Message:            b.Status.Message,
+					ObservedGeneration: b.Generation,
+				})
+			}
+			applyStatus()
+			if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 				return ctrl.Result{RequeueAfter: requeueProgress}, nil
 			}
 			logger.Info("Backup copy Job succeeded — transitioning to Uploading", "pvc", pvcName)
@@ -441,18 +465,21 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 			r.Recorder.Eventf(b, nil, "Normal", "Completed", "Completed", "ValkeyBackup completed")
 		}
 		now := metav1.Now()
-		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
-		b.Status.CompletedAt = &now
-		b.Status.PVCName = pvcName
-		b.Status.Message = fmt.Sprintf("RDB copied to PVC %s by Job %s", pvcName, job.Name)
-		setCondition(b.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionTrue,
-			Reason:             "Completed",
-			Message:            b.Status.Message,
-			ObservedGeneration: b.Generation,
-		})
-		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+		applyStatus := func() {
+			b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
+			b.Status.CompletedAt = &now
+			b.Status.PVCName = pvcName
+			b.Status.Message = fmt.Sprintf("RDB copied to PVC %s by Job %s", pvcName, job.Name)
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionTrue,
+				Reason:             "Completed",
+				Message:            b.Status.Message,
+				ObservedGeneration: b.Generation,
+			})
+		}
+		applyStatus()
+		if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Backup copy Job succeeded — Completed", "pvc", pvcName)
@@ -561,17 +588,20 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 			r.Recorder.Eventf(b, nil, "Normal", "Completed", "Completed", "ValkeyBackup completed")
 		}
 		now := metav1.Now()
-		b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
-		b.Status.CompletedAt = &now
-		b.Status.Message = fmt.Sprintf("Uploaded to %s/%s — Completed", tgt.Spec.S3.Bucket, objectKey)
-		setCondition(b.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionTrue,
-			Reason:             "Completed",
-			Message:            b.Status.Message,
-			ObservedGeneration: b.Generation,
-		})
-		if err := updateStatusWithRetry(ctx, r.Client, b); err != nil {
+		applyStatus := func() {
+			b.Status.Phase = cachev1alpha1.BackupPhaseCompleted
+			b.Status.CompletedAt = &now
+			b.Status.Message = fmt.Sprintf("Uploaded to %s/%s — Completed", tgt.Spec.S3.Bucket, objectKey)
+			setCondition(b.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionTrue,
+				Reason:             "Completed",
+				Message:            b.Status.Message,
+				ObservedGeneration: b.Generation,
+			})
+		}
+		applyStatus()
+		if err := commonsstatus.UpdateWithRetry(ctx, r.Client, b, applyStatus); err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 		logger.Info("Upload Job succeeded — Backup Completed",
