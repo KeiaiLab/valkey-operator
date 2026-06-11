@@ -27,8 +27,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	commonsapply "github.com/keiailab/keiailab-commons/pkg/apply"
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/keiailab-commons/pkg/pvc"
+	commonsreconcile "github.com/keiailab/keiailab-commons/pkg/reconcile"
+	"github.com/keiailab/keiailab-commons/pkg/reconcilemetrics"
+	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -72,15 +76,18 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	ctx, span := observability.StartReconcileSpan(ctx, "Valkey", req.Namespace, req.Name)
 	defer span.End()
 
-	// SLO histogram — wall-clock latency 관측. result label: success|error.
+	// SLO histogram — wall-clock latency 관측 (commons ObserveReconcile).
+	// result label: success|error.
 	start := time.Now()
+	crDeleted := false
 	defer func() {
-		result := "success"
-		if retErr != nil {
-			result = "error"
+		if crDeleted {
+			// CR 삭제 경로 — DeleteMetricsFor 이후 defer 가 시계열을 재생성하는
+			// cardinality 누수 차단.
+			return
 		}
-		MetricReconcileLatency.WithLabelValues(req.Namespace, req.Name, result).
-			Observe(time.Since(start).Seconds())
+		reconMetrics.ObserveReconcile(req.Namespace, req.Name,
+			reconcilemetrics.ResultFor(retErr), time.Since(start).Seconds())
 	}()
 
 	logger := log.FromContext(ctx)
@@ -88,6 +95,10 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	v := &cachev1alpha1.Valkey{}
 	if err := r.Get(ctx, req.NamespacedName, v); err != nil {
 		if errors.IsNotFound(err) {
+			// CR 삭제 — reconcile trio + 도메인 시계열 제거 (누수 fix:
+			// 기존엔 Valkey CR 삭제 시 어떤 시계열도 제거하지 않았다).
+			crDeleted = true
+			DeleteMetricsFor(req.Namespace, req.Name)
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -95,7 +106,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 1. Finalizer / deletion
 	if !v.DeletionTimestamp.IsZero() {
-		return handleFinalizerCleanup(ctx, r.Client, v, finalizerValkey, nil)
+		return commonsreconcile.HandleFinalizerCleanup(ctx, r.Client, v, finalizerValkey, nil)
 	}
 	if !commonsfinalizer.Has(v, finalizerValkey) {
 		commonsfinalizer.Add(v, finalizerValkey)
@@ -147,18 +158,18 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ConfigMap", err, r.Recorder)
 	}
-	if err := applyConfigMap(ctx, r.Client, r.Scheme, v, cm); err != nil {
+	if err := commonsapply.ConfigMap(ctx, r.Client, r.Scheme, v, cm); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ConfigMap", err, r.Recorder)
 	}
 
 	// 5. Headless + Client Service (TLS 활성 시 6380 port 추가 expose)
 	tlsEnabled := v.Spec.TLS != nil && v.Spec.TLS.Enabled
 	hs := resources.BuildHeadlessService(v.Name, v.Namespace, false, tlsEnabled, v.Spec.Service)
-	if err := applyService(ctx, r.Client, r.Scheme, v, hs); err != nil {
+	if err := commonsapply.Service(ctx, r.Client, r.Scheme, v, hs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "HeadlessService", err, r.Recorder)
 	}
 	cs := resources.BuildClientService(v.Name, v.Namespace, tlsEnabled, v.Spec.Service)
-	if err := applyService(ctx, r.Client, r.Scheme, v, cs); err != nil {
+	if err := commonsapply.Service(ctx, r.Client, r.Scheme, v, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ClientService", err, r.Recorder)
 	}
 
@@ -168,7 +179,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled && v.Spec.TLS.CertManager != nil &&
 		v.Spec.TLS.CertManager.AutoSelfSigned {
 		issuer := resources.BuildSelfSignedIssuer(v.Name, v.Namespace)
-		if err := applyServiceMonitor(ctx, r.Client, r.Scheme, v, issuer); err != nil {
+		if err := commonsapply.Unstructured(ctx, r.Client, r.Scheme, v, issuer, true); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "Issuer", err, r.Recorder)
 		}
 	}
@@ -176,7 +187,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// 6b. TLS Certificate (cert-manager) — Valkey 단일/replication 도 ADR-0014 AI-005
 	//     에 따라 standalone TLS 통합. cert-manager CRD 미설치 시 fail-soft.
 	if cert := resources.BuildCertificateForValkey(v); cert != nil {
-		if err := applyServiceMonitor(ctx, r.Client, r.Scheme, v, cert); err != nil {
+		if err := commonsapply.Unstructured(ctx, r.Client, r.Scheme, v, cert, true); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "Certificate", err, r.Recorder)
 		}
 	}
@@ -240,14 +251,14 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if v.Spec.Autoscaling != nil && v.Spec.Autoscaling.Enabled {
 		preserveReplicas = true
 	}
-	if err := applyStatefulSet(ctx, r.Client, r.Scheme, v, sts, preserveReplicas); err != nil {
+	if err := commonsapply.StatefulSet(ctx, r.Client, r.Scheme, v, sts, preserveReplicas); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "StatefulSet", err, r.Recorder)
 	}
 
 	// 6.4 HPA — Spec.Autoscaling.Enabled=true 시 HPA 자동 생성 (ADR-0027).
-	// 미활성 또는 toggle off 시 기존 HPA 자동 삭제 (applyHPA 가 nil 처리).
+	// 미활성 또는 toggle off 시 기존 HPA 자동 삭제 (commons apply.HPA 가 nil 처리).
 	hpa := resources.BuildHorizontalPodAutoscaler(v)
-	if err := applyHPA(ctx, r.Client, r.Scheme, v, resources.HPAName(v.Name), v.Namespace, hpa); err != nil {
+	if err := commonsapply.HPA(ctx, r.Client, r.Scheme, v, resources.HPAName(v.Name), v.Namespace, hpa); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "HPA", err, r.Recorder)
 	}
 
@@ -284,7 +295,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	//    CDEX-M1 (Codex stage 3 finding): false 시 *기존 PDB 삭제* 의무 (mongodb_controller.go:313 sister).
 	if shouldAutoCreatePDB(v.Spec.PodDisruptionBudget, desiredReplicas(v)) {
 		pdb := resources.BuildPDB(v.Name, v.Namespace, desiredReplicas(v), v.Spec.PodDisruptionBudget)
-		if err := applyPDB(ctx, r.Client, r.Scheme, v, pdb); err != nil {
+		if err := commonsapply.PDB(ctx, r.Client, r.Scheme, v, pdb); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "PDB", err, r.Recorder)
 		}
 	} else if err := EnsurePDBDeleted(ctx, r.Client, v.Name, v.Namespace); err != nil {
@@ -292,7 +303,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	if v.Spec.NetworkPolicy != nil && v.Spec.NetworkPolicy.Enabled {
 		np := resources.BuildNetworkPolicy(v.Name, v.Namespace, false, v.Spec.NetworkPolicy)
-		if err := applyNetworkPolicy(ctx, r.Client, r.Scheme, v, np); err != nil {
+		if err := commonsapply.NetworkPolicy(ctx, r.Client, r.Scheme, v, np); err != nil {
 			return applyErrorCondition(ctx, r.Client, v, "NetworkPolicy", err, r.Recorder)
 		}
 	}
@@ -362,7 +373,10 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Reason:             string(v.Status.Phase),
 		Message:            readyMsg,
 	})
-	if err := updateStatusWithRetry(ctx, r.Client, v); err != nil {
+	// aggregate status (단계 10 전반의 산출) — 산출 로직이 함수 전반에 분산되어
+	// 클로저 재적용 대상이 아니다. conflict 시 commons 가 refetch 후 server 상태로
+	// 갱신하며, 다음 reconcile 이 status 를 재산출한다 (level-triggered).
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, v); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
@@ -532,7 +546,8 @@ func buildResourceReq(r cachev1alpha1.ResourcesSpec) corev1.ResourceRequirements
 
 func exporterImage(m *cachev1alpha1.MonitoringSpec) string {
 	if m == nil || m.Exporter == nil || m.Exporter.Image == "" {
-		return "oliver006/redis_exporter:latest"
+		// 구체 버전 pin SSOT — api 패키지 const (CRD default marker 와 동기).
+		return cachev1alpha1.DefaultExporterImage
 	}
 	return m.Exporter.Image
 }
@@ -576,7 +591,7 @@ func (r *ValkeyReconciler) ensureAuthSecret(ctx context.Context, v *cachev1alpha
 	if err != nil {
 		return "", nil, err
 	}
-	if err := reconcileSecretIfNotExists(ctx, r.Client, r.Scheme, v, secretName, func() *corev1.Secret {
+	if err := commonsreconcile.SecretIfNotExists(ctx, r.Client, r.Scheme, v, secretName, func() *corev1.Secret {
 		return resources.BuildAuthSecret(v.Name, v.Namespace, password)
 	}); err != nil {
 		return "", nil, err

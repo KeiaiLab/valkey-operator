@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/storage"
@@ -84,18 +85,22 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// 신규 — Pending 으로 표시 후 검증 진입.
+	// 신규 — Pending 으로 표시 후 검증 진입. status mutation 은 클로저로 전달 —
+	// conflict 시 refetch 후 재적용 (commons UpdateWithRetry).
 	if t.Status.Phase == "" {
-		t.Status.Phase = cachev1alpha1.BackupTargetPhasePending
-		t.Status.ObservedGeneration = t.Generation
-		setCondition(t.GetConditions(), metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "Pending",
-			Message:            "validating credentials",
-			ObservedGeneration: t.Generation,
-		})
-		if err := updateStatusWithRetry(ctx, r.Client, t); err != nil {
+		applyStatus := func() {
+			t.Status.Phase = cachev1alpha1.BackupTargetPhasePending
+			t.Status.ObservedGeneration = t.Generation
+			setCondition(t.GetConditions(), metav1.Condition{
+				Type:               "Ready",
+				Status:             metav1.ConditionFalse,
+				Reason:             "Pending",
+				Message:            "validating credentials",
+				ObservedGeneration: t.Generation,
+			})
+		}
+		applyStatus()
+		if err := commonsstatus.UpdateWithRetry(ctx, r.Client, t, applyStatus); err != nil {
 			return ctrl.Result{RequeueAfter: requeueProgress}, nil
 		}
 	}
@@ -147,7 +152,10 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	t.Status.ObservedGeneration = t.Generation
-	if err := updateStatusWithRetry(ctx, r.Client, t); err != nil {
+	// 검증 if/else 트리 전체가 status 를 산출 (network call 포함) — 클로저 재적용
+	// 대상이 아니다. conflict 시 commons 가 refetch 후 server 상태로 갱신하며,
+	// 다음 reconcile (주기 재검증) 이 상태를 재산출한다.
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, t); err != nil {
 		logger.V(1).Info("status update conflict — requeue", "name", t.Name)
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}

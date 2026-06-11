@@ -29,8 +29,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	commonsapply "github.com/keiailab/keiailab-commons/pkg/apply"
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/keiailab-commons/pkg/pvc"
+	commonsreconcile "github.com/keiailab/keiailab-commons/pkg/reconcile"
+	"github.com/keiailab/keiailab-commons/pkg/reconcilemetrics"
+	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -67,23 +71,27 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	ctx, span := observability.StartReconcileSpan(ctx, "ValkeyCluster", req.Namespace, req.Name)
 	defer span.End()
 
-	// SLO histogram — wall-clock latency 관측. result label: success|error.
+	// SLO histogram — wall-clock latency 관측 (commons ObserveReconcile).
+	// result label: success|error.
 	start := time.Now()
+	crDeleted := false
 	defer func() {
-		result := "success"
-		if retErr != nil {
-			result = "error"
+		if crDeleted {
+			// CR 삭제 경로 — DeleteMetricsFor 이후 defer 가 latency 시계열을
+			// 재생성하던 cardinality 누수 차단 (기존 결함).
+			return
 		}
-		MetricReconcileLatency.WithLabelValues(req.Namespace, req.Name, result).
-			Observe(time.Since(start).Seconds())
+		reconMetrics.ObserveReconcile(req.Namespace, req.Name,
+			reconcilemetrics.ResultFor(retErr), time.Since(start).Seconds())
 	}()
 
 	logger := log.FromContext(ctx)
-	MetricReconcileTotal.WithLabelValues(req.Namespace, req.Name).Inc()
+	reconMetrics.IncTotal(req.Namespace, req.Name)
 
 	vc := &cachev1alpha1.ValkeyCluster{}
 	if err := r.Get(ctx, req.NamespacedName, vc); err != nil {
 		if errors.IsNotFound(err) {
+			crDeleted = true
 			DeleteMetricsFor(req.Namespace, req.Name)
 			return ctrl.Result{}, nil
 		}
@@ -94,7 +102,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	//    각 valkey 노드 내부 nodes.conf 에 잔존 — 다음 동명 cluster 생성 시 stale 멤버
 	//    참조 가능. 따라서 best-effort CLUSTER FORGET 시퀀스 발행.
 	if !vc.DeletionTimestamp.IsZero() {
-		return handleFinalizerCleanup(ctx, r.Client, vc, finalizerValkeyCluster,
+		return commonsreconcile.HandleFinalizerCleanup(ctx, r.Client, vc, finalizerValkeyCluster,
 			func(fctx context.Context) error {
 				return r.gracefulClusterTeardown(fctx, vc)
 			})
@@ -128,7 +136,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "ConfigMap", err, r.Recorder)
 	}
-	if err := applyConfigMap(ctx, r.Client, r.Scheme, vc, cm); err != nil {
+	if err := commonsapply.ConfigMap(ctx, r.Client, r.Scheme, vc, cm); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "ConfigMap", err, r.Recorder)
 	}
 
@@ -136,21 +144,21 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// TLS 활성 시 client-tls(6380) 도 expose.
 	tlsEnabled := vc.Spec.TLS != nil && vc.Spec.TLS.Enabled
 	hs := resources.BuildHeadlessService(vc.Name, vc.Namespace, true, tlsEnabled, vc.Spec.Service)
-	if err := applyService(ctx, r.Client, r.Scheme, vc, hs); err != nil {
+	if err := commonsapply.Service(ctx, r.Client, r.Scheme, vc, hs); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "HeadlessService", err, r.Recorder)
 	}
 	cs := resources.BuildClientService(vc.Name, vc.Namespace, tlsEnabled, vc.Spec.Service)
-	if err := applyService(ctx, r.Client, r.Scheme, vc, cs); err != nil {
+	if err := commonsapply.Service(ctx, r.Client, r.Scheme, vc, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "ClientService", err, r.Recorder)
 	}
 	// Monitoring 활성 시 metrics Service + ServiceMonitor (Prometheus Operator CRD).
 	if vc.Spec.Monitoring != nil && vc.Spec.Monitoring.Enabled {
 		ms := resources.BuildMetricsService(vc.Name, vc.Namespace)
-		if err := applyService(ctx, r.Client, r.Scheme, vc, ms); err != nil {
+		if err := commonsapply.Service(ctx, r.Client, r.Scheme, vc, ms); err != nil {
 			return applyErrorCondition(ctx, r.Client, vc, "MetricsService", err, r.Recorder)
 		}
 		if sm := resources.BuildServiceMonitorForCluster(vc); sm != nil {
-			if err := applyServiceMonitor(ctx, r.Client, r.Scheme, vc, sm); err != nil {
+			if err := commonsapply.Unstructured(ctx, r.Client, r.Scheme, vc, sm, true); err != nil {
 				return applyErrorCondition(ctx, r.Client, vc, "ServiceMonitor", err, r.Recorder)
 			}
 		}
@@ -162,7 +170,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled && vc.Spec.TLS.CertManager != nil &&
 		vc.Spec.TLS.CertManager.AutoSelfSigned {
 		issuer := resources.BuildSelfSignedIssuer(vc.Name, vc.Namespace)
-		if err := applyServiceMonitor(ctx, r.Client, r.Scheme, vc, issuer); err != nil {
+		if err := commonsapply.Unstructured(ctx, r.Client, r.Scheme, vc, issuer, true); err != nil {
 			return applyErrorCondition(ctx, r.Client, vc, "Issuer", err, r.Recorder)
 		}
 	}
@@ -171,8 +179,8 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// cert-manager 가 secretName 의 Secret 을 만들어 ca.crt 를 채움 → tlsConfigForCluster
 	// 가 자동으로 RootCAs 로 로드 (ADR-0010).
 	if cert := resources.BuildCertificateForCluster(vc); cert != nil {
-		if err := applyServiceMonitor(ctx, r.Client, r.Scheme, vc, cert); err != nil {
-			// CRD 미설치 시 fail-soft (applyServiceMonitor 가 NoMatchError 흡수).
+		if err := commonsapply.Unstructured(ctx, r.Client, r.Scheme, vc, cert, true); err != nil {
+			// CRD 미설치 시 fail-soft (commons apply.Unstructured 가 NoMatchError 흡수).
 			return applyErrorCondition(ctx, r.Client, vc, "Certificate", err, r.Recorder)
 		}
 	}
@@ -232,7 +240,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		stsParams.ExporterResources = exporterResources(vc.Spec.Monitoring)
 	}
 	sts := resources.BuildStatefulSet(stsParams)
-	if err := applyStatefulSet(ctx, r.Client, r.Scheme, vc, sts, preserveReplicas); err != nil {
+	if err := commonsapply.StatefulSet(ctx, r.Client, r.Scheme, vc, sts, preserveReplicas); err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "StatefulSet", err, r.Recorder)
 	}
 
@@ -268,7 +276,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	//    CDEX-M1 (Codex stage 3 finding): false 시 *기존 PDB 삭제* 의무 (mongodb_controller.go:313 sister).
 	if shouldAutoCreatePDB(vc.Spec.PodDisruptionBudget, totalReplicas) {
 		pdb := resources.BuildPDB(vc.Name, vc.Namespace, totalReplicas, vc.Spec.PodDisruptionBudget)
-		if err := applyPDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
+		if err := commonsapply.PDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
 			return applyErrorCondition(ctx, r.Client, vc, "PDB", err, r.Recorder)
 		}
 	} else if err := EnsurePDBDeleted(ctx, r.Client, vc.Name, vc.Namespace); err != nil {
@@ -276,7 +284,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	if vc.Spec.NetworkPolicy != nil && vc.Spec.NetworkPolicy.Enabled {
 		np := resources.BuildNetworkPolicy(vc.Name, vc.Namespace, true, vc.Spec.NetworkPolicy)
-		if err := applyNetworkPolicy(ctx, r.Client, r.Scheme, vc, np); err != nil {
+		if err := commonsapply.NetworkPolicy(ctx, r.Client, r.Scheme, vc, np); err != nil {
 			return applyErrorCondition(ctx, r.Client, vc, "NetworkPolicy", err, r.Recorder)
 		}
 	}
@@ -367,8 +375,10 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	applyClusterConditions(conds, vc, info, totalReplicas, stsObj.readyReplicas)
 	SetPhaseMetric(ns, name, string(vc.Status.Phase))
 
-	// 14. Status update + requeue.
-	if err := updateStatusWithRetry(ctx, r.Client, vc); err != nil {
+	// 14. Status update + requeue. aggregate status (단계 11~13 산출) 는 함수
+	// 전반에 분산되어 클로저 재적용 대상이 아니다 — conflict 시 commons 가 refetch
+	// 후 server 상태로 갱신하며, 다음 reconcile 이 재산출한다 (level-triggered).
+	if err := commonsstatus.UpdateWithRetry(ctx, r.Client, vc); err != nil {
 		return ctrl.Result{RequeueAfter: requeueProgress}, nil
 	}
 
@@ -620,7 +630,7 @@ func (r *ValkeyClusterReconciler) ensureAuthSecret(
 	if err != nil {
 		return "", nil, err
 	}
-	if err := reconcileSecretIfNotExists(ctx, r.Client, r.Scheme, vc, secretName, func() *corev1.Secret {
+	if err := commonsreconcile.SecretIfNotExists(ctx, r.Client, r.Scheme, vc, secretName, func() *corev1.Secret {
 		return resources.BuildAuthSecret(vc.Name, vc.Namespace, password)
 	}); err != nil {
 		return "", nil, err

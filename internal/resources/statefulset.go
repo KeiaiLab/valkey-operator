@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +17,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/keiailab/keiailab-commons/pkg/probes"
 	"github.com/keiailab/keiailab-commons/pkg/security"
+	"github.com/keiailab/keiailab-commons/pkg/storageclass"
 	commonstopology "github.com/keiailab/keiailab-commons/pkg/topology"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -88,9 +91,8 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	if p.Storage.StorageClassName != "" {
 		storageClass = p.Storage.StorageClassName
 	}
-	if storageClass != "" {
-		dataPVC.Spec.StorageClassName = &storageClass
-	}
+	// commons storageclass.Normalize — 빈 값 = nil (cluster default StorageClass).
+	dataPVC.Spec.StorageClassName = storageclass.Normalize(storageClass)
 
 	envFromPassword := []corev1.EnvVar{}
 	if p.PasswordRef != nil {
@@ -119,20 +121,21 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 				{Name: "data", MountPath: DataDir},
 				{Name: "config", MountPath: ConfigMapMountPath},
 			}, tlsVolumeMounts(p.TLSSecretName)...),
-			LivenessProbe: &corev1.Probe{
-				ProbeHandler:        corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: append([]string{"sh"}, pingArgs...)}},
-				InitialDelaySeconds: 20,
-				PeriodSeconds:       10,
-				TimeoutSeconds:      5,
-				FailureThreshold:    3,
-			},
-			ReadinessProbe: &corev1.Probe{
-				ProbeHandler:        corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: append([]string{"sh"}, pingArgs...)}},
-				InitialDelaySeconds: 5,
-				PeriodSeconds:       5,
-				TimeoutSeconds:      3,
-				FailureThreshold:    3,
-			},
+			// commons probes.Builder — Exec ping probe. FailureThreshold 는 builder
+			// 기본값 3 동일. SuccessThreshold 는 builder 가 명시 1 (이전 인라인은
+			// 미설정 0 — API server 가 동일 값 1 로 default 하므로 라이브 무변경).
+			LivenessProbe: probes.New().
+				Exec(append([]string{"sh"}, pingArgs...)...).
+				InitialDelay(20 * time.Second).
+				Period(10 * time.Second).
+				Timeout(5 * time.Second).
+				Build(),
+			ReadinessProbe: probes.New().
+				Exec(append([]string{"sh"}, pingArgs...)...).
+				InitialDelay(5 * time.Second).
+				Period(5 * time.Second).
+				Timeout(3 * time.Second).
+				Build(),
 		},
 	}
 	if p.Pod != nil && len(p.Pod.ExtraEnv) > 0 {

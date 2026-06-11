@@ -13,7 +13,7 @@ Licensed under the MIT License. See the LICENSE file for details.
 // 활성, Hub 결정은 *PR-A2.2* 에서 별도 PR.
 //
 // PR-A2.1 시점 anatomy:
-//   - api/v1alpha2/*.go = v1alpha1 의 cp + 패키지명 + SchemeGroupVersion.Version 갱신
+//   - api/v1alpha2/*.go = v1alpha1 의 cp + 패키지명 + GroupVersion.Version 갱신
 //   - common_types.go AuthSpec 에 Required *bool 신규 (default=true, ADR-0034)
 //   - controller / webhook / main 미수정 — v1alpha1 가 여전히 hub
 //   - conversion webhook 미설정 — kubectl apply cache.keiailab.io/v1alpha2 는

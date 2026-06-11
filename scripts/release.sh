@@ -81,7 +81,7 @@ make docker-buildx IMG="$IMAGE" VERSION="$VERSION"
 echo "✓ image pushed: $IMAGE"
 
 # 6.5. Supply Chain — cosign sign + SLSA L2 in-toto attestation (ADR-0033).
-# Bitnami in-toto + Cloudpirates cosign 차용 — 동등 보증 수준.
+# 업계 표준 in-toto + cosign 패턴 차용 — 동등 보증 수준.
 # COSIGN_KEY 미설정 시 warning 후 skip (개발자 로컬 release 테스트 허용).
 # RFC-0002 (GHA 영구 금지) 와의 충돌 회피: keyless OIDC 대신 keyfile 사용.
 if [[ -n "${COSIGN_KEY:-}" ]] && command -v cosign >/dev/null 2>&1; then
