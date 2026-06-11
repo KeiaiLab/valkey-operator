@@ -1,10 +1,23 @@
+<p align="center">
+  <a href="https://keiailab.com">
+    <img src="docs/branding/symbol.png" alt="keiailab" width="96"/>
+  </a>
+</p>
+
 # valkey-operator
 
-A Kubernetes operator for running [Valkey](https://valkey.io/) — standalone, replicated, or as a sharded cluster — with backup and restore.
+> **Keiailab data operator family** — Valkey on Kubernetes with standalone, replication, cluster, backup, and restore workflows.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Valkey](https://img.shields.io/badge/Valkey-8%2B-6979DC?logo=redis&logoColor=white)](https://valkey.io/)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0EA5A8.svg" alt="License: MIT"/></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26"/></a>
+  <a href="https://valkey.io/"><img src="https://img.shields.io/badge/Valkey-8%2B-6979DC?logo=redis&logoColor=white" alt="Valkey 8+"/></a>
+  <a href="https://kubernetes.io/"><img src="https://img.shields.io/badge/Kubernetes-1.26%2B-326CE5?logo=kubernetes&logoColor=white" alt="Kubernetes 1.26+"/></a>
+  <a href="https://github.com/keiailab/valkey-operator/pkgs/container/valkey-operator"><img src="https://img.shields.io/badge/GHCR-valkey--operator-0EA5A8?logo=github&logoColor=white" alt="GHCR image"/></a>
+  <a href="https://github.com/keiailab/valkey-operator/discussions"><img src="https://img.shields.io/github/discussions/keiailab/valkey-operator?label=discussions&logo=github" alt="GitHub Discussions"/></a>
+</p>
+
+A Kubernetes operator for running [Valkey](https://valkey.io/) — standalone, replicated, or as a sharded cluster — with backup and restore.
 
 Built with [Kubebuilder](https://book.kubebuilder.io/). A single controller manages standalone instances, primary/replica replication, and sharded Valkey Cluster through five custom resources, and reconciles the StatefulSets, Services, ConfigMaps, Secrets, and related objects each one needs.
 

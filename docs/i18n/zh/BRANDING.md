@@ -21,11 +21,11 @@
 
 | 资源 | URL | 用途 |
 |---|---|---|
-| Primary logo (SVG) | `https://keiailab.com/assets/logo.svg` | README header、幻灯片 |
-| Mono mark | `https://keiailab.com/assets/mark.svg` | Favicon、社交卡片 |
-| Wordmark | `https://keiailab.com/assets/wordmark.svg` | 页脚、深色背景 |
+| Current primary logo | `docs/branding/symbol.png` | README header, slides |
+| Current favicon | `https://keiailab.com/favicon.ico` | Favicon, social cards |
+| Planned SVG kit | `https://keiailab.com/assets/{logo,mark,wordmark}.svg` | Future replacement after URLs return 200 |
 
-**Logo placement**: README 顶部居中,宽度 120px。始终链接到 https://keiailab.com。
+**Logo placement**: README 顶部居中,宽度 96px。始终链接到 https://keiailab.com。
 
 **Clear space**: Logo 周围最小留白 = logo 宽度的 25%。
 
@@ -77,7 +77,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 
 ```markdown
 <p align="center">
-  <img src="https://keiailab.com/assets/logo.svg" alt="keiailab" width="120"/>
+  <img src="docs/branding/symbol.png" alt="keiailab" width="96"/>
 </p>
 
 # valkey-operator
@@ -85,7 +85,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 > **MIT-licensed Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0EA5A8.svg" alt="License"/></a>
   <!-- 기존 shield.io badges 유지 + 정합 -->
 </p>
 
