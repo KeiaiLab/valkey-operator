@@ -17,6 +17,14 @@
   <a href="https://github.com/keiailab/valkey-operator/discussions"><img src="https://img.shields.io/github/discussions/keiailab/valkey-operator?label=discussions&logo=github" alt="GitHub Discussions"/></a>
 </p>
 
+## Design assets
+
+| Asset | Path | Usage |
+|---|---|---|
+| Centered service symbol | [`docs/branding/symbol.png`](docs/branding/symbol.png) | GitHub README, Artifact Hub icon/screenshot |
+| Keiailab base symbol | [`docs/branding/base-symbol.png`](docs/branding/base-symbol.png) | Source reference for the outer rotating-arrow mark |
+| Branding guide | [`docs/BRANDING.md`](docs/BRANDING.md) | Public visual usage rules |
+
 A Kubernetes operator for running [Valkey](https://valkey.io/) — standalone, replicated, or as a sharded cluster — with backup and restore.
 
 Built with [Kubebuilder](https://book.kubebuilder.io/). A single controller manages standalone instances, primary/replica replication, and sharded Valkey Cluster through five custom resources, and reconciles the StatefulSets, Services, ConfigMaps, Secrets, and related objects each one needs.

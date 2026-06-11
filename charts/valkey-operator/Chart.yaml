@@ -46,6 +46,11 @@ annotations:
       url: https://github.com/keiailab/valkey-operator
     - name: Valkey Project
       url: https://valkey.io/
+    - name: Design Assets
+      url: https://github.com/KeiaiLab/valkey-operator/blob/main/docs/BRANDING.md
+  artifacthub.io/screenshots: |
+    - title: Keiailab Valkey Operator centered service symbol
+      url: https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png
   artifacthub.io/crds: |
     - kind: Valkey
       version: v1alpha1
