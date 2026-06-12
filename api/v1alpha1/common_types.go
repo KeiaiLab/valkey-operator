@@ -372,6 +372,12 @@ type NetworkPolicyPeer struct {
 }
 
 // PodDisruptionBudgetSpec — opt-in PDB. minAvailable 기본값 = replicas-1.
+//
+// CDEX-M2 (2026-05-21): PerShard=true (opt-in, ValkeyCluster 한정) 시 cluster-wide PDB 1건 대신
+// shard 별 PDB N건 (selector = valkey.keiailab.io/shard) 생성. mongodb sharded `builder.go:2105`
+// per-shard PDB pattern 정합 — drain 시 모든 shard primary 동시 evict 차단. backward-compat:
+// 기본값 false (기존 cluster-wide PDB 동작 유지). Valkey (replication mode) 는 본 field 무시 —
+// ValkeyCluster reconciler 에서만 평가.
 type PodDisruptionBudgetSpec struct {
 	// +kubebuilder:default=false
 	Enabled bool `json:"enabled"`
@@ -379,6 +385,10 @@ type PodDisruptionBudgetSpec struct {
 	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
 	// +optional
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+	// PerShard — ValkeyCluster 한정 opt-in. true 시 cluster-wide PDB 대신 shard 별 PDB 생성.
+	// +kubebuilder:default=false
+	// +optional
+	PerShard bool `json:"perShard,omitempty"`
 }
 
 // ScalePolicy — 인스턴스 수 변경 가드 (ADR-0006).
