@@ -10,6 +10,10 @@ metadata:
     {{- include "valkey-operator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  # cycle 26 rule_85 — revision history limit (default 10 → 3)
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit | default 3 }}
+  # cycle 26 rule_73 — HA min ready seconds (rolling update graceful)
+  minReadySeconds: {{ .Values.minReadySeconds | default 10 }}
   selector:
     matchLabels:
       {{- include "valkey-operator.selectorLabels" . | nindent 6 }}
@@ -30,6 +34,9 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # cycle 26 rule_84 operator 예외 — operator pod 는 SA token mount 필수 (incident-kb §10, INC-0002).
+      # RFC-0027 안전 패턴: nil → true (operator 기본 동작 보존) / 명시 false → false (사용자 override 존중).
+      automountServiceAccountToken: {{ ne .Values.automountServiceAccountToken false }}
       serviceAccountName: {{ include "valkey-operator.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
