@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonsapply "github.com/keiailab/keiailab-commons/pkg/apply"
+	commonsevents "github.com/keiailab/keiailab-commons/pkg/events"
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/keiailab-commons/pkg/pvc"
 	commonsreconcile "github.com/keiailab/keiailab-commons/pkg/reconcile"
@@ -143,7 +144,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if rotated {
 			password = newPw
 			logger.Info("password rotated", "name", v.Name)
-			r.Recorder.Eventf(v, nil, "Normal", "PasswordRotated", "PasswordRotated",
+			commonsevents.Emitf(r.Recorder, v, "PasswordRotated",
 				"auth 비밀번호 자동 로테이션 (interval=%s)", v.Spec.Auth.RotationInterval)
 		}
 	}
@@ -197,7 +198,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if applyAutoUpdate(&v.Spec, cachev1alpha1.SupportedValkeyVersions, time.Now().UTC()) {
 		logger.Info("auto-update applied",
 			"version", v.Spec.Version.Version, "channel", v.Spec.AutoUpdateChannel())
-		r.Recorder.Eventf(v, nil, "Normal", "AutoUpdate", "AutoUpdate",
+		commonsevents.Emitf(r.Recorder, v, "AutoUpdate",
 			"자동 버전 업데이트: %s channel 내 %s 적용",
 			v.Spec.AutoUpdateChannel(), v.Spec.Version.Version)
 	}
@@ -276,7 +277,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if v.Spec.Storage.EncryptionRequired {
 		encrypted, hint, err := auditEncryptionAtRest(ctx, r.Client, v.Spec.Storage.StorageClassName)
 		if err != nil {
-			r.Recorder.Eventf(v, nil, "Warning", "EncryptionAuditFailed", "EncryptionAuditFailed",
+			commonsevents.EmitWarningf(r.Recorder, v, "EncryptionAuditFailed",
 				"Failed to audit StorageClass for encryption: %v", err)
 		} else if !encrypted {
 			if v.Spec.Storage.EncryptionEnforce {
@@ -284,7 +285,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 					fmt.Errorf("StorageClass %q does not advertise encryption-at-rest: %s",
 						v.Spec.Storage.StorageClassName, hint), r.Recorder)
 			}
-			r.Recorder.Eventf(v, nil, "Warning", "EncryptionNotVerified", "EncryptionNotVerified",
+			commonsevents.EmitWarningf(r.Recorder, v, "EncryptionNotVerified",
 				"Storage.EncryptionRequired=true but StorageClass %q: %s",
 				v.Spec.Storage.StorageClassName, hint)
 		}

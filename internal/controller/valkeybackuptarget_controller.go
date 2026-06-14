@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsevents "github.com/keiailab/keiailab-commons/pkg/events"
 	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/observability"
@@ -184,7 +185,7 @@ func (r *ValkeyBackupTargetReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if deleted, rerr := r.applyRetention(ctx, t, time.Now().Unix()); rerr != nil {
 			logf.FromContext(ctx).Error(rerr, "retention 적용 실패", "target", t.Name)
 		} else if deleted > 0 && r.Recorder != nil {
-			r.Recorder.Eventf(t, nil, "Normal", "RetentionApplied", "RetentionApplied",
+			commonsevents.Emitf(r.Recorder, t, "RetentionApplied",
 				"%d backup 만료 삭제", deleted)
 		}
 	}

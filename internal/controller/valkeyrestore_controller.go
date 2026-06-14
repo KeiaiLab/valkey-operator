@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsevents "github.com/keiailab/keiailab-commons/pkg/events"
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -851,7 +852,7 @@ func (r *ValkeyRestoreReconciler) handleVerifying(
 	// → Completed.
 	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Completed").Inc()
 	if r.Recorder != nil {
-		r.Recorder.Eventf(rest, nil, "Normal", "Completed", "Completed", "ValkeyRestore completed")
+		commonsevents.Emit(r.Recorder, rest, "Completed", "ValkeyRestore completed")
 	}
 	now := metav1.Now()
 	applyStatus := func() {
@@ -921,7 +922,7 @@ func (r *ValkeyRestoreReconciler) markFailed(
 ) (ctrl.Result, error) {
 	MetricRestoreTotal.WithLabelValues(rest.Namespace, rest.Name, "Failed").Inc()
 	if r.Recorder != nil {
-		r.Recorder.Eventf(rest, nil, "Warning", reason, reason, "%s", msg)
+		commonsevents.EmitWarningf(r.Recorder, rest, reason, "%s", msg)
 	}
 	now := metav1.Now()
 	applyStatus := func() {

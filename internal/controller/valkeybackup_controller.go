@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonsevents "github.com/keiailab/keiailab-commons/pkg/events"
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	commonsstatus "github.com/keiailab/keiailab-commons/pkg/status"
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -307,7 +308,7 @@ func (r *ValkeyBackupReconciler) validateClusterRef(ctx context.Context, b *cach
 func (r *ValkeyBackupReconciler) markFailed(ctx context.Context, b *cachev1alpha1.ValkeyBackup, reason, msg string) (ctrl.Result, error) {
 	MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Failed").Inc()
 	if r.Recorder != nil {
-		r.Recorder.Eventf(b, nil, "Warning", reason, reason, "%s", msg)
+		commonsevents.EmitWarningf(r.Recorder, b, reason, "%s", msg)
 	}
 	now := metav1.Now()
 	applyStatus := func() {
@@ -462,7 +463,7 @@ func (r *ValkeyBackupReconciler) reconcileCopyingPhase(ctx context.Context, b *c
 
 		MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
 		if r.Recorder != nil {
-			r.Recorder.Eventf(b, nil, "Normal", "Completed", "Completed", "ValkeyBackup completed")
+			commonsevents.Emit(r.Recorder, b, "Completed", "ValkeyBackup completed")
 		}
 		now := metav1.Now()
 		applyStatus := func() {
@@ -585,7 +586,7 @@ func (r *ValkeyBackupReconciler) reconcileUploadingPhase(
 	if existing.Status.Succeeded > 0 {
 		MetricBackupTotal.WithLabelValues(b.Namespace, b.Name, "Completed").Inc()
 		if r.Recorder != nil {
-			r.Recorder.Eventf(b, nil, "Normal", "Completed", "Completed", "ValkeyBackup completed")
+			commonsevents.Emit(r.Recorder, b, "Completed", "ValkeyBackup completed")
 		}
 		now := metav1.Now()
 		applyStatus := func() {
