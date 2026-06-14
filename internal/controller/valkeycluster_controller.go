@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonsapply "github.com/keiailab/keiailab-commons/pkg/apply"
+	commonsevents "github.com/keiailab/keiailab-commons/pkg/events"
 	commonsfinalizer "github.com/keiailab/keiailab-commons/pkg/finalizer"
 	commonspvc "github.com/keiailab/keiailab-commons/pkg/pvc"
 	commonsreconcile "github.com/keiailab/keiailab-commons/pkg/reconcile"
@@ -204,7 +205,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if applyAutoUpdateCluster(&vc.Spec, cachev1alpha1.SupportedValkeyVersions, time.Now().UTC()) {
 		logger.Info("auto-update applied",
 			"version", vc.Spec.Version.Version, "channel", vc.Spec.AutoUpdateChannel())
-		r.Recorder.Eventf(vc, nil, "Normal", "AutoUpdate", "AutoUpdate",
+		commonsevents.Emitf(r.Recorder, vc, "AutoUpdate",
 			"자동 버전 업데이트: %s channel 내 %s 적용",
 			vc.Spec.AutoUpdateChannel(), vc.Spec.Version.Version)
 	}
@@ -258,7 +259,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if vc.Spec.Storage.EncryptionRequired {
 		encrypted, hint, err := auditEncryptionAtRest(ctx, r.Client, vc.Spec.Storage.StorageClassName)
 		if err != nil {
-			r.Recorder.Eventf(vc, nil, "Warning", "EncryptionAuditFailed", "EncryptionAuditFailed",
+			commonsevents.EmitWarningf(r.Recorder, vc, "EncryptionAuditFailed",
 				"Failed to audit StorageClass for encryption: %v", err)
 		} else if !encrypted {
 			if vc.Spec.Storage.EncryptionEnforce {
@@ -266,7 +267,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 					fmt.Errorf("StorageClass %q does not advertise encryption-at-rest: %s",
 						vc.Spec.Storage.StorageClassName, hint), r.Recorder)
 			}
-			r.Recorder.Eventf(vc, nil, "Warning", "EncryptionNotVerified", "EncryptionNotVerified",
+			commonsevents.EmitWarningf(r.Recorder, vc, "EncryptionNotVerified",
 				"Storage.EncryptionRequired=true but StorageClass %q: %s",
 				vc.Spec.Storage.StorageClassName, hint)
 		}
