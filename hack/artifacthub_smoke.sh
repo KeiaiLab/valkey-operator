@@ -6,7 +6,8 @@ artifacthub_api_url="${ARTIFACTHUB_API_URL:-https://artifacthub.io/api/v1}"
 artifacthub_org="${ARTIFACTHUB_ORG:-keiailab}"
 artifacthub_package_name="${ARTIFACTHUB_PACKAGE_NAME:-valkey-operator}"
 artifacthub_repository_name="${ARTIFACTHUB_REPOSITORY_NAME:-keiailab-valkey-operator}"
-artifacthub_repository_url="${EXPECTED_ARTIFACTHUB_REPOSITORY_URL:-${ARTIFACTHUB_REPOSITORY_URL:-oci://ghcr.io/keiailab/charts/valkey-operator}}"
+helm_oci_repo="${HELM_OCI_REPO:-oci://ghcr.io/keiailab/charts}"
+artifacthub_repository_url="${EXPECTED_ARTIFACTHUB_REPOSITORY_URL:-${ARTIFACTHUB_REPOSITORY_URL:-${helm_oci_repo%/}/${artifacthub_package_name}}}"
 helm_repo_url="${HELM_REPO_URL:-https://keiailab.github.io/valkey-operator}"
 artifacthub_api_key_id="${AH_API_KEY_ID:-${ARTIFACTHUB_API_KEY_ID:-}}"
 artifacthub_api_key_secret="${AH_API_KEY_SECRET:-${ARTIFACTHUB_API_KEY_SECRET:-}}"
@@ -139,6 +140,12 @@ if [[ -z "$VERSION" ]]; then
 	echo "ERROR: VERSION 미확인 — Chart.yaml 또는 TAG 값을 확인하세요." >&2
 	exit 5
 fi
+
+echo "=== Expected release contract ==="
+echo "Chart version: ${VERSION}"
+echo "Helm OCI repository base: ${helm_oci_repo%/}"
+echo "Artifact Hub repository URL: ${artifacthub_repository_url%/}"
+echo "Smoke attempts: ${smoke_attempts} (sleep ${smoke_sleep_seconds}s)"
 
 echo "=== GHCR OCI chart availability ==="
 if command -v "$helm_bin" >/dev/null 2>&1; then
