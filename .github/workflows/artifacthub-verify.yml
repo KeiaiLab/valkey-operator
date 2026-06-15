@@ -1,6 +1,9 @@
 name: ArtifactHub verify
 
 on:
+  workflow_run:
+    workflows: ["Helm chart publish"]
+    types: [completed]
   push:
     tags: ['v*']
   workflow_dispatch:
@@ -42,8 +45,8 @@ jobs:
   smoke:
     name: ArtifactHub 인덱싱/서명 smoke
     runs-on: ubuntu-latest
-    # PR 시점엔 chart가 아직 gh-pages에 publish 전이라 인덱싱 검증이 false-negative → tag/dispatch에서만 실행
-    if: github.event_name != 'pull_request'
+    # PR 시점엔 chart가 아직 publish 전이라 false-negative. publish workflow 완료 후 또는 tag/dispatch에서 실행.
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5
@@ -53,5 +56,8 @@ jobs:
         env:
           AH_API_KEY_ID: ${{ secrets.AH_API_KEY_ID }}
           AH_API_KEY_SECRET: ${{ secrets.AH_API_KEY_SECRET }}
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          TAG: ${{ github.event.inputs.tag }}
+          ARTIFACTHUB_SMOKE_ATTEMPTS: "90"
+          ARTIFACTHUB_SMOKE_SLEEP_SECONDS: "30"
+          REQUIRE_PROVENANCE: "0"
         run: bash hack/artifacthub_smoke.sh

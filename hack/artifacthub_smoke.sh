@@ -13,6 +13,8 @@ check_container_images="${CHECK_CONTAINER_IMAGES:-1}"
 curl_bin="${CURL_BIN:-curl}"
 helm_bin="${HELM_BIN:-helm}"
 jq_bin="${JQ_BIN:-jq}"
+smoke_attempts="${ARTIFACTHUB_SMOKE_ATTEMPTS:-1}"
+smoke_sleep_seconds="${ARTIFACTHUB_SMOKE_SLEEP_SECONDS:-30}"
 
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/valkey-operator-artifacthub.XXXXXX")"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -96,18 +98,6 @@ if [[ -n "$tracking_errors" ]]; then
 	exit 3
 fi
 
-echo "=== Artifact Hub package registration ==="
-package_url="${artifacthub_api_url%/}/packages/helm/${artifacthub_repository_name}/${artifacthub_package_name}"
-if ! "$curl_bin" -fsSL "$package_url" -o "$tmpdir/package.json"; then
-	echo "ERROR: Artifact Hub repository exists but package is not indexed yet." >&2
-	echo "  package API: $package_url" >&2
-	echo "  retry after Artifact Hub tracker runs, or push a new chart version to force reprocessing." >&2
-	exit 4
-fi
-
-"$jq_bin" -e --arg name "$artifacthub_package_name" '.name == $name' "$tmpdir/package.json" >/dev/null
-echo "Artifact Hub package OK: https://artifacthub.io/packages/helm/${artifacthub_repository_name}/${artifacthub_package_name}"
-
 # VERSION: Chart.yaml에서 추출 (TAG 환경변수가 없을 때 fallback)
 VERSION="${TAG:-}"
 VERSION="${VERSION#refs/tags/}"
@@ -123,6 +113,38 @@ if [[ -z "$VERSION" ]]; then
 	echo "ERROR: VERSION 미확인 — Chart.yaml 또는 TAG 값을 확인하세요." >&2
 	exit 5
 fi
+
+echo "=== Artifact Hub package registration ==="
+package_url="${artifacthub_api_url%/}/packages/helm/${artifacthub_repository_name}/${artifacthub_package_name}"
+package_version_url="${package_url}/${VERSION}"
+artifacthub_package_ready=false
+for attempt in $(seq 1 "$smoke_attempts"); do
+	if "$curl_bin" -fsSL "$package_version_url" -o "$tmpdir/package.json" 2>"$tmpdir/package.err"; then
+		if "$jq_bin" -e --arg name "$artifacthub_package_name" --arg version "$VERSION" \
+			'.name == $name and .version == $version and .signed == true' "$tmpdir/package.json" >/dev/null; then
+			artifacthub_package_ready=true
+			break
+		fi
+		if [[ "$attempt" -lt "$smoke_attempts" ]]; then
+			echo "Artifact Hub target metadata not ready yet (${attempt}/${smoke_attempts}); waiting ${smoke_sleep_seconds}s..."
+			"$jq_bin" '{version, app_version, signed, repository: .repository.url}' "$tmpdir/package.json"
+			sleep "$smoke_sleep_seconds"
+		fi
+	else
+		if [[ "$attempt" -lt "$smoke_attempts" ]]; then
+			echo "Artifact Hub target version not indexed yet (${attempt}/${smoke_attempts}); waiting ${smoke_sleep_seconds}s..."
+			sleep "$smoke_sleep_seconds"
+		fi
+	fi
+done
+if [[ "$artifacthub_package_ready" != "true" ]]; then
+	echo "ERROR: Artifact Hub repository exists but package is not indexed yet." >&2
+	echo "  package API: $package_version_url" >&2
+	echo "  retry after Artifact Hub tracker runs, or push a new chart version to force reprocessing." >&2
+	exit 4
+fi
+
+echo "Artifact Hub package OK: https://artifacthub.io/packages/helm/${artifacthub_repository_name}/${artifacthub_package_name}?modal=version-${VERSION}"
 
 echo "=== Helm/Artifact Hub target version 정합성 ==="
 if command -v "$helm_bin" >/dev/null 2>&1; then
