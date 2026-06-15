@@ -21,6 +21,11 @@ case "$1 $2" in
 		printf 'keiailab-valkey-operator/valkey-operator 0.3.0-alpha.16 0.3.0-alpha.16\n'
 		exit 0
 		;;
+	"show chart")
+		printf 'version: %s\n' "${TAG}"
+		printf 'appVersion: "%s"\n' "${EXPECTED_APP_VERSION}"
+		exit 0
+		;;
 esac
 echo "unexpected helm call: $*" >&2
 exit 99
@@ -64,14 +69,14 @@ case "$url" in
 		;;
 	*/repositories/search*)
 		if [[ "${ARTIFACTHUB_TEST_CASE:-missing}" == "registered" ]]; then
-			printf '[{"repository_id":"repo-id","name":"keiailab-valkey-operator","url":"https://keiailab.github.io/valkey-operator","last_tracking_errors":null}]' >"$out"
+			printf '[{"repository_id":"repo-id","name":"keiailab-valkey-operator","url":"oci://ghcr.io/keiailab/charts/valkey-operator","last_tracking_errors":null}]' >"$out"
 		else
 			printf '[]' >"$out"
 		fi
 		;;
-	*/packages/helm/keiailab-valkey-operator/valkey-operator)
+	*/packages/helm/keiailab-valkey-operator/valkey-operator/*)
 		if [[ "${ARTIFACTHUB_TEST_CASE:-missing}" == "registered" ]]; then
-			printf '{"name":"valkey-operator"}' >"$out"
+			printf '{"name":"valkey-operator","version":"%s","app_version":"%s","signed":true,"containers_images":[]}' "${TAG}" "${EXPECTED_APP_VERSION}" >"$out"
 		else
 			exit 22
 		fi
@@ -91,6 +96,10 @@ export ARTIFACTHUB_API_URL="https://artifacthub.test/api/v1"
 export ARTIFACTHUB_ORG="keiailab"
 export ARTIFACTHUB_REPOSITORY_NAME="keiailab-valkey-operator"
 export ARTIFACTHUB_PACKAGE_NAME="valkey-operator"
+export EXPECTED_ARTIFACTHUB_REPOSITORY_URL="oci://ghcr.io/keiailab/charts/valkey-operator"
+export EXPECTED_APP_VERSION="1.3.0"
+export REQUIRE_PROVENANCE="0"
+export TAG="1.3.2"
 export HELM_REPO_URL="https://keiailab.github.io/valkey-operator"
 
 if ARTIFACTHUB_TEST_CASE=missing bash "$repo_root/hack/artifacthub_smoke.sh" >"$tmpdir/missing.out" 2>&1; then

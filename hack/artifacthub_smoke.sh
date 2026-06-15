@@ -6,7 +6,10 @@ artifacthub_api_url="${ARTIFACTHUB_API_URL:-https://artifacthub.io/api/v1}"
 artifacthub_org="${ARTIFACTHUB_ORG:-keiailab}"
 artifacthub_package_name="${ARTIFACTHUB_PACKAGE_NAME:-valkey-operator}"
 artifacthub_repository_name="${ARTIFACTHUB_REPOSITORY_NAME:-keiailab-valkey-operator}"
+artifacthub_repository_url="${EXPECTED_ARTIFACTHUB_REPOSITORY_URL:-${ARTIFACTHUB_REPOSITORY_URL:-oci://ghcr.io/keiailab/charts/valkey-operator}}"
 helm_repo_url="${HELM_REPO_URL:-https://keiailab.github.io/valkey-operator}"
+artifacthub_api_key_id="${AH_API_KEY_ID:-${ARTIFACTHUB_API_KEY_ID:-}}"
+artifacthub_api_key_secret="${AH_API_KEY_SECRET:-${ARTIFACTHUB_API_KEY_SECRET:-}}"
 require_provenance="${REQUIRE_PROVENANCE:-1}"
 check_container_images="${CHECK_CONTAINER_IMAGES:-1}"
 
@@ -49,41 +52,44 @@ fetch_json() {
 	"$curl_bin" -fsSL "$url" -o "$out"
 }
 
-echo "=== Helm repository reachability ==="
-"$curl_bin" -fsSL "${helm_repo_url%/}/index.yaml" -o "$tmpdir/index.yaml"
-"$curl_bin" -fsSL "${helm_repo_url%/}/artifacthub-repo.yml" -o "$tmpdir/artifacthub-repo.yml"
-grep -q '^repositoryID:' "$tmpdir/artifacthub-repo.yml"
-
-echo "Helm repository OK: ${helm_repo_url%/}"
-
+echo "=== Legacy Helm repository reachability (warning-only) ==="
+if "$curl_bin" -fsSL "${helm_repo_url%/}/index.yaml" -o "$tmpdir/index.yaml" 2>/dev/null; then
+	echo "Legacy Helm repository reachable: ${helm_repo_url%/}"
+else
+	echo "::warning::legacy Helm repository is unreachable; Artifact Hub tracks OCI, so this is not a gate."
+fi
 if command -v "$helm_bin" >/dev/null 2>&1; then
 	"$helm_bin" repo add "$artifacthub_repository_name" "$helm_repo_url" >/dev/null 2>&1 || true
 	"$helm_bin" repo update "$artifacthub_repository_name" >/dev/null
-	"$helm_bin" search repo "${artifacthub_repository_name}/${artifacthub_package_name}" --versions --devel \
-		| grep -q "${artifacthub_repository_name}/${artifacthub_package_name}"
-	echo "Helm index package OK: ${artifacthub_repository_name}/${artifacthub_package_name}"
+	if "$helm_bin" search repo "${artifacthub_repository_name}/${artifacthub_package_name}" --versions --devel \
+		| grep -q "${artifacthub_repository_name}/${artifacthub_package_name}"; then
+		echo "Legacy Helm index package visible: ${artifacthub_repository_name}/${artifacthub_package_name}"
+	else
+		echo "::warning::legacy Helm index package not visible; Artifact Hub tracks OCI, so this is not a gate."
+	fi
 else
 	echo "WARN: helm not found; local Helm index search skipped" >&2
 fi
 
+require_tool "$curl_bin"
 require_tool "$jq_bin"
 
 echo "=== Artifact Hub repository registration ==="
 org_query="$(urlencode "$artifacthub_org")"
 fetch_json "${artifacthub_api_url%/}/repositories/search?org=${org_query}&kind=0&limit=60" "$tmpdir/repositories.json"
 
-normalized_helm_url="$(normalize_url "$helm_repo_url")"
+normalized_artifacthub_repository_url="$(normalize_url "$artifacthub_repository_url")"
 repo_filter='
 	.[]?
-	| select((.url // "" | sub("/$"; "")) == $url or .name == $name)
+	| select(.name == $name and ((.url // "" | sub("/$"; "")) == $url))
 '
-repo_json="$("$jq_bin" -e -c --arg url "$normalized_helm_url" --arg name "$artifacthub_repository_name" "$repo_filter" "$tmpdir/repositories.json" 2>/dev/null || true)"
+repo_json="$("$jq_bin" -e -c --arg url "$normalized_artifacthub_repository_url" --arg name "$artifacthub_repository_name" "$repo_filter" "$tmpdir/repositories.json" 2>/dev/null || true)"
 
 if [[ -z "$repo_json" ]]; then
 	echo "ERROR: Artifact Hub repository is not registered." >&2
 	echo "  org: ${artifacthub_org}" >&2
 	echo "  expected name: ${artifacthub_repository_name}" >&2
-	echo "  expected url: ${normalized_helm_url}" >&2
+	echo "  expected url: ${normalized_artifacthub_repository_url}" >&2
 	echo "  fix: make artifacthub-register ARTIFACTHUB_API_KEY_ID=... ARTIFACTHUB_API_KEY_SECRET=..." >&2
 	exit 2
 fi
@@ -96,6 +102,26 @@ if [[ -n "$tracking_errors" ]]; then
 	echo "ERROR: Artifact Hub repository tracking errors:" >&2
 	echo "$tracking_errors" >&2
 	exit 3
+fi
+
+if [[ -n "$artifacthub_api_key_id" && -n "$artifacthub_api_key_secret" ]]; then
+	repo_display_name="$("$jq_bin" -r '.display_name // "Keiailab Valkey Operator"' <<<"$repo_json")"
+	repo_update_body="$("$jq_bin" -n \
+		--arg name "$artifacthub_repository_name" \
+		--arg display_name "$repo_display_name" \
+		--arg url "$normalized_artifacthub_repository_url" \
+		'{kind: 0, name: $name, display_name: $display_name, url: $url}')"
+	if "$curl_bin" -fsSL \
+		-X PUT "${artifacthub_api_url%/}/repositories/org/${artifacthub_org}/${artifacthub_repository_name}" \
+		-H "Content-Type: application/json" \
+		-H "X-API-KEY-ID: ${artifacthub_api_key_id}" \
+		-H "X-API-KEY-SECRET: ${artifacthub_api_key_secret}" \
+		-d "$repo_update_body" \
+		-o /dev/null; then
+		echo "Artifact Hub repository update accepted (tracker nudge)"
+	else
+		echo "::warning::Artifact Hub repository update nudge failed; continuing with passive tracker retry."
+	fi
 fi
 
 # VERSION: Chart.yaml에서 추출 (TAG 환경변수가 없을 때 fallback)
@@ -111,6 +137,32 @@ fi
 
 if [[ -z "$VERSION" ]]; then
 	echo "ERROR: VERSION 미확인 — Chart.yaml 또는 TAG 값을 확인하세요." >&2
+	exit 5
+fi
+
+echo "=== GHCR OCI chart availability ==="
+if command -v "$helm_bin" >/dev/null 2>&1; then
+	oci_chart_ready=false
+	for attempt in $(seq 1 "$smoke_attempts"); do
+		if "$helm_bin" show chart "$normalized_artifacthub_repository_url" --version "$VERSION" >"$tmpdir/oci-chart.yaml" 2>"$tmpdir/oci-chart.err"; then
+			oci_chart_ready=true
+			break
+		fi
+		if [[ "$attempt" -lt "$smoke_attempts" ]]; then
+			echo "GHCR OCI chart not visible yet (${attempt}/${smoke_attempts}); waiting ${smoke_sleep_seconds}s..."
+			sleep "$smoke_sleep_seconds"
+		fi
+	done
+	if [[ "$oci_chart_ready" != "true" ]]; then
+		cat "$tmpdir/oci-chart.err" >&2 || true
+		echo "ERROR: GHCR OCI chart is not published yet." >&2
+		echo "  chart: ${normalized_artifacthub_repository_url}" >&2
+		echo "  version: ${VERSION}" >&2
+		exit 5
+	fi
+	echo "GHCR OCI chart OK: ${normalized_artifacthub_repository_url}:${VERSION}"
+else
+	echo "ERROR: helm not found; cannot verify GHCR OCI chart." >&2
 	exit 5
 fi
 
