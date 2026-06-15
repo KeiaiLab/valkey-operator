@@ -1,7 +1,19 @@
 # Valkey Operator Helm Chart
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png" alt="Keiailab Valkey Operator symbol" width="96"/>
+</p>
+
 A Kubernetes Operator for deploying and managing Valkey instances and Clusters
 (Valkey is the BSD-licensed Redis OSS fork stewarded by the Linux Foundation).
+
+## Design assets
+
+| Asset | URL | Usage |
+|---|---|---|
+| Centered service symbol | https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png | Artifact Hub package icon and screenshot |
+| Keiailab base symbol | https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/base-symbol.png | Source reference for the outer rotating-arrow mark |
+| Branding guide | https://github.com/KeiaiLab/valkey-operator/blob/main/docs/BRANDING.md | GitHub visual usage rules |
 
 ## Features
 

@@ -2,7 +2,7 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-version: 1.3.1
+version: 1.3.2
 appVersion: "1.3.0"
 kubeVersion: ">=1.26.0-0"
 
@@ -26,7 +26,7 @@ maintainers:
     email: support@keiailab.com
     url: https://keiailab.com
 
-icon: https://valkey.io/img/valkey-horizontal.svg
+icon: https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png
 
 annotations:
   artifacthub.io/license: MIT
@@ -46,6 +46,11 @@ annotations:
       url: https://github.com/keiailab/valkey-operator
     - name: Valkey Project
       url: https://valkey.io/
+    - name: Design Assets
+      url: https://github.com/KeiaiLab/valkey-operator/blob/main/docs/BRANDING.md
+  artifacthub.io/screenshots: |
+    - title: Keiailab Valkey Operator centered service symbol
+      url: https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png
   artifacthub.io/crds: |
     - kind: Valkey
       version: v1alpha1

@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://keiailab.com">
+    <img src="docs/branding/symbol.png" alt="keiailab" width="96"/>
+  </a>
+</p>
+
 # valkey-operator
 
 A Kubernetes operator for running [Valkey](https://valkey.io/) — standalone, replicated, or as a sharded cluster — with backup and restore.
@@ -5,6 +11,14 @@ A Kubernetes operator for running [Valkey](https://valkey.io/) — standalone, r
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
 [![Valkey](https://img.shields.io/badge/Valkey-8%2B-6979DC?logo=redis&logoColor=white)](https://valkey.io/)
+
+## Design assets
+
+| Asset | Path | Usage |
+|---|---|---|
+| Centered service symbol | [`docs/branding/symbol.png`](docs/branding/symbol.png) | GitHub README, Artifact Hub icon/screenshot |
+| Keiailab base symbol | [`docs/branding/base-symbol.png`](docs/branding/base-symbol.png) | Source reference for the outer rotating-arrow mark |
+| Branding guide | [`docs/BRANDING.md`](docs/BRANDING.md) | Public visual usage rules |
 
 Built with [Kubebuilder](https://book.kubebuilder.io/). A single controller manages standalone instances, primary/replica replication, and sharded Valkey Cluster through five custom resources, and reconciles the StatefulSets, Services, ConfigMaps, Secrets, and related objects each one needs.
 
