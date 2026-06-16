@@ -177,6 +177,9 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Pod:                  v.Spec.Pod,
 		AuthSecretHash:       hashAuthSecret(password),
 		RevisionHistoryLimit: v.Spec.RevisionHistoryLimit,
+		// Module 적재 (ADR-0032 / ADR-0062). BundleTag 은 valkey 버전과 동일 pin.
+		Modules:   v.Spec.Modules,
+		BundleTag: resources.BundleTagOrDefault(v.Spec.Version.Version),
 	}
 	if v.Spec.TLS != nil && v.Spec.TLS.Enabled {
 		switch {

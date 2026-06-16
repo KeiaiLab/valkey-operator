@@ -291,6 +291,28 @@ features:
   autoscaling:
     enabled: false
 
+# ----------------------------------------------------------------------------
+# Valkey module presets (PR-C6.2, ADR-0032 / ADR-0062)
+# ----------------------------------------------------------------------------
+# 모듈은 *CR 레벨* 기능이라 별도 feature gate / operator RBAC 가 불필요하다
+# (init container 가 워크로드 pod 안에서 .so 를 적재). chart 는 CRD 로 spec.modules
+# 필드를 노출만 한다. Valkey CR 에서 직접 지정:
+#
+#   apiVersion: cache.keiailab.io/v1alpha2
+#   kind: Valkey
+#   spec:
+#     modules:
+#       - name: valkey-search          # 공식 preset (allow-list)
+#       - name: valkey-json
+#       - name: valkey-bloom
+#       - name: my-module              # bring-your-own
+#         image: example.com/my-mod:1  # 이미지의 /modules/my-module.so 를 적재
+#
+# 공식 preset (Name 만 지정) 은 valkey-bundle 이미지에서 .so 를 자동 resolve하며,
+# allow-list (valkey-search / valkey-json / valkey-bloom) 외 이름은 webhook 이
+# 거부한다 (BSD 라이선스 호환 — RSALv2/SSPL 서드파티 미지원). init container 는
+# valkey-bundle:<valkey 버전> 을 사용하므로 ABI 가 valkey-server 버전과 정합한다.
+
 # NetworkPolicy for operator pod (cycle 72 implemented).
 # default-deny 기반 + 명시 ingress (Prometheus 8443) + egress (K8s API 443, DNS 53,
 # Valkey 6379/6380/16379). 추가 rule 은 networkPolicy.ingress / egress 로 확장.

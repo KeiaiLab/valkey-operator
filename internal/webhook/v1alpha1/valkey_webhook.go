@@ -8,6 +8,7 @@ package v1alpha1
 
 import (
 	"context"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,6 +18,7 @@ import (
 	commonswebhook "github.com/keiailab/operator-commons/pkg/webhook"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
+	"github.com/keiailab/valkey-operator/internal/resources"
 )
 
 var valkeylog = logf.Log.WithName("valkey-resource")
@@ -221,6 +223,38 @@ func validateValkeySpec(v *cachev1alpha1.Valkey) field.ErrorList {
 			p.Child("auth"),
 			"auth.users requires auth.enabled=true",
 		))
+	}
+
+	// modules allow-list / 중복 / BYO 검증 (PR-C6.2, ADR-0032/0062).
+	errs = append(errs, validateModules(p.Child("modules"), v.Spec.Modules)...)
+
+	return errs
+}
+
+// validateModules — Valkey 공식 module preset allow-list + 중복 + BYO 검증
+// (ADR-0032 / ADR-0062). 공식 preset (Image 빈) 은 allow-list 멤버만 허용
+// (RSALv2/SSPL 비호환 서드파티 차단), BYO (Image 명시) 는 allow-list 무관 통과.
+func validateModules(path *field.Path, modules []cachev1alpha1.ModuleSpec) field.ErrorList {
+	var errs field.ErrorList
+	seen := make(map[string]bool, len(modules))
+	for i, m := range modules {
+		mp := path.Index(i)
+		if seen[m.Name] {
+			errs = append(errs, field.Duplicate(mp.Child("name"), m.Name))
+		}
+		seen[m.Name] = true
+
+		// 공식 preset (Image 빈) → allow-list 멤버만 허용. 미등록 = 비호환
+		// 라이선스 (RSALv2/SSPL) 서드파티 가능성 → reject (ADR-0032).
+		if m.Image == "" && !resources.IsOfficialModule(m.Name) {
+			errs = append(errs, field.NotSupported(mp.Child("name"), m.Name, resources.OfficialModuleNames()))
+		}
+
+		// BYO (Image 명시): 공백-only image 만 reject. 과도한 image 정규식 금지
+		// (§2 Simplicity — 잘못된 image 는 ImagePullBackOff 로 위임).
+		if m.Image != "" && strings.TrimSpace(m.Image) == "" {
+			errs = append(errs, field.Invalid(mp.Child("image"), m.Image, "image must not be blank"))
+		}
 	}
 	return errs
 }

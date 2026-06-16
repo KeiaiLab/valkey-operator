@@ -47,8 +47,9 @@ verify: lint test build validate audit ## Run the full local verification pipeli
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen sync-crds ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@$(MAKE) --no-print-directory sync-crds   # generate 후 sync (prereq 순서 버그 fix — stale config 복사 방지)
 
 .PHONY: sync-crds
 sync-crds: ## Sync config/crd/bases → charts/valkey-operator/crds (TestCRDBaseChartSync 게이트 충족, postgres ADR-0013 + mongodb v1.4.3 parity).
