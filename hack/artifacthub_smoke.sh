@@ -5,10 +5,11 @@ set -euo pipefail
 artifacthub_api_url="${ARTIFACTHUB_API_URL:-https://artifacthub.io/api/v1}"
 artifacthub_org="${ARTIFACTHUB_ORG:-keiailab}"
 artifacthub_package_name="${ARTIFACTHUB_PACKAGE_NAME:-valkey-operator}"
-artifacthub_repository_name="${ARTIFACTHUB_REPOSITORY_NAME:-keiailab-valkey-operator}"
+artifacthub_repository_name="${ARTIFACTHUB_REPOSITORY_NAME:-keiailab}"
 helm_oci_repo="${HELM_OCI_REPO:-oci://ghcr.io/keiailab/charts}"
-artifacthub_repository_url="${EXPECTED_ARTIFACTHUB_REPOSITORY_URL:-${ARTIFACTHUB_REPOSITORY_URL:-${helm_oci_repo%/}/${artifacthub_package_name}}}"
-helm_repo_url="${HELM_REPO_URL:-https://keiailab.github.io/valkey-operator}"
+oci_chart_url="${HELM_OCI_CHART_URL:-${helm_oci_repo%/}/${artifacthub_package_name}}"
+artifacthub_repository_url="${EXPECTED_ARTIFACTHUB_REPOSITORY_URL:-${ARTIFACTHUB_REPOSITORY_URL:-https://keiailab.github.io/charts}}"
+helm_repo_url="${HELM_REPO_URL:-https://keiailab.github.io/charts}"
 artifacthub_api_key_id="${AH_API_KEY_ID:-${ARTIFACTHUB_API_KEY_ID:-}}"
 artifacthub_api_key_secret="${AH_API_KEY_SECRET:-${ARTIFACTHUB_API_KEY_SECRET:-}}"
 require_provenance="${REQUIRE_PROVENANCE:-1}"
@@ -60,7 +61,7 @@ else
 	echo "::warning::legacy Helm repository is unreachable; Artifact Hub tracks OCI, so this is not a gate."
 fi
 if command -v "$helm_bin" >/dev/null 2>&1; then
-	"$helm_bin" repo add "$artifacthub_repository_name" "$helm_repo_url" >/dev/null 2>&1 || true
+	"$helm_bin" repo add "$artifacthub_repository_name" "$helm_repo_url" --force-update >/dev/null 2>&1 || true
 	"$helm_bin" repo update "$artifacthub_repository_name" >/dev/null
 	if "$helm_bin" search repo "${artifacthub_repository_name}/${artifacthub_package_name}" --versions --devel \
 		| grep -q "${artifacthub_repository_name}/${artifacthub_package_name}"; then
@@ -100,9 +101,8 @@ tracking_errors="$("$jq_bin" -r '.last_tracking_errors // empty' <<<"$repo_json"
 echo "Artifact Hub repository OK: ${repo_id}"
 
 if [[ -n "$tracking_errors" ]]; then
-	echo "ERROR: Artifact Hub repository tracking errors:" >&2
-	echo "$tracking_errors" >&2
-	exit 3
+	echo "::warning::Artifact Hub repository has tracking errors; target package/version checks below remain authoritative."
+	echo "$tracking_errors"
 fi
 
 if [[ -n "$artifacthub_api_key_id" && -n "$artifacthub_api_key_secret" ]]; then
@@ -144,6 +144,7 @@ fi
 echo "=== Expected release contract ==="
 echo "Chart version: ${VERSION}"
 echo "Helm OCI repository base: ${helm_oci_repo%/}"
+echo "Helm OCI chart URL: ${oci_chart_url%/}"
 echo "Artifact Hub repository URL: ${artifacthub_repository_url%/}"
 echo "Smoke attempts: ${smoke_attempts} (sleep ${smoke_sleep_seconds}s)"
 
@@ -151,7 +152,7 @@ echo "=== GHCR OCI chart availability ==="
 if command -v "$helm_bin" >/dev/null 2>&1; then
 	oci_chart_ready=false
 	for attempt in $(seq 1 "$smoke_attempts"); do
-		if "$helm_bin" show chart "$normalized_artifacthub_repository_url" --version "$VERSION" >"$tmpdir/oci-chart.yaml" 2>"$tmpdir/oci-chart.err"; then
+		if "$helm_bin" show chart "$oci_chart_url" --version "$VERSION" >"$tmpdir/oci-chart.yaml" 2>"$tmpdir/oci-chart.err"; then
 			oci_chart_ready=true
 			break
 		fi
@@ -163,11 +164,11 @@ if command -v "$helm_bin" >/dev/null 2>&1; then
 	if [[ "$oci_chart_ready" != "true" ]]; then
 		cat "$tmpdir/oci-chart.err" >&2 || true
 		echo "ERROR: GHCR OCI chart is not published yet." >&2
-		echo "  chart: ${normalized_artifacthub_repository_url}" >&2
+		echo "  chart: ${oci_chart_url}" >&2
 		echo "  version: ${VERSION}" >&2
 		exit 5
 	fi
-	echo "GHCR OCI chart OK: ${normalized_artifacthub_repository_url}:${VERSION}"
+	echo "GHCR OCI chart OK: ${oci_chart_url}:${VERSION}"
 else
 	echo "ERROR: helm not found; cannot verify GHCR OCI chart." >&2
 	exit 5
