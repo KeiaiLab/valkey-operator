@@ -119,3 +119,55 @@ func TestValkeyCluster_ConvertTo_v1alpha2(t *testing.T) {
 		t.Errorf("ReplicasPerShard = %d, want 1", dst.Spec.ReplicasPerShard)
 	}
 }
+
+// TestValkey_Modules_RoundTrip_보존 — v1alpha2 Modules 가 v1alpha1 storage
+// 왕복(hub→spoke→hub)에서 보존되는지 검증.
+//
+// 배경: 컨트롤러/webhook/storage 모두 v1alpha1 이고, conversion webhook
+// 미연결 상태 (PR-C6.2). v1alpha1.ValkeySpec 에 Modules 필드가 부재하면
+// convertViaJSON(JSON byte-copy)이 hub→spoke 변환 시 Modules 를 silent drop
+// → 왕복 후 손실. ADR-0062: Modules 를 v1alpha1 에도 미러링하여 byte-copy 가
+// 자동 보존하도록 한다.
+//
+// AAA:
+//
+//	Arrange — v1alpha2.Valkey 에 official preset + BYO module 2개.
+//	Act — ConvertFrom(hub→spoke) → ConvertTo(spoke→hub) 왕복.
+//	Assert — Modules 2개 + 각 필드(Name/Image/LoadModuleArgs) 보존.
+func TestValkey_Modules_RoundTrip_보존(t *testing.T) {
+	src := &v1alpha2.Valkey{
+		ObjectMeta: metav1.ObjectMeta{Name: "vk-mod", Namespace: "default"},
+		Spec: v1alpha2.ValkeySpec{
+			Mode:     v1alpha2.ModeStandalone,
+			Replicas: 1,
+			Modules: []v1alpha2.ModuleSpec{
+				{Name: "valkey-search"},
+				{Name: "my-mod", Image: "example.com/mod:1", LoadModuleArgs: []string{"--foo", "bar"}},
+			},
+		},
+	}
+
+	// hub(v1alpha2) → spoke(v1alpha1): storage 변환.
+	spoke := &v1alpha1.Valkey{}
+	if err := spoke.ConvertFrom(src); err != nil {
+		t.Fatalf("ConvertFrom failed: %v", err)
+	}
+	// spoke(v1alpha1) → hub(v1alpha2): serving 변환.
+	back := &v1alpha2.Valkey{}
+	if err := spoke.ConvertTo(back); err != nil {
+		t.Fatalf("ConvertTo failed: %v", err)
+	}
+
+	if len(back.Spec.Modules) != 2 {
+		t.Fatalf("Modules 손실: got %d, want 2", len(back.Spec.Modules))
+	}
+	if back.Spec.Modules[0].Name != "valkey-search" {
+		t.Errorf("Modules[0].Name = %q, want valkey-search", back.Spec.Modules[0].Name)
+	}
+	if back.Spec.Modules[1].Image != "example.com/mod:1" {
+		t.Errorf("Modules[1].Image = %q, want example.com/mod:1", back.Spec.Modules[1].Image)
+	}
+	if len(back.Spec.Modules[1].LoadModuleArgs) != 2 || back.Spec.Modules[1].LoadModuleArgs[0] != "--foo" {
+		t.Errorf("Modules[1].LoadModuleArgs = %v, want [--foo bar]", back.Spec.Modules[1].LoadModuleArgs)
+	}
+}

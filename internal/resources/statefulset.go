@@ -47,6 +47,14 @@ type STSParams struct {
 	// STS rolling update 가 자동 트리거 (pod 들이 새 password 로 재시작).
 	// 빈 문자열이면 annotation 미설정 (rotation 추적 비활성).
 	AuthSecretHash string
+
+	// Modules — Valkey 공식 preset / BYO module 적재 (ADR-0032 / ADR-0062).
+	// 비어 있으면 no-op (init container / 볼륨 / --loadmodule args 부재).
+	Modules []cachev1alpha1.ModuleSpec
+
+	// BundleTag — 공식 preset init container (valkey-bundle) 의 image tag.
+	// valkey 버전과 동일 pin (.so ABI 정합, ADR-0062 D4). 공식 preset 존재 시만 사용.
+	BundleTag string
 }
 
 // BuildStatefulSet — Valkey 데이터 STS.
@@ -182,9 +190,23 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	}
 	volumes = append(volumes, tlsVols...)
 
+	// Module 적재 (ADR-0032 / ADR-0062): 공식 preset / BYO module 을 init
+	// container 가 공유 emptyDir 로 cp → 메인 valkey 가 --loadmodule 로 적재.
+	// 빈 Modules 면 no-op (init/볼륨/args 변화 0).
+	var moduleInits []corev1.Container
+	if len(p.Modules) > 0 {
+		containers[0].Args = append(containers[0].Args, moduleLoadArgs(p.Modules)...)
+		containers[0].VolumeMounts = append(containers[0].VolumeMounts, corev1.VolumeMount{
+			Name: moduleVolumeName, MountPath: ModulesDir, ReadOnly: true,
+		})
+		volumes = append(volumes, moduleVolume())
+		moduleInits = buildModuleInitContainers(p.Modules, p.BundleTag, p.PullPolicy)
+	}
+
 	podSpec := corev1.PodSpec{
-		Containers: containers,
-		Volumes:    volumes,
+		Containers:     containers,
+		InitContainers: moduleInits,
+		Volumes:        volumes,
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: new(true),
 			RunAsUser:    new(int64(999)),

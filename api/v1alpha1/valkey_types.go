@@ -91,6 +91,22 @@ type ValkeySpec struct {
 	// +optional
 	AutoFailover *bool `json:"autoFailover,omitempty"`
 
+	// Modules — Valkey 공식 module 활성화 (Plan §2 D9, ADR-0032, ADR-0062).
+	//
+	// 본 spec 은 *Valkey 공식 module 만* preset 으로 인정 (BSD 라이선스
+	// 호환). 비호환 라이선스 (RSALv2 / SSPL) 의 서드파티 module 패키지는
+	// 본 필드에서 미지원.
+	//
+	// 사용자 커스텀 module 은 ModuleSpec.Image 로 *bring-your-own*
+	// (init container 가 .so 를 emptyDir 로 mount).
+	//
+	// 주의: v1alpha2 와 동일한 JSON tag/구조 (ADR-0062). storageversion 이
+	// v1alpha1 이고 conversion webhook 미연결 상태에서 convertViaJSON
+	// (byte-copy) 이 Modules 를 양버전 보존하도록 v1alpha1 에도 미러링.
+	//
+	// +optional
+	Modules []ModuleSpec `json:"modules,omitempty"`
+
 	// Autoscaling — operator-managed HorizontalPodAutoscaler (HPA v2).
 	// ADR-0027 (Replication mode 만 — Cluster mode 는 slot 재분배 위험).
 	// 활성 시 ScalePolicy.Deliberate 무시 + Spec.Replicas 는 default 값으로만 사용.
@@ -118,6 +134,34 @@ func (s *ValkeySpec) IsAutoFailoverEnabled() bool {
 		return true
 	}
 	return *s.AutoFailover
+}
+
+// ModuleSpec — Valkey module 정의 (Plan §2 D9, ADR-0032, ADR-0062).
+//
+// 두 모드:
+//   - Name 만 지정: Valkey 공식 module preset (예: "valkey-search",
+//     "valkey-json", "valkey-bloom"). operator 가 allow-list 검증 +
+//     공식 image (valkey-bundle) 자동 resolve.
+//   - Image 명시: bring-your-own custom module. init container 가
+//     해당 image 의 /modules/<name>.so 를 emptyDir 로 mount, valkey
+//     container 가 `--loadmodule /modules/<name>.so <args>` 로 적재.
+//
+// 보안: PSS Restricted (ADR-0036) 와 정합 — init container 도 restricted
+// SecurityContext. module image 가 privileged syscall 요구 시 webhook 거부.
+//
+// v1alpha2.ModuleSpec 와 JSON tag/구조 byte-동일 (ADR-0062).
+type ModuleSpec struct {
+	// Name — module 식별자 (예: "valkey-search").
+	// +kubebuilder:validation:Pattern=`^[a-z][a-z0-9-]+$`
+	Name string `json:"name"`
+
+	// Image — custom module image (optional). 미지정 시 공식 preset 자동 resolve.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// LoadModuleArgs — `loadmodule <so> <args>` 의 args (optional).
+	// +optional
+	LoadModuleArgs []string `json:"loadModuleArgs,omitempty"`
 }
 
 // ValkeyStatus — observed state.
