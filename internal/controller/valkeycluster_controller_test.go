@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/internal/resources"
@@ -45,7 +46,7 @@ var _ = Describe("ValkeyCluster Controller", func() {
 					},
 					Spec: cachev1alpha1.ValkeyClusterSpec{
 						Shards:           3,
-						ReplicasPerShard: 1,
+						ReplicasPerShard: ptr.To[int32](1),
 						Version:          cachev1alpha1.ValkeyVersion{Version: "8.1.6"},
 					},
 				}
@@ -101,7 +102,7 @@ var _ = Describe("ValkeyCluster Controller", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
 				Spec: cachev1alpha1.ValkeyClusterSpec{
 					Shards:           3,
-					ReplicasPerShard: 1,
+					ReplicasPerShard: ptr.To[int32](1),
 					Version:          cachev1alpha1.ValkeyVersion{Version: "8.1.6"},
 				},
 			}

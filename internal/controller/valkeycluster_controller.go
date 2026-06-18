@@ -225,6 +225,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		Pod:                  vc.Spec.Pod,
 		AuthSecretHash:       hashAuthSecret(password),
 		RevisionHistoryLimit: vc.Spec.RevisionHistoryLimit,
+		Modules:              vc.Spec.Modules,
 	}
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
 		// CertManager 와 CustomCert 둘 다 동일 secret 마운트 — webhook 이 둘 중 하나만
@@ -235,6 +236,12 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		case vc.Spec.TLS.CertManager != nil && vc.Spec.TLS.CertManager.IssuerRef.Name != "":
 			stsParams.TLSSecretName = resources.CertificateSecretName(vc.Name)
 		}
+		// TLS cert hash — cert-manager rotation 시 pod rolling restart 트리거.
+		tlsHash, err := hashTLSSecret(ctx, r.Client, vc.Namespace, stsParams.TLSSecretName)
+		if err != nil {
+			return applyErrorCondition(ctx, r.Client, vc, "TLSCertHash", err, r.Recorder)
+		}
+		stsParams.TLSCertHash = tlsHash
 	}
 	if vc.Spec.Monitoring != nil && vc.Spec.Monitoring.Enabled {
 		stsParams.ExporterImg = exporterImage(vc.Spec.Monitoring)
@@ -281,7 +288,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		perShard := vc.Spec.PodDisruptionBudget != nil && vc.Spec.PodDisruptionBudget.PerShard
 		if perShard {
 			// CDEX-M2 per-shard PDB loop. shardReplicas = 1 primary + ReplicasPerShard.
-			shardReplicas := int32(1) + vc.Spec.ReplicasPerShard
+			shardReplicas := int32(1) + vc.Spec.GetReplicasPerShard()
 			for i := 0; i < int(vc.Spec.Shards); i++ {
 				pdb := resources.BuildShardPDB(vc.Name, vc.Namespace, i, shardReplicas, vc.Spec.PodDisruptionBudget)
 				if err := commonsapply.PDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
@@ -367,6 +374,26 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		info, nodes, err = r.pollClusterState(ctx, vc, password)
 		if err != nil {
 			logger.Error(err, "Cluster info query failed across all nodes")
+		}
+	}
+
+	// 10.5 멤버십 자가복구 (결함 ③) — slot 레벨 health gate(cluster_state=ok)가
+	//      통과해도 *멤버십/replica 수* 는 별도다. 노드가 재시작 후 새 node id 를
+	//      얻거나 nodes.conf 를 잃어 멤버십에서 이탈하면 shard 가 desired 보다 적은
+	//      replica 로 운영된다. allReady && state=ok 인 정상 cluster 에서도 CLUSTER
+	//      NODES 를 desired 토폴로지와 비교해 누락 멤버를 MEET + REPLICATE 로 재합류.
+	//      멱등 — 이미 올바른 멤버는 건드리지 않는다.
+	if allReady && info != nil && info.State == "ok" && vc.Spec.GetReplicasPerShard() > 0 {
+		if reintegrated, mErr := r.ensureClusterMembership(ctx, vc, password); mErr != nil {
+			logger.Error(mErr, "Cluster membership re-integration pending — will retry")
+		} else if reintegrated > 0 {
+			logger.Info("Re-integrated cluster members", "count", reintegrated)
+			commonsevents.Emitf(r.Recorder, vc, "Reintegration",
+				"cluster 멤버십 자가복구: %d 노드 재합류 (CLUSTER MEET + REPLICATE)", reintegrated)
+			// 멤버십이 막 바뀌었으니 NODES 를 다시 읽어 shard status 정확도를 높인다.
+			if i2, n2, e2 := r.pollClusterState(ctx, vc, password); e2 == nil && i2 != nil {
+				info, nodes = i2, n2
+			}
 		}
 	}
 
@@ -733,7 +760,7 @@ func (r *ValkeyClusterReconciler) ensureClusterMeet(
 	dial := func(addr string) *redis.Client { return dialPod(addr, password, tlsCfg) }
 	createCtx, createSpan := observability.StartCallSpan(ctx, "ValkeyCluster/CreateCluster")
 	defer createSpan.End()
-	if err := vk.CreateCluster(createCtx, dial, addresses, int(vc.Spec.Shards), int(vc.Spec.ReplicasPerShard)); err != nil {
+	if err := vk.CreateCluster(createCtx, dial, addresses, int(vc.Spec.Shards), int(vc.Spec.GetReplicasPerShard())); err != nil {
 		createSpan.RecordError(err)
 		return err
 	}
@@ -1041,7 +1068,7 @@ func joinRanges(rs []string) string {
 // slot range 도 CreateCluster 와 동일한 균등 분배 (마지막 shard 가 잔여 흡수).
 func buildShardStatus(vc *cachev1alpha1.ValkeyCluster) []cachev1alpha1.ShardStatus {
 	shards := int(vc.Spec.Shards)
-	rps := int(vc.Spec.ReplicasPerShard)
+	rps := int(vc.Spec.GetReplicasPerShard())
 	if shards == 0 {
 		return nil
 	}

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -158,7 +159,7 @@ func TestValidateClusterSpec_AdditionalConfig(t *testing.T) {
 	t.Parallel()
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.AdditionalConfig = map[string]string{"tls-port": "9999"}
 	errs := validateClusterSpec(vc)
 	found := false

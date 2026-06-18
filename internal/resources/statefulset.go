@@ -52,6 +52,14 @@ type STSParams struct {
 	// 빈 문자열이면 annotation 미설정 (rotation 추적 비활성).
 	AuthSecretHash string
 
+	// TLSCertHash — TLS Secret data (tls.crt + tls.key + ca.crt) 의 SHA256 (hex)
+	// hash. PodTemplate 의 annotation `cache.keiailab.io/tls-cert-hash` 로 주입되어,
+	// cert-manager 가 cert/CA 를 재발급(rotation)해 Secret data 가 바뀌면 hash 변경
+	// → STS rolling update 가 자동 트리거 → pod 들이 새 cert 를 마운트한 채 재시작.
+	// valkey-server 가 디스크 cert 를 시작 시점에만 read 하는 결함을 우회한다.
+	// 빈 문자열이면 annotation 미설정 (TLS 미활성 또는 Secret 미준비).
+	TLSCertHash string
+
 	// Modules — Valkey module 목록. 비어 있지 않으면 BuildModuleInitContainers 가
 	// init-container(.so 를 공유 emptyDir 로 cp) + volume + --loadmodule args 를 생성한다.
 	Modules []cachev1alpha1.ModuleSpec
@@ -94,9 +102,15 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	// commons storageclass.Normalize — 빈 값 = nil (cluster default StorageClass).
 	dataPVC.Spec.StorageClassName = storageclass.Normalize(storageClass)
 
-	envFromPassword := []corev1.EnvVar{}
+	// POD_IP — downward API 로 pod 의 실제 IP 주입. cluster mode 에서
+	// cluster-announce-ip 로 사용 (Defect ②: pod 재시작 후 새 IP 를 gossip 에
+	// 광고하지 못해 멤버십이 깨지는 결함 방지). 비-cluster 모드에서도 무해.
+	podEnv := []corev1.EnvVar{{
+		Name:      "POD_IP",
+		ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "status.podIP"}},
+	}}
 	if p.PasswordRef != nil {
-		envFromPassword = append(envFromPassword, corev1.EnvVar{
+		podEnv = append(podEnv, corev1.EnvVar{
 			Name:      "VALKEY_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: p.PasswordRef},
 		})
@@ -114,7 +128,7 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			Ports: []corev1.ContainerPort{
 				{Name: "client", ContainerPort: PortClient, Protocol: corev1.ProtocolTCP},
 			},
-			Env:             envFromPassword,
+			Env:             podEnv,
 			Resources:       p.Resources,
 			SecurityContext: buildRestrictedContainerSecurityContext(),
 			VolumeMounts: append([]corev1.VolumeMount{
@@ -201,6 +215,16 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		containers[0].VolumeMounts = append(containers[0].VolumeMounts,
 			corev1.VolumeMount{Name: ModuleVolumeName, MountPath: moduleMountPath})
 		volumes = append(volumes, moduleVol)
+	}
+
+	// Cluster mode: cluster-announce-ip 를 pod 의 실제 IP 로 광고 (Defect ②).
+	// cluster-announce-ip 는 startup 시점 literal 이어야 하므로 ConfigMap 이 아니라
+	// 컨테이너 command 에서 $POD_IP 를 셸 확장한다. CLI flag 가 valkey.conf 보다
+	// 우선하므로 ConfigMap 의 기타 directive 는 그대로 유효.
+	// announce-port=client(6379/tls 6380 무관 — 6379 는 평문/내부 dial 기준),
+	// announce-bus-port=cluster-bus(16379).
+	if p.ClusterMode {
+		containers[0].Command, containers[0].Args = clusterAnnounceCommand(containers[0].Args)
 	}
 
 	podSpec := corev1.PodSpec{
@@ -292,18 +316,25 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 // 로 재시작.
 const AnnotationAuthSecretHash = "cache.keiailab.io/auth-secret-hash"
 
+// AnnotationTLSCertHash — pod template annotation 키. TLS Secret(cert/CA)
+// rotation 추적용. cert-manager 가 cert 를 재발급해 hash 가 바뀌면 STS
+// RollingUpdate 가 자동 발동되어 모든 pod 가 새 cert 로 재시작.
+const AnnotationTLSCertHash = "cache.keiailab.io/tls-cert-hash"
+
 func podTemplateAnnotations(p STSParams) map[string]string {
 	annotations := map[string]string{}
 	if p.Pod != nil {
 		maps.Copy(annotations, p.Pod.Annotations)
 	}
-	if p.AuthSecretHash == "" {
-		if len(annotations) == 0 {
-			return nil
-		}
-		return annotations
+	if p.AuthSecretHash != "" {
+		annotations[AnnotationAuthSecretHash] = p.AuthSecretHash
 	}
-	annotations[AnnotationAuthSecretHash] = p.AuthSecretHash
+	if p.TLSCertHash != "" {
+		annotations[AnnotationTLSCertHash] = p.TLSCertHash
+	}
+	if len(annotations) == 0 {
+		return nil
+	}
 	return annotations
 }
 
@@ -331,6 +362,26 @@ func buildRestrictedContainerSecurityContext() *corev1.SecurityContext {
 		security.WithRunAsUser(999),
 		security.WithReadOnlyRootFilesystem(true),
 	)
+}
+
+// clusterAnnounceCommand — cluster mode 컨테이너 command 를 셸 래핑하여
+// cluster-announce-ip 를 $POD_IP(downward API)로 확장한다. 입력은 기존
+// valkey-server args (config path + --loadmodule 등). 반환은 (command, args)
+// 쌍: command 는 `sh -c '...'`, args 는 nil (셸 명령에 모두 인라인).
+//
+// cluster-announce-ip 는 valkey-server 시작 시점에 literal 이어야 하므로
+// ConfigMap directive 로 표현할 수 없다 (pod IP 는 ConfigMap 렌더 시점 미확정).
+// CLI flag 가 valkey.conf 보다 우선하므로 ConfigMap 의 cluster-* directive 는
+// 유효하게 유지된다. `exec` 로 PID 1 을 valkey-server 로 교체해 signal/graceful
+// shutdown 의미를 보존한다.
+func clusterAnnounceCommand(serverArgs []string) ([]string, []string) {
+	parts := append([]string{"exec", "valkey-server"}, serverArgs...)
+	parts = append(parts,
+		"--cluster-announce-ip", `"$POD_IP"`,
+		"--cluster-announce-port", fmt.Sprintf("%d", PortClient),
+		"--cluster-announce-bus-port", fmt.Sprintf("%d", PortClusterBus),
+	)
+	return []string{"sh", "-c", strings.Join(parts, " ")}, nil
 }
 
 // PortIntOrString — helper for Probe/Service ports.

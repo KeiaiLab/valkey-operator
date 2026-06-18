@@ -6,6 +6,7 @@ Licensed under the MIT License. See the LICENSE file for details.
 package resources
 
 import (
+	"k8s.io/utils/ptr"
 	"strings"
 	"testing"
 
@@ -96,7 +97,7 @@ func TestConfigMap_autoFailoverFalse_setsDirective(t *testing.T) {
 	vc.Name = "vk"
 	vc.Namespace = "ns"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.NodeTimeoutMillis = 15000
 	vc.Spec.AutoFailover = false
 
@@ -115,7 +116,7 @@ func TestConfigMap_autoFailoverTrue_omitsDirective(t *testing.T) {
 	vc.Name = "vk"
 	vc.Namespace = "ns"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.NodeTimeoutMillis = 15000
 	vc.Spec.AutoFailover = true
 
@@ -163,7 +164,7 @@ func TestConfigMap_persistenceMode(t *testing.T) {
 			vc.Name = "vk"
 			vc.Namespace = "ns"
 			vc.Spec.Shards = 3
-			vc.Spec.ReplicasPerShard = 1
+			vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 			vc.Spec.Persistence = &cachev1alpha1.PersistencePolicy{Mode: tc.mode}
 
 			cm, err := BuildConfigMapForValkeyCluster(vc, "pwd")
@@ -191,7 +192,7 @@ func TestConfigMap_additionalConfig(t *testing.T) {
 	vc.Name = "vk"
 	vc.Namespace = "ns"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.AdditionalConfig = map[string]string{
 		"maxclients":               "10000",
 		"hash-max-ziplist-entries": "512",
