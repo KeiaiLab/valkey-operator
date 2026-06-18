@@ -73,12 +73,11 @@ func (d *ValkeyClusterCustomDefaulter) Default(_ context.Context, obj *cachev1al
 	if obj.Spec.Shards == 0 {
 		obj.Spec.Shards = 3
 	}
-	// ReplicasPerShard: AutoFailover=true 가 default 인데 0 이면 webhook validator
-	// 가 reject 한다. CRD default=1 이지만 omitempty 부재로 schema default 가 skip
-	// 되므로 여기서 채움.
-	if obj.Spec.ReplicasPerShard == 0 {
-		obj.Spec.ReplicasPerShard = 1
-	}
+	// ReplicasPerShard: *명시 0 (masters-only 토폴로지) 을 절대 손대지 않는다*.
+	// `json:"replicasPerShard"` (no omitempty) + CRD `+kubebuilder:default=1` 조합에서
+	// apiserver 는 *필드 부재* 시에만 default 1 을 적용하고 *명시 0* 은 그대로 보존한다.
+	// 과거 이 자리에서 0→1 을 강제하던 코드는 명시 0 과 미지정을 구별하지 못해
+	// replicasPerShard=0 (defect ④) 을 무력화했다 — 그래서 제거했다.
 	if obj.Spec.Version.Version == "" {
 		obj.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
 	}
@@ -139,24 +138,12 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 		errs = append(errs, err)
 	}
 
-	// AutoFailover=true + ReplicasPerShard=0 → failover 불가 (replica 부재).
-	//
-	// ADR-0017 Type A' (조건부 unreachable, defensive 유지):
-	//   - ValkeyClusterSpec.ReplicasPerShard 는 'json:"replicasPerShard"' (no
-	//     omitempty), CRD '+kubebuilder:default=1', mutating defaulter (Default
-	//     함수 위) 가 명시 0→1 보강.
-	//   - webhook.enabled=true 환경 (operator 정상 운영) 에서는 mutating defaulter
-	//     가 0→1 변환 → 본 invariant 도달 안 함.
-	//   - webhook.enabled=false 환경 (CRD-only 모드, helm opt-out) 에서는 mutating
-	//     defaulter 우회 + CRD default 가 *명시 0* 무력화 못 함 → reachable.
-	//   - 따라서 *제거 금지* — defensive 가드. it47 commit 5f3f91c 의 envtest
-	//     'unreachable' 분석은 webhook.enabled=true 한정 시나리오.
-	if vc.Spec.AutoFailover && vc.Spec.ReplicasPerShard == 0 {
-		errs = append(errs, field.Forbidden(
-			specPath.Child("autoFailover"),
-			"autoFailover=true requires replicasPerShard >= 1 (no replicas means no failover possible)",
-		))
-	}
+	// ReplicasPerShard=0 (masters-only 토폴로지, defect ④) 은 *유효* 하다.
+	// AutoFailover 는 non-pointer bool 로 CRD default=true — 명시 false 와 zero 를
+	// 구별할 수 없으므로 'autoFailover=true && rps=0' 를 reject 하면 모든 masters-only
+	// 사용자가 autoFailover=false 를 강제로 함께 명시해야 한다. failover 가 replica
+	// 부재 시 불가능한 것은 masters-only 토폴로지에 *내재된* tradeoff 이지 모순 조합이
+	// 아니므로 admission 에서 거부하지 않는다 (replica 0 → 단순히 failover 비활성).
 
 	// 총 노드 수 상한 — Valkey cluster 권장 (>100 노드는 운영 부담 + gossip 오버헤드).
 	total := vc.Spec.TotalNodes()
@@ -233,6 +220,9 @@ func validateClusterSpec(vc *cachev1alpha1.ValkeyCluster) field.ErrorList {
 
 	// additionalConfig directive 주입 + operator-managed override 차단 (Valkey CR 와 sister).
 	errs = append(errs, validateAdditionalConfig(specPath.Child("additionalConfig"), vc.Spec.AdditionalConfig)...)
+
+	// modules allow-list 검증 (ADR-0032) — 외부 Redis Stack 거부 (Valkey CR 와 동일 검증).
+	errs = append(errs, validateModules(specPath.Child("modules"), vc.Spec.Modules)...)
 
 	return errs
 }

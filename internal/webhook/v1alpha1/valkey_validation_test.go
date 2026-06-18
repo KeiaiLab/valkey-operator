@@ -235,15 +235,16 @@ func TestValidateValkeySpec(t *testing.T) {
 // validateClusterSpec 회귀 보호 (cycle 131).
 func TestValidateClusterSpec(t *testing.T) {
 	t.Parallel()
-	t.Run("autoFailover=true + replicasPerShard=0 → error", func(t *testing.T) {
+	t.Run("masters-only replicasPerShard=0 → accepted (defect ④)", func(t *testing.T) {
 		t.Parallel()
 		vc := &cachev1alpha1.ValkeyCluster{}
 		vc.Spec.Shards = 3
 		vc.Spec.ReplicasPerShard = 0
 		vc.Spec.AutoFailover = true
+		vc.Spec.Version.Version = "8.1.6"
 		errs := validateClusterSpec(vc)
-		if len(errs) == 0 {
-			t.Error("autoFailover=true + replicasPerShard=0 → expected error")
+		if len(errs) != 0 {
+			t.Errorf("masters-only (replicasPerShard=0) should be accepted, got %v", errs)
 		}
 	})
 	t.Run("totalNodes > 100 → error", func(t *testing.T) {

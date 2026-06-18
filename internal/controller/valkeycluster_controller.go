@@ -225,6 +225,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		Pod:                  vc.Spec.Pod,
 		AuthSecretHash:       hashAuthSecret(password),
 		RevisionHistoryLimit: vc.Spec.RevisionHistoryLimit,
+		Modules:              vc.Spec.Modules,
 	}
 	if vc.Spec.TLS != nil && vc.Spec.TLS.Enabled {
 		// CertManager 와 CustomCert 둘 다 동일 secret 마운트 — webhook 이 둘 중 하나만
@@ -373,6 +374,26 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		info, nodes, err = r.pollClusterState(ctx, vc, password)
 		if err != nil {
 			logger.Error(err, "Cluster info query failed across all nodes")
+		}
+	}
+
+	// 10.5 멤버십 자가복구 (결함 ③) — slot 레벨 health gate(cluster_state=ok)가
+	//      통과해도 *멤버십/replica 수* 는 별도다. 노드가 재시작 후 새 node id 를
+	//      얻거나 nodes.conf 를 잃어 멤버십에서 이탈하면 shard 가 desired 보다 적은
+	//      replica 로 운영된다. allReady && state=ok 인 정상 cluster 에서도 CLUSTER
+	//      NODES 를 desired 토폴로지와 비교해 누락 멤버를 MEET + REPLICATE 로 재합류.
+	//      멱등 — 이미 올바른 멤버는 건드리지 않는다.
+	if allReady && info != nil && info.State == "ok" && vc.Spec.ReplicasPerShard > 0 {
+		if reintegrated, mErr := r.ensureClusterMembership(ctx, vc, password); mErr != nil {
+			logger.Error(mErr, "Cluster membership re-integration pending — will retry")
+		} else if reintegrated > 0 {
+			logger.Info("Re-integrated cluster members", "count", reintegrated)
+			commonsevents.Emitf(r.Recorder, vc, "Reintegration",
+				"cluster 멤버십 자가복구: %d 노드 재합류 (CLUSTER MEET + REPLICATE)", reintegrated)
+			// 멤버십이 막 바뀌었으니 NODES 를 다시 읽어 shard status 정확도를 높인다.
+			if i2, n2, e2 := r.pollClusterState(ctx, vc, password); e2 == nil && i2 != nil {
+				info, nodes = i2, n2
+			}
 		}
 	}
 

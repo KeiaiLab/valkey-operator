@@ -199,6 +199,56 @@ func TestBuildShardStatusFromNodes_3x1(t *testing.T) {
 	}
 }
 
+// defect ⑥: ValkeyClusterSpec.Modules → cluster STS 에 module init-container +
+// --loadmodule 적용. cluster reconcile 이 STSParams.Modules = vc.Spec.Modules 로
+// 전달하므로, cluster mode STS 빌드가 모듈을 반영하는지 검증.
+func TestClusterSTS_modulesWired(t *testing.T) {
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Name = "vk"
+	vc.Namespace = "ns"
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}}
+
+	sts := resources.BuildStatefulSet(resources.STSParams{
+		CRName:      vc.Name,
+		Namespace:   vc.Namespace,
+		Replicas:    vc.Spec.TotalNodes(),
+		Image:       "valkey:9",
+		ClusterMode: true,
+		Modules:     vc.Spec.Modules, // reconcile 의 STSParams 와 동일 wiring.
+	})
+	ps := sts.Spec.Template.Spec
+	if len(ps.InitContainers) != 1 {
+		t.Fatalf("cluster STS module init-container 1 기대, got %d", len(ps.InitContainers))
+	}
+	hasLoad := false
+	for _, a := range ps.Containers[0].Args {
+		if a == "--loadmodule" {
+			hasLoad = true
+		}
+	}
+	if !hasLoad {
+		t.Fatalf("cluster STS valkey container args 에 --loadmodule 기대: %v", ps.Containers[0].Args)
+	}
+}
+
+// defect ④: masters-only — TotalNodes() 가 shards 만 (replica 0).
+func TestTotalNodes_mastersOnly(t *testing.T) {
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = 0
+	if got := vc.Spec.TotalNodes(); got != 3 {
+		t.Fatalf("masters-only TotalNodes(): got %d want 3", got)
+	}
+	// podAddresses 도 shards 개 (replica 주소 없음).
+	vc.Name = "vk"
+	vc.Namespace = "ns"
+	if got := podAddresses(vc); len(got) != 3 {
+		t.Fatalf("masters-only podAddresses: got %d want 3", len(got))
+	}
+}
+
 // decidePhase — phase 결정 우선순위 행렬.
 func TestDecidePhase_matrix(t *testing.T) {
 	mkVC := func(spec, status string) *cachev1alpha1.ValkeyCluster {

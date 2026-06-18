@@ -83,6 +83,13 @@ type ValkeyClusterSpec struct {
 	// +optional
 	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
 
+	// Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+	// 외부 Redis Stack(RediSearch/RedisJSON, RSALv2/SSPL)은 라이선스 비호환으로 미지원
+	// (ADR-0032). Name 만 지정 시 공식 preset 자동 resolve, Image 지정 시 BYO. Valkey CR
+	// (ValkeySpec.Modules) 와 동일 타입/검증 — cluster 샤드 pod 전체에 동일 적용.
+	// +optional
+	Modules []ModuleSpec `json:"modules,omitempty"`
+
 	// RevisionHistoryLimit — StatefulSet rollout history 보존 개수.
 	// +kubebuilder:validation:Minimum=0
 	// +optional
