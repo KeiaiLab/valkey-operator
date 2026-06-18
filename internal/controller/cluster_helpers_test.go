@@ -11,6 +11,7 @@ package controller
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -223,14 +224,16 @@ func TestClusterSTS_modulesWired(t *testing.T) {
 	if len(ps.InitContainers) != 1 {
 		t.Fatalf("cluster STS module init-container 1 기대, got %d", len(ps.InitContainers))
 	}
+	// cluster mode 에서는 clusterAnnounceCommand(#298) 가 args 를 sh -c Command
+	// 문자열로 접어 넣으므로 --loadmodule 은 Command 또는 Args 양쪽에 있을 수 있다.
 	hasLoad := false
-	for _, a := range ps.Containers[0].Args {
-		if a == "--loadmodule" {
+	for _, tok := range append(append([]string{}, ps.Containers[0].Command...), ps.Containers[0].Args...) {
+		if strings.Contains(tok, "--loadmodule") {
 			hasLoad = true
 		}
 	}
 	if !hasLoad {
-		t.Fatalf("cluster STS valkey container args 에 --loadmodule 기대: %v", ps.Containers[0].Args)
+		t.Fatalf("cluster STS valkey container 에 --loadmodule 기대: cmd=%v args=%v", ps.Containers[0].Command, ps.Containers[0].Args)
 	}
 }
 
