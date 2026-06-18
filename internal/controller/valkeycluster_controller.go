@@ -235,6 +235,12 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		case vc.Spec.TLS.CertManager != nil && vc.Spec.TLS.CertManager.IssuerRef.Name != "":
 			stsParams.TLSSecretName = resources.CertificateSecretName(vc.Name)
 		}
+		// TLS cert hash — cert-manager rotation 시 pod rolling restart 트리거.
+		tlsHash, err := hashTLSSecret(ctx, r.Client, vc.Namespace, stsParams.TLSSecretName)
+		if err != nil {
+			return applyErrorCondition(ctx, r.Client, vc, "TLSCertHash", err, r.Recorder)
+		}
+		stsParams.TLSCertHash = tlsHash
 	}
 	if vc.Spec.Monitoring != nil && vc.Spec.Monitoring.Enabled {
 		stsParams.ExporterImg = exporterImage(vc.Spec.Monitoring)
