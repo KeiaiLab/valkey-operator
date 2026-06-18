@@ -104,7 +104,9 @@ func TestValkeyCluster_ConvertTo_v1alpha2(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster-test"},
 		Spec: v1alpha1.ValkeyClusterSpec{
 			Shards:           3,
-			ReplicasPerShard: 1,
+			ReplicasPerShard: 0, // defect ④: masters-only 명시 0 round-trip.
+			// defect ⑥: cluster modules round-trip (v1alpha1 ↔ v1alpha2).
+			Modules: []v1alpha1.ModuleSpec{{Name: "valkey-search"}},
 		},
 	}
 	dst := &v1alpha2.ValkeyCluster{}
@@ -115,7 +117,22 @@ func TestValkeyCluster_ConvertTo_v1alpha2(t *testing.T) {
 	if dst.Spec.Shards != 3 {
 		t.Errorf("Shards = %d, want 3", dst.Spec.Shards)
 	}
-	if dst.Spec.ReplicasPerShard != 1 {
-		t.Errorf("ReplicasPerShard = %d, want 1", dst.Spec.ReplicasPerShard)
+	if dst.Spec.ReplicasPerShard != 0 {
+		t.Errorf("ReplicasPerShard = %d, want 0 (masters-only must round-trip)", dst.Spec.ReplicasPerShard)
+	}
+	if len(dst.Spec.Modules) != 1 || dst.Spec.Modules[0].Name != "valkey-search" {
+		t.Errorf("Modules = %+v, want [valkey-search]", dst.Spec.Modules)
+	}
+
+	// 역방향 round-trip — v1alpha2 → v1alpha1 도 보존.
+	back := &v1alpha1.ValkeyCluster{}
+	if err := back.ConvertFrom(dst); err != nil {
+		t.Fatalf("ConvertFrom failed: %v", err)
+	}
+	if back.Spec.ReplicasPerShard != 0 {
+		t.Errorf("round-trip ReplicasPerShard = %d, want 0", back.Spec.ReplicasPerShard)
+	}
+	if len(back.Spec.Modules) != 1 || back.Spec.Modules[0].Name != "valkey-search" {
+		t.Errorf("round-trip Modules = %+v, want [valkey-search]", back.Spec.Modules)
 	}
 }

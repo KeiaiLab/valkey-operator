@@ -272,6 +272,35 @@ func findMyself(nodes []NodeView) *NodeView {
 	return nil
 }
 
+// MeetNode — 결함 ③ 자가복구: seed 노드에서 target 노드로 CLUSTER MEET 발행.
+//
+// 멱등: target 이 이미 멤버면 valkey 가 사실상 no-op 처리한다. ensureMeet 와 동일하게
+// hostname 을 IP 로 정규화(CLUSTER MEET 은 IP 만 수용)한다. seedAddr / targetAddr 는
+// "host:port" 또는 "ip:port".
+func MeetNode(ctx context.Context, dial func(addr string) *redis.Client, seedAddr, targetAddr string) error {
+	ipAddr, err := resolveAddrIP(ctx, targetAddr)
+	if err != nil {
+		return fmt.Errorf("cluster meet resolve %s: %w", targetAddr, err)
+	}
+	host, portStr, ok := strings.Cut(ipAddr, ":")
+	if !ok {
+		return fmt.Errorf("invalid resolved address: %q", ipAddr)
+	}
+	c := dial(seedAddr)
+	defer func() { _ = c.Close() }()
+	if err := c.ClusterMeet(ctx, host, portStr).Err(); err != nil {
+		return fmt.Errorf("cluster meet %s (resolved %s): %w", targetAddr, ipAddr, err)
+	}
+	return nil
+}
+
+// ReplicateTo — 결함 ③ 자가복구: addr 노드가 masterID 를 따르도록 CLUSTER REPLICATE.
+// replicateWithRetry 를 재사용해 gossip 수렴 지연("Unknown node")을 흡수하고, 이미
+// 올바른 master 를 가리키면 skip(멱등).
+func ReplicateTo(ctx context.Context, dial func(addr string) *redis.Client, addr, masterID string) error {
+	return replicateWithRetry(ctx, dial, addr, masterID)
+}
+
 // ForgetNode — scale-in 시 node 제거. 모든 잔존 primary 에서 호출 필요.
 func ForgetNode(ctx context.Context, c *redis.Client, nodeID string) error {
 	if err := c.ClusterForget(ctx, nodeID).Err(); err != nil {

@@ -1162,6 +1162,13 @@ func (in *ValkeyClusterSpec) DeepCopyInto(out *ValkeyClusterSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Modules != nil {
+		in, out := &in.Modules, &out.Modules
+		*out = make([]ModuleSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
 		*out = new(int32)

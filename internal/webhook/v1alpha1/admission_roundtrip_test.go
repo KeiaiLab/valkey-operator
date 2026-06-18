@@ -82,10 +82,9 @@ var _ = Describe("Valkey webhook admission round-trip", func() {
 		Expect(err.Error()).To(ContainSubstring("passwordSecretRef"))
 	})
 
-	// 발견: 'autoFailover + ReplicasPerShard=0' webhook invariant 는 *real
-	// apiserver 통해 도달 불가능* — CRD 의 'kubebuilder:default=1' 가 admission
-	// 전에 0→1 변환. webhook 의 본 검증 path 는 *dead code* (CRD default 가 항상
-	// 1+ 로 보장). 추후 cleanup ADR candidate (Surgical §3 — 발견사항만 보고).
+	// defect ④: 'autoFailover + replicasPerShard=0' reject invariant 는 제거됐다.
+	// masters-only 토폴로지는 유효하며 명시 0 은 apiserver(CRD default=1 은 *부재* 시만
+	// 적용) + mutating defaulter(0→1 clobber 제거) 양쪽에서 보존된다.
 
 	It("rejects ValkeyCluster with totalNodes > 100", func() {
 		vc := &cachev1alpha1.ValkeyCluster{
