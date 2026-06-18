@@ -180,6 +180,36 @@ spec:
                       빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
                     type: string
                 type: object
+              modules:
+                description: |-
+                  Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+                  외부 Redis Stack(RediSearch/RedisJSON, RSALv2/SSPL)은 라이선스 비호환으로 미지원
+                  (ADR-0032). Name 만 지정 시 공식 preset 자동 resolve, Image 지정 시 BYO. Valkey CR
+                  (ValkeySpec.Modules) 와 동일 타입/검증 — cluster 샤드 pod 전체에 동일 적용.
+                items:
+                  description: "ModuleSpec — Valkey module 정의 (ADR-0032). 컨트롤러 hub(v1alpha1)
+                    미러.\n\n\tName 만: 공식 BSD preset (allow-list 검증 + 공식 image 자동 resolve)\n\tImage:
+                    \  bring-your-own custom module (init container 가 .so 를 emptyDir
+                    mount)"
+                  properties:
+                    image:
+                      description: Image — custom module image (optional). 미지정 시 공식
+                        preset 자동 resolve.
+                      type: string
+                    loadModuleArgs:
+                      description: LoadModuleArgs — `loadmodule <so> <args>` 의 args
+                        (optional).
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: 'Name — module 식별자 (예: "valkey-search").'
+                      pattern: ^[a-z][a-z0-9-]+$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
@@ -2554,8 +2584,14 @@ spec:
                 - enabled
                 type: object
               replicasPerShard:
-                default: 1
-                description: shard 당 replica 수. 기본 1 → 총 노드 = shards*(1+replicasPerShard).
+                description: |-
+                  shard 당 replica 수. 총 노드 = shards*(1+replicasPerShard).
+
+                  *pointer* 인 이유 (defect ④): non-pointer int32 + CRD `+kubebuilder:default=1` 은
+                  apiserver/admission 이 "필드 미지정" 과 "명시 0" 을 구별하지 못해 명시 0
+                  (masters-only 토폴로지) 을 default 1 로 덮어쓴다. pointer 로 두면 nil(미지정)
+                  과 명시 0 이 구별된다. CRD default 는 제거하고 nil→1 defaulting 은 코드
+                  (GetReplicasPerShard 접근자 + mutating webhook) 에서 처리한다.
                 format: int32
                 maximum: 5
                 minimum: 0
@@ -2828,7 +2864,6 @@ spec:
                 - version
                 type: object
             required:
-            - replicasPerShard
             - shards
             - version
             type: object
@@ -3167,6 +3202,45 @@ spec:
                       빈 값이면 상시 허용. 자정 넘김(예: "22:00-02:00") 지원.
                     type: string
                 type: object
+              modules:
+                description: |-
+                  Modules — Valkey 공식 BSD module(valkey-search/json/bloom) 또는 BYO module 로딩.
+                  외부 Redis Stack(RediSearch/RedisJSON, RSALv2/SSPL)은 라이선스 비호환으로 미지원
+                  (ADR-0032). Name 만 지정 시 공식 preset 자동 resolve, Image 지정 시 BYO. Valkey CR
+                  (ValkeySpec.Modules) 와 동일 타입/검증 — cluster 샤드 pod 전체에 동일 적용.
+                items:
+                  description: |-
+                    ModuleSpec — Valkey module 정의 (Plan §2 D9, ADR-0032).
+
+                    두 모드:
+                      - Name 만 지정: Valkey 공식 module preset (예: "valkey-search",
+                        "valkey-json", "valkey-bloom"). operator 가 alllow-list 검증 +
+                        공식 image 자동 resolve.
+                      - Image 명시: bring-your-own custom module. init container 가
+                        해당 image 의 /modules/<name>.so 를 emptyDir 로 mount, valkey
+                        container 가 `--loadmodule /modules/<name>.so <args>` 로 적재.
+
+                    보안: PSS Restricted (ADR-0036) 와 정합 — module image 가 privileged
+                    syscall 요구 시 webhook 거부. Sonatype Trust Score 검증 권장.
+                  properties:
+                    image:
+                      description: Image — custom module image (optional). 미지정 시 공식
+                        preset 자동 resolve.
+                      type: string
+                    loadModuleArgs:
+                      description: LoadModuleArgs — `loadmodule <so> <args>` 의 args
+                        (optional).
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: 'Name — module 식별자 (예: "valkey-search").'
+                      pattern: ^[a-z][a-z0-9-]+$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               monitoring:
                 description: MonitoringSpec — Prometheus exporter sidecar + ServiceMonitor.
                 properties:
@@ -5581,8 +5655,14 @@ spec:
                 - enabled
                 type: object
               replicasPerShard:
-                default: 1
-                description: shard 당 replica 수. 기본 1 → 총 노드 = shards*(1+replicasPerShard).
+                description: |-
+                  shard 당 replica 수. 총 노드 = shards*(1+replicasPerShard).
+
+                  *pointer* 인 이유 (defect ④): non-pointer int32 + CRD `+kubebuilder:default=1` 은
+                  apiserver/admission 이 "필드 미지정" 과 "명시 0" 을 구별하지 못해 명시 0
+                  (masters-only 토폴로지) 을 default 1 로 덮어쓴다. pointer 로 두면 nil(미지정)
+                  과 명시 0 이 구별된다. CRD default 는 제거하고 nil→1 defaulting 은 코드
+                  (GetReplicasPerShard 접근자 + mutating webhook) 에서 처리한다.
                 format: int32
                 maximum: 5
                 minimum: 0
@@ -5799,7 +5879,6 @@ spec:
                 - version
                 type: object
             required:
-            - replicasPerShard
             - shards
             - version
             type: object

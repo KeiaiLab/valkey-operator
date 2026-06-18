@@ -11,12 +11,14 @@ package controller
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -53,7 +55,7 @@ func TestPodAddresses_ordering(t *testing.T) {
 	vc.Name = "vk"
 	vc.Namespace = "ns"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 
 	got := podAddresses(vc)
 	want := []string{
@@ -83,7 +85,7 @@ func TestBuildShardStatus_3x1(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Name = "vk"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 
 	got := buildShardStatus(vc)
 	if len(got) != 3 {
@@ -136,7 +138,7 @@ func TestBuildShardStatus_3x2_replicaMapping(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Name = "vk"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 2
+	vc.Spec.ReplicasPerShard = ptr.To[int32](2)
 
 	got := buildShardStatus(vc)
 	cases := [][]string{
@@ -196,6 +198,58 @@ func TestBuildShardStatusFromNodes_3x1(t *testing.T) {
 		if sh.SlotRange != wantRanges[i] {
 			t.Errorf("shard %d range: got %s want %s", i, sh.SlotRange, wantRanges[i])
 		}
+	}
+}
+
+// defect ⑥: ValkeyClusterSpec.Modules → cluster STS 에 module init-container +
+// --loadmodule 적용. cluster reconcile 이 STSParams.Modules = vc.Spec.Modules 로
+// 전달하므로, cluster mode STS 빌드가 모듈을 반영하는지 검증.
+func TestClusterSTS_modulesWired(t *testing.T) {
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Name = "vk"
+	vc.Namespace = "ns"
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
+	vc.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}}
+
+	sts := resources.BuildStatefulSet(resources.STSParams{
+		CRName:      vc.Name,
+		Namespace:   vc.Namespace,
+		Replicas:    vc.Spec.TotalNodes(),
+		Image:       "valkey:9",
+		ClusterMode: true,
+		Modules:     vc.Spec.Modules, // reconcile 의 STSParams 와 동일 wiring.
+	})
+	ps := sts.Spec.Template.Spec
+	if len(ps.InitContainers) != 1 {
+		t.Fatalf("cluster STS module init-container 1 기대, got %d", len(ps.InitContainers))
+	}
+	// cluster mode 에서는 clusterAnnounceCommand(#298) 가 args 를 sh -c Command
+	// 문자열로 접어 넣으므로 --loadmodule 은 Command 또는 Args 양쪽에 있을 수 있다.
+	hasLoad := false
+	for _, tok := range append(append([]string{}, ps.Containers[0].Command...), ps.Containers[0].Args...) {
+		if strings.Contains(tok, "--loadmodule") {
+			hasLoad = true
+		}
+	}
+	if !hasLoad {
+		t.Fatalf("cluster STS valkey container 에 --loadmodule 기대: cmd=%v args=%v", ps.Containers[0].Command, ps.Containers[0].Args)
+	}
+}
+
+// defect ④: masters-only — TotalNodes() 가 shards 만 (replica 0).
+func TestTotalNodes_mastersOnly(t *testing.T) {
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = ptr.To[int32](0)
+	if got := vc.Spec.TotalNodes(); got != 3 {
+		t.Fatalf("masters-only TotalNodes(): got %d want 3", got)
+	}
+	// podAddresses 도 shards 개 (replica 주소 없음).
+	vc.Name = "vk"
+	vc.Namespace = "ns"
+	if got := podAddresses(vc); len(got) != 3 {
+		t.Fatalf("masters-only podAddresses: got %d want 3", len(got))
 	}
 }
 
