@@ -11,6 +11,7 @@ package controller
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -222,14 +223,19 @@ func TestClusterSTS_modulesWired(t *testing.T) {
 	if len(ps.InitContainers) != 1 {
 		t.Fatalf("cluster STS module init-container 1 기대, got %d", len(ps.InitContainers))
 	}
+	// Cluster mode 에서는 #298 의 clusterAnnounceCommand 가 valkey-server args 를
+	// `sh -c 'exec valkey-server ... --loadmodule ...'` 형태로 Command 에 접어넣고
+	// Args 를 nil 로 만든다. 따라서 --loadmodule 은 Command 토큰(셸 명령 문자열)에
+	// 존재한다. Args/Command 양쪽을 합쳐 검사한다.
 	hasLoad := false
-	for _, a := range ps.Containers[0].Args {
-		if a == "--loadmodule" {
+	for _, tok := range append(append([]string{}, ps.Containers[0].Command...), ps.Containers[0].Args...) {
+		if strings.Contains(tok, "--loadmodule") {
 			hasLoad = true
 		}
 	}
 	if !hasLoad {
-		t.Fatalf("cluster STS valkey container args 에 --loadmodule 기대: %v", ps.Containers[0].Args)
+		t.Fatalf("cluster STS valkey container 에 --loadmodule 기대: command=%v args=%v",
+			ps.Containers[0].Command, ps.Containers[0].Args)
 	}
 }
 
@@ -257,8 +263,13 @@ func TestDecidePhase_matrix(t *testing.T) {
 		vc.Status.Version = status
 		return vc
 	}
+	// 기본적으로 slots_ok == slots_assigned (healthy). partial-outage 케이스는
+	// mkInfoOK 로 별도 구성.
 	mkInfo := func(state string, slots int32) *vk.ClusterInfo {
-		return &vk.ClusterInfo{State: state, SlotsAssigned: slots}
+		return &vk.ClusterInfo{State: state, SlotsAssigned: slots, SlotsOK: slots}
+	}
+	mkInfoOK := func(state string, slots, slotsOK int32) *vk.ClusterInfo {
+		return &vk.ClusterInfo{State: state, SlotsAssigned: slots, SlotsOK: slotsOK}
 	}
 	cases := []struct {
 		name         string
@@ -274,6 +285,8 @@ func TestDecidePhase_matrix(t *testing.T) {
 		{"sts ready, cluster not ok", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfo("fail", 0), cachev1alpha1.ClusterPhaseInitializing},
 		{"resharding", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfo("ok", 8192), cachev1alpha1.ClusterPhaseResharding},
 		{"running", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfo("ok", 16384), cachev1alpha1.ClusterPhaseRunning},
+		// 결함 ⑤: state=ok + assigned=16384 이지만 slots_ok<16384 → Running 아님(Resharding cadence).
+		{"partial-slot outage", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfoOK("ok", 16384, 10922), cachev1alpha1.ClusterPhaseResharding},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
