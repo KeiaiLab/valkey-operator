@@ -15,6 +15,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -239,7 +240,7 @@ func TestValidateClusterSpec(t *testing.T) {
 		t.Parallel()
 		vc := &cachev1alpha1.ValkeyCluster{}
 		vc.Spec.Shards = 3
-		vc.Spec.ReplicasPerShard = 0
+		vc.Spec.ReplicasPerShard = ptr.To[int32](0)
 		vc.Spec.AutoFailover = true
 		vc.Spec.Version.Version = "8.1.6"
 		errs := validateClusterSpec(vc)
@@ -251,12 +252,12 @@ func TestValidateClusterSpec(t *testing.T) {
 		t.Parallel()
 		vc := &cachev1alpha1.ValkeyCluster{}
 		vc.Spec.Shards = 50
-		vc.Spec.ReplicasPerShard = 1 // total = 50 * 2 = 100, OK.
+		vc.Spec.ReplicasPerShard = ptr.To[int32](1) // total = 50 * 2 = 100, OK.
 		errs := validateClusterSpec(vc)
 		if len(errs) > 0 {
 			t.Errorf("100 nodes → expected ok, got %v", errs)
 		}
-		vc.Spec.ReplicasPerShard = 2 // total = 50 * 3 = 150, error.
+		vc.Spec.ReplicasPerShard = ptr.To[int32](2) // total = 50 * 3 = 150, error.
 		errs = validateClusterSpec(vc)
 		var hasOver100 bool
 		for _, e := range errs {
@@ -272,7 +273,7 @@ func TestValidateClusterSpec(t *testing.T) {
 		t.Parallel()
 		vc := &cachev1alpha1.ValkeyCluster{}
 		vc.Spec.Shards = 3
-		vc.Spec.ReplicasPerShard = 1
+		vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 		vc.Spec.TLS = &cachev1alpha1.TLSSpec{
 			Enabled:     true,
 			CertManager: &cachev1alpha1.CertManagerSpec{IssuerRef: cachev1alpha1.CertIssuerRef{Name: "ca"}},
@@ -293,7 +294,7 @@ func TestValidateClusterSpec(t *testing.T) {
 		t.Parallel()
 		vc := &cachev1alpha1.ValkeyCluster{}
 		vc.Spec.Shards = 3
-		vc.Spec.ReplicasPerShard = 1
+		vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 		vc.Spec.Auth.Enabled = false
 		vc.Spec.Auth.Users = []cachev1alpha1.ValkeyUser{{Name: "alice"}}
 		errs := validateClusterSpec(vc)
@@ -305,7 +306,7 @@ func TestValidateClusterSpec(t *testing.T) {
 		t.Parallel()
 		vc := &cachev1alpha1.ValkeyCluster{}
 		vc.Spec.Shards = 3
-		vc.Spec.ReplicasPerShard = 1
+		vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 		vc.Spec.AutoFailover = true
 		errs := validateClusterSpec(vc)
 		if len(errs) > 0 {
@@ -773,7 +774,7 @@ func TestValidateClusterSpec_StorageClassName(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Storage.Size = resource.MustParse("2Gi")
 	vc.Spec.Storage.StorageClassName = "Bad_Name"
 	errs := validateClusterSpec(vc)

@@ -173,7 +173,7 @@ func (r *ValkeyClusterReconciler) ensureClusterMembership(
 	logger := log.FromContext(ctx)
 
 	shards := int(vc.Spec.Shards)
-	rps := int(vc.Spec.ReplicasPerShard)
+	rps := int(vc.Spec.GetReplicasPerShard())
 	if shards <= 0 {
 		return 0, nil
 	}
@@ -288,9 +288,9 @@ func (r *ValkeyClusterReconciler) reintegratePods(
 // 규칙 (보수적 · 멱등):
 //   - myself 는 절대 forget 하지 않는다.
 //   - 다음을 모두 만족하는 노드만 forget:
-//       1) `fail` flag 가 있다 (gossip 이 죽었다고 합의).
-//       2) `noaddr` flag 가 있거나, addr 가 *현재 기대 pod* 중 어느 것과도 매칭되지 않는다
-//          (= 이번 incarnation 에 속하지 않는 orphan).
+//     1) `fail` flag 가 있다 (gossip 이 죽었다고 합의).
+//     2) `noaddr` flag 가 있거나, addr 가 *현재 기대 pod* 중 어느 것과도 매칭되지 않는다
+//     (= 이번 incarnation 에 속하지 않는 orphan).
 //   - addr 가 현재 기대 pod 와 매칭되면 (정당한 현 멤버) — 일시적 fail 이어도 건드리지 않는다.
 //   - `handshake` 노드는 *제외*: 아직 수렴 중일 수 있어 (MEET 직후) 성급히 forget 하면
 //     방금 재합류시킨 노드를 도로 쫓아낼 수 있다. handshake 는 valkey 가 자체 timeout 으로 정리.

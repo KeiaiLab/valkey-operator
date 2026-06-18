@@ -2584,8 +2584,14 @@ spec:
                 - enabled
                 type: object
               replicasPerShard:
-                default: 1
-                description: shard 당 replica 수. 기본 1 → 총 노드 = shards*(1+replicasPerShard).
+                description: |-
+                  shard 당 replica 수. 총 노드 = shards*(1+replicasPerShard).
+
+                  *pointer* 인 이유 (defect ④): non-pointer int32 + CRD `+kubebuilder:default=1` 은
+                  apiserver/admission 이 "필드 미지정" 과 "명시 0" 을 구별하지 못해 명시 0
+                  (masters-only 토폴로지) 을 default 1 로 덮어쓴다. pointer 로 두면 nil(미지정)
+                  과 명시 0 이 구별된다. CRD default 는 제거하고 nil→1 defaulting 은 코드
+                  (GetReplicasPerShard 접근자 + mutating webhook) 에서 처리한다.
                 format: int32
                 maximum: 5
                 minimum: 0
@@ -2858,7 +2864,6 @@ spec:
                 - version
                 type: object
             required:
-            - replicasPerShard
             - shards
             - version
             type: object
@@ -5650,8 +5655,14 @@ spec:
                 - enabled
                 type: object
               replicasPerShard:
-                default: 1
-                description: shard 당 replica 수. 기본 1 → 총 노드 = shards*(1+replicasPerShard).
+                description: |-
+                  shard 당 replica 수. 총 노드 = shards*(1+replicasPerShard).
+
+                  *pointer* 인 이유 (defect ④): non-pointer int32 + CRD `+kubebuilder:default=1` 은
+                  apiserver/admission 이 "필드 미지정" 과 "명시 0" 을 구별하지 못해 명시 0
+                  (masters-only 토폴로지) 을 default 1 로 덮어쓴다. pointer 로 두면 nil(미지정)
+                  과 명시 0 이 구별된다. CRD default 는 제거하고 nil→1 defaulting 은 코드
+                  (GetReplicasPerShard 접근자 + mutating webhook) 에서 처리한다.
                 format: int32
                 maximum: 5
                 minimum: 0
@@ -5868,7 +5879,6 @@ spec:
                 - version
                 type: object
             required:
-            - replicasPerShard
             - shards
             - version
             type: object

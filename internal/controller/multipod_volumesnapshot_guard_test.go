@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/events"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -40,7 +41,7 @@ func TestHandlePending_VolumeSnapshot_with_ValkeyCluster_target_rejected(t *test
 		ObjectMeta: metav1.ObjectMeta{Name: "vc-shard", Namespace: "ns"},
 		Spec: cachev1alpha1.ValkeyClusterSpec{
 			Shards:           3,
-			ReplicasPerShard: 1,
+			ReplicasPerShard: ptr.To[int32](1),
 			Version:          cachev1alpha1.ValkeyVersion{Version: "8.1.6"},
 		},
 	}

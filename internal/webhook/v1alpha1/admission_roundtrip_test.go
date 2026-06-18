@@ -17,6 +17,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -91,7 +92,7 @@ var _ = Describe("Valkey webhook admission round-trip", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "rt-toomany", Namespace: "default"},
 			Spec: cachev1alpha1.ValkeyClusterSpec{
 				Shards:           50,
-				ReplicasPerShard: 2, // total = 50 * 3 = 150
+				ReplicasPerShard: ptr.To[int32](2), // total = 50 * 3 = 150
 				Storage:          cachev1alpha1.StorageSpec{Size: resource.MustParse("8Gi")},
 			},
 		}
@@ -106,7 +107,7 @@ var _ = Describe("Valkey webhook admission round-trip", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "rt-clusterhappy", Namespace: "default"},
 			Spec: cachev1alpha1.ValkeyClusterSpec{
 				Shards:           3,
-				ReplicasPerShard: 1,
+				ReplicasPerShard: ptr.To[int32](1),
 				Storage:          cachev1alpha1.StorageSpec{Size: resource.MustParse("8Gi")},
 			},
 		}

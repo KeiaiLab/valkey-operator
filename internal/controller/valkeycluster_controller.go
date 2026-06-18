@@ -282,7 +282,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		perShard := vc.Spec.PodDisruptionBudget != nil && vc.Spec.PodDisruptionBudget.PerShard
 		if perShard {
 			// CDEX-M2 per-shard PDB loop. shardReplicas = 1 primary + ReplicasPerShard.
-			shardReplicas := int32(1) + vc.Spec.ReplicasPerShard
+			shardReplicas := int32(1) + vc.Spec.GetReplicasPerShard()
 			for i := 0; i < int(vc.Spec.Shards); i++ {
 				pdb := resources.BuildShardPDB(vc.Name, vc.Namespace, i, shardReplicas, vc.Spec.PodDisruptionBudget)
 				if err := commonsapply.PDB(ctx, r.Client, r.Scheme, vc, pdb); err != nil {
@@ -377,7 +377,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	//      replica 로 운영된다. allReady && state=ok 인 정상 cluster 에서도 CLUSTER
 	//      NODES 를 desired 토폴로지와 비교해 누락 멤버를 MEET + REPLICATE 로 재합류.
 	//      멱등 — 이미 올바른 멤버는 건드리지 않는다.
-	if allReady && info != nil && info.State == "ok" && vc.Spec.ReplicasPerShard > 0 {
+	if allReady && info != nil && info.State == "ok" && vc.Spec.GetReplicasPerShard() > 0 {
 		if reintegrated, mErr := r.ensureClusterMembership(ctx, vc, password); mErr != nil {
 			logger.Error(mErr, "Cluster membership re-integration pending — will retry")
 		} else if reintegrated > 0 {
@@ -723,7 +723,7 @@ func (r *ValkeyClusterReconciler) ensureClusterMeet(
 	dial := func(addr string) *redis.Client { return dialPod(addr, password, tlsCfg) }
 	createCtx, createSpan := observability.StartCallSpan(ctx, "ValkeyCluster/CreateCluster")
 	defer createSpan.End()
-	if err := vk.CreateCluster(createCtx, dial, addresses, int(vc.Spec.Shards), int(vc.Spec.ReplicasPerShard)); err != nil {
+	if err := vk.CreateCluster(createCtx, dial, addresses, int(vc.Spec.Shards), int(vc.Spec.GetReplicasPerShard())); err != nil {
 		createSpan.RecordError(err)
 		return err
 	}
@@ -1031,7 +1031,7 @@ func joinRanges(rs []string) string {
 // slot range 도 CreateCluster 와 동일한 균등 분배 (마지막 shard 가 잔여 흡수).
 func buildShardStatus(vc *cachev1alpha1.ValkeyCluster) []cachev1alpha1.ShardStatus {
 	shards := int(vc.Spec.Shards)
-	rps := int(vc.Spec.ReplicasPerShard)
+	rps := int(vc.Spec.GetReplicasPerShard())
 	if shards == 0 {
 		return nil
 	}

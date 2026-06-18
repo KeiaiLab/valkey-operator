@@ -40,11 +40,17 @@ type ValkeyClusterSpec struct {
 	// +kubebuilder:default=3
 	Shards int32 `json:"shards"`
 
-	// shard 당 replica 수. 기본 1 → 총 노드 = shards*(1+replicasPerShard).
+	// shard 당 replica 수. 총 노드 = shards*(1+replicasPerShard).
+	//
+	// *pointer* 인 이유 (defect ④): non-pointer int32 + CRD `+kubebuilder:default=1` 은
+	// apiserver/admission 이 "필드 미지정" 과 "명시 0" 을 구별하지 못해 명시 0
+	// (masters-only 토폴로지) 을 default 1 로 덮어쓴다. pointer 로 두면 nil(미지정)
+	// 과 명시 0 이 구별된다. CRD default 는 제거하고 nil→1 defaulting 은 코드
+	// (GetReplicasPerShard 접근자 + mutating webhook) 에서 처리한다.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=5
-	// +kubebuilder:default=1
-	ReplicasPerShard int32 `json:"replicasPerShard"`
+	// +optional
+	ReplicasPerShard *int32 `json:"replicasPerShard,omitempty"`
 
 	// +kubebuilder:default=true
 	AutoFailover bool `json:"autoFailover,omitempty"`
@@ -160,4 +166,15 @@ func init() {
 func (v *ValkeyCluster) GetConditions() *[]metav1.Condition { return &v.Status.Conditions }
 func (v *ValkeyCluster) SetPhase(phase string)              { v.Status.Phase = ClusterPhase(phase) }
 
-func (s *ValkeyClusterSpec) TotalNodes() int32 { return s.Shards * (1 + s.ReplicasPerShard) }
+// GetReplicasPerShard — nil(미지정) → 1, 명시값(0 포함) → 그대로.
+//
+// defect ④: 명시 0 은 masters-only 토폴로지이므로 보존하고, 미지정만 1 로
+// defaulting 한다. ReplicasPerShard 를 읽는 모든 곳은 이 접근자를 거친다.
+func (s *ValkeyClusterSpec) GetReplicasPerShard() int32 {
+	if s.ReplicasPerShard == nil {
+		return 1
+	}
+	return *s.ReplicasPerShard
+}
+
+func (s *ValkeyClusterSpec) TotalNodes() int32 { return s.Shards * (1 + s.GetReplicasPerShard()) }

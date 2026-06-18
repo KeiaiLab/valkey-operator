@@ -73,11 +73,15 @@ func (d *ValkeyClusterCustomDefaulter) Default(_ context.Context, obj *cachev1al
 	if obj.Spec.Shards == 0 {
 		obj.Spec.Shards = 3
 	}
-	// ReplicasPerShard: *명시 0 (masters-only 토폴로지) 을 절대 손대지 않는다*.
-	// `json:"replicasPerShard"` (no omitempty) + CRD `+kubebuilder:default=1` 조합에서
-	// apiserver 는 *필드 부재* 시에만 default 1 을 적용하고 *명시 0* 은 그대로 보존한다.
-	// 과거 이 자리에서 0→1 을 강제하던 코드는 명시 0 과 미지정을 구별하지 못해
-	// replicasPerShard=0 (defect ④) 을 무력화했다 — 그래서 제거했다.
+	// ReplicasPerShard: 이제 *pointer* (*int32) — nil(미지정) 과 명시 0(masters-only)
+	// 이 구별된다. CRD default=1 은 제거했고 (non-pointer 시절 명시 0 을 무력화했던
+	// defect ④), 미지정(nil)→1 defaulting 은 여기서 처리한다. *명시 0 은 절대 손대지
+	// 않는다* — pointer 가 non-nil 이면 그 값(0 포함)을 그대로 보존한다. webhook 이
+	// 항상 명시값을 채우므로 저장된 객체는 nil 이 아닌 explicit 값을 갖는다.
+	if obj.Spec.ReplicasPerShard == nil {
+		one := int32(1)
+		obj.Spec.ReplicasPerShard = &one
+	}
 	if obj.Spec.Version.Version == "" {
 		obj.Spec.Version.Version = cachev1alpha1.DefaultValkeyVersion
 	}

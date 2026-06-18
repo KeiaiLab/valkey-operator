@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -53,7 +54,7 @@ func TestPodAddresses_ordering(t *testing.T) {
 	vc.Name = "vk"
 	vc.Namespace = "ns"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 
 	got := podAddresses(vc)
 	want := []string{
@@ -83,7 +84,7 @@ func TestBuildShardStatus_3x1(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Name = "vk"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 
 	got := buildShardStatus(vc)
 	if len(got) != 3 {
@@ -136,7 +137,7 @@ func TestBuildShardStatus_3x2_replicaMapping(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Name = "vk"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 2
+	vc.Spec.ReplicasPerShard = ptr.To[int32](2)
 
 	got := buildShardStatus(vc)
 	cases := [][]string{
@@ -207,7 +208,7 @@ func TestClusterSTS_modulesWired(t *testing.T) {
 	vc.Name = "vk"
 	vc.Namespace = "ns"
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}}
 
 	sts := resources.BuildStatefulSet(resources.STSParams{
@@ -237,7 +238,7 @@ func TestClusterSTS_modulesWired(t *testing.T) {
 func TestTotalNodes_mastersOnly(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 0
+	vc.Spec.ReplicasPerShard = ptr.To[int32](0)
 	if got := vc.Spec.TotalNodes(); got != 3 {
 		t.Fatalf("masters-only TotalNodes(): got %d want 3", got)
 	}

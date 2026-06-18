@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -25,7 +26,7 @@ func TestValkeyClusterValidate_mastersOnly_accepted(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
 	vc.Spec.AutoFailover = true
-	vc.Spec.ReplicasPerShard = 0 // masters-only — 명시 0 보존.
+	vc.Spec.ReplicasPerShard = ptr.To[int32](0) // masters-only — 명시 0 보존.
 	vc.Spec.Version.Version = "8.1.6"
 
 	if _, err := v.ValidateCreate(context.Background(), vc); err != nil {
@@ -39,15 +40,33 @@ func TestValkeyClusterDefaulter_preserves_explicit_zero_replicas(t *testing.T) {
 	d := &ValkeyClusterCustomDefaulter{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 0 // 명시 masters-only.
+	vc.Spec.ReplicasPerShard = ptr.To[int32](0) // 명시 masters-only.
 	if err := d.Default(context.Background(), vc); err != nil {
 		t.Fatalf("default: %v", err)
 	}
-	if vc.Spec.ReplicasPerShard != 0 {
-		t.Errorf("explicit replicasPerShard=0 must be preserved, got %d", vc.Spec.ReplicasPerShard)
+	if vc.Spec.ReplicasPerShard == nil || *vc.Spec.ReplicasPerShard != 0 {
+		t.Errorf("explicit replicasPerShard=0 must be preserved, got %v", vc.Spec.ReplicasPerShard)
 	}
 	if got := vc.Spec.TotalNodes(); got != 3 {
 		t.Errorf("masters-only TotalNodes(): got %d want 3 (shards masters, 0 replicas)", got)
+	}
+}
+
+// defect ④: mutating defaulter 는 nil(미지정) ReplicasPerShard 를 명시 1 로 채운다.
+// (CRD default=1 제거 후 nil→1 defaulting 책임이 webhook 으로 이동.)
+func TestValkeyClusterDefaulter_defaults_nil_replicas_to_one(t *testing.T) {
+	d := &ValkeyClusterCustomDefaulter{}
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Spec.Shards = 3
+	vc.Spec.ReplicasPerShard = nil // 미지정.
+	if err := d.Default(context.Background(), vc); err != nil {
+		t.Fatalf("default: %v", err)
+	}
+	if vc.Spec.ReplicasPerShard == nil || *vc.Spec.ReplicasPerShard != 1 {
+		t.Errorf("nil replicasPerShard must be defaulted to 1, got %v", vc.Spec.ReplicasPerShard)
+	}
+	if got := vc.Spec.TotalNodes(); got != 6 {
+		t.Errorf("defaulted TotalNodes(): got %d want 6 (3 shards * (1+1))", got)
 	}
 }
 
@@ -56,7 +75,7 @@ func TestValkeyClusterValidate_rejects_external_module(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Version.Version = "8.1.6"
 	vc.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "redisearch"}} // 외부 Redis Stack.
 
@@ -70,7 +89,7 @@ func TestValkeyClusterValidate_accepts_official_module(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Version.Version = "8.1.6"
 	vc.Spec.Modules = []cachev1alpha1.ModuleSpec{{Name: "valkey-search"}}
 
@@ -83,7 +102,7 @@ func TestValkeyClusterValidate_total_node_limit(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 50
-	vc.Spec.ReplicasPerShard = 5 // 50 * 6 = 300 > 100.
+	vc.Spec.ReplicasPerShard = ptr.To[int32](5) // 50 * 6 = 300 > 100.
 
 	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
 		t.Fatal("expected validation error for total > 100")
@@ -94,7 +113,7 @@ func TestValkeyClusterValidate_TLS_requires_certManager_or_customCert(t *testing
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: true} // 둘 다 미명시.
 
 	if _, err := v.ValidateCreate(context.Background(), vc); err == nil {
@@ -106,7 +125,7 @@ func TestValkeyClusterValidate_TLS_mutually_exclusive(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
 		Enabled:     true,
 		CertManager: &cachev1alpha1.CertManagerSpec{IssuerRef: cachev1alpha1.CertIssuerRef{Name: "issuer"}},
@@ -122,7 +141,7 @@ func TestValkeyClusterValidate_Auth_users_requires_enabled(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Auth = cachev1alpha1.AuthSpec{
 		Enabled: false,
 		Users: []cachev1alpha1.ValkeyUser{
@@ -139,7 +158,7 @@ func TestValkeyClusterValidate_Update_storageClass_immutable(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	old := &cachev1alpha1.ValkeyCluster{}
 	old.Spec.Shards = 3
-	old.Spec.ReplicasPerShard = 1
+	old.Spec.ReplicasPerShard = ptr.To[int32](1)
 	old.Spec.Storage.StorageClassName = "fast-ssd"
 	new := old.DeepCopy()
 	new.Spec.Storage.StorageClassName = "slow-hdd"
@@ -155,7 +174,7 @@ func TestValkeyClusterValidate_Update_tls_false_to_true_allowed(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	old := &cachev1alpha1.ValkeyCluster{}
 	old.Spec.Shards = 3
-	old.Spec.ReplicasPerShard = 1
+	old.Spec.ReplicasPerShard = ptr.To[int32](1)
 	old.Spec.Version.Version = "8.1.6"
 	old.Spec.TLS = &cachev1alpha1.TLSSpec{Enabled: false}
 	new := old.DeepCopy()
@@ -173,7 +192,7 @@ func TestValkeyClusterValidate_Update_tls_true_to_false_forbidden(t *testing.T) 
 	v := &ValkeyClusterCustomValidator{}
 	old := &cachev1alpha1.ValkeyCluster{}
 	old.Spec.Shards = 3
-	old.Spec.ReplicasPerShard = 1
+	old.Spec.ReplicasPerShard = ptr.To[int32](1)
 	old.Spec.Version.Version = "8.1.6"
 	old.Spec.TLS = &cachev1alpha1.TLSSpec{
 		Enabled:    true,
@@ -191,7 +210,7 @@ func TestValkeyClusterValidate_valid_passes(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.AutoFailover = true
 	vc.Spec.Version.Version = "8.1.6"
 
@@ -289,7 +308,7 @@ func TestValkeyClusterValidate_Update_storageSize_shrink_rejected(t *testing.T) 
 	v := &ValkeyClusterCustomValidator{}
 	old := &cachev1alpha1.ValkeyCluster{}
 	old.Spec.Shards = 3
-	old.Spec.ReplicasPerShard = 1
+	old.Spec.ReplicasPerShard = ptr.To[int32](1)
 	old.Spec.Version.Version = "8.1.6"
 	old.Spec.Storage.Size = resource.MustParse("16Gi")
 	new := old.DeepCopy()
@@ -308,7 +327,7 @@ func TestValkeyClusterValidate_Update_storageSize_grow_accepted(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	old := &cachev1alpha1.ValkeyCluster{}
 	old.Spec.Shards = 3
-	old.Spec.ReplicasPerShard = 1
+	old.Spec.ReplicasPerShard = ptr.To[int32](1)
 	old.Spec.Version.Version = "8.1.6"
 	old.Spec.Storage.Size = resource.MustParse("8Gi")
 	new := old.DeepCopy()
@@ -357,7 +376,7 @@ func TestValkeyCluster_TLS_AutoSelfSigned_alone_passes(t *testing.T) {
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Version.Version = "8.1.6"
 	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
 		Enabled:     true,
@@ -373,7 +392,7 @@ func TestValkeyCluster_TLS_AutoSelfSigned_with_IssuerRef_rejected(t *testing.T) 
 	v := &ValkeyClusterCustomValidator{}
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Spec.Shards = 3
-	vc.Spec.ReplicasPerShard = 1
+	vc.Spec.ReplicasPerShard = ptr.To[int32](1)
 	vc.Spec.Version.Version = "8.1.6"
 	vc.Spec.TLS = &cachev1alpha1.TLSSpec{
 		Enabled: true,

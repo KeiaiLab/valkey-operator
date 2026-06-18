@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/keiailab/valkey-operator/api/v1alpha1"
 	"github.com/keiailab/valkey-operator/api/v1alpha2"
@@ -104,7 +105,7 @@ func TestValkeyCluster_ConvertTo_v1alpha2(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster-test"},
 		Spec: v1alpha1.ValkeyClusterSpec{
 			Shards:           3,
-			ReplicasPerShard: 0, // defect ④: masters-only 명시 0 round-trip.
+			ReplicasPerShard: ptr.To[int32](0), // defect ④: masters-only 명시 0 round-trip (nil 과 구별).
 			// defect ⑥: cluster modules round-trip (v1alpha1 ↔ v1alpha2).
 			Modules: []v1alpha1.ModuleSpec{{Name: "valkey-search"}},
 		},
@@ -117,8 +118,8 @@ func TestValkeyCluster_ConvertTo_v1alpha2(t *testing.T) {
 	if dst.Spec.Shards != 3 {
 		t.Errorf("Shards = %d, want 3", dst.Spec.Shards)
 	}
-	if dst.Spec.ReplicasPerShard != 0 {
-		t.Errorf("ReplicasPerShard = %d, want 0 (masters-only must round-trip)", dst.Spec.ReplicasPerShard)
+	if dst.Spec.ReplicasPerShard == nil || *dst.Spec.ReplicasPerShard != 0 {
+		t.Errorf("ReplicasPerShard = %v, want explicit 0 (masters-only must round-trip, not nil)", dst.Spec.ReplicasPerShard)
 	}
 	if len(dst.Spec.Modules) != 1 || dst.Spec.Modules[0].Name != "valkey-search" {
 		t.Errorf("Modules = %+v, want [valkey-search]", dst.Spec.Modules)
@@ -129,10 +130,34 @@ func TestValkeyCluster_ConvertTo_v1alpha2(t *testing.T) {
 	if err := back.ConvertFrom(dst); err != nil {
 		t.Fatalf("ConvertFrom failed: %v", err)
 	}
-	if back.Spec.ReplicasPerShard != 0 {
-		t.Errorf("round-trip ReplicasPerShard = %d, want 0", back.Spec.ReplicasPerShard)
+	if back.Spec.ReplicasPerShard == nil || *back.Spec.ReplicasPerShard != 0 {
+		t.Errorf("round-trip ReplicasPerShard = %v, want explicit 0", back.Spec.ReplicasPerShard)
 	}
 	if len(back.Spec.Modules) != 1 || back.Spec.Modules[0].Name != "valkey-search" {
 		t.Errorf("round-trip Modules = %+v, want [valkey-search]", back.Spec.Modules)
+	}
+}
+
+// TestValkeyCluster_Convert_NilReplicasPerShard — defect ④: nil(미지정) 은
+// round-trip 내내 nil 로 유지되어야 한다 (controller/webhook 가 1 로 default).
+// nil 이 도중에 0 으로 바뀌면 omit→masters-only 로 의미가 뒤집힌다.
+func TestValkeyCluster_Convert_NilReplicasPerShard(t *testing.T) {
+	src := &v1alpha1.ValkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster-nil-rps"},
+		Spec:       v1alpha1.ValkeyClusterSpec{Shards: 3, ReplicasPerShard: nil},
+	}
+	dst := &v1alpha2.ValkeyCluster{}
+	if err := src.ConvertTo(dst); err != nil {
+		t.Fatalf("ConvertTo failed: %v", err)
+	}
+	if dst.Spec.ReplicasPerShard != nil {
+		t.Errorf("nil ReplicasPerShard converted to %v, want nil (omitted must stay omitted)", *dst.Spec.ReplicasPerShard)
+	}
+	back := &v1alpha1.ValkeyCluster{}
+	if err := back.ConvertFrom(dst); err != nil {
+		t.Fatalf("ConvertFrom failed: %v", err)
+	}
+	if back.Spec.ReplicasPerShard != nil {
+		t.Errorf("round-trip nil ReplicasPerShard = %v, want nil", *back.Spec.ReplicasPerShard)
 	}
 }

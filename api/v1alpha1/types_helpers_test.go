@@ -10,7 +10,11 @@ Licensed under the MIT License. See the LICENSE file for details.
 
 package v1alpha1
 
-import "testing"
+import (
+	"testing"
+
+	"k8s.io/utils/ptr"
+)
 
 func TestValkeySpecIsAutoFailoverEnabled(t *testing.T) {
 	t.Parallel()
@@ -97,13 +101,15 @@ func TestValkeyClusterSpecTotalNodes(t *testing.T) {
 	cases := []struct {
 		name             string
 		shards           int32
-		replicasPerShard int32
+		replicasPerShard *int32
 		want             int32
 	}{
-		{"3 shards, 1 replica each → 6", 3, 1, 6},
-		{"6 shards, 2 replicas each → 18", 6, 2, 18},
-		{"1 shard, 0 replicas → 1", 1, 0, 1},
-		{"0 shards → 0", 0, 1, 0},
+		{"3 shards, 1 replica each → 6", 3, ptr.To[int32](1), 6},
+		{"6 shards, 2 replicas each → 18", 6, ptr.To[int32](2), 18},
+		{"1 shard, explicit 0 replicas → 1 (masters-only)", 1, ptr.To[int32](0), 1},
+		{"3 shards, explicit 0 replicas → 3 (masters-only)", 3, ptr.To[int32](0), 3},
+		{"3 shards, nil replicas → 6 (nil defaults to 1)", 3, nil, 6},
+		{"0 shards → 0", 0, ptr.To[int32](1), 0},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -111,6 +117,30 @@ func TestValkeyClusterSpecTotalNodes(t *testing.T) {
 			s := &ValkeyClusterSpec{Shards: c.shards, ReplicasPerShard: c.replicasPerShard}
 			if got := s.TotalNodes(); got != c.want {
 				t.Fatalf("got %d, want %d", got, c.want)
+			}
+		})
+	}
+}
+
+// TestValkeyClusterSpecGetReplicasPerShard — defect ④: nil(미지정)→1,
+// 명시 0(masters-only)→0, 명시 2→2. 명시 0 이 default 1 로 덮이지 않음을 증명.
+func TestValkeyClusterSpecGetReplicasPerShard(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		rps  *int32
+		want int32
+	}{
+		{"nil → 1 (omitted defaults to 1)", nil, 1},
+		{"explicit 0 → 0 (masters-only preserved)", ptr.To[int32](0), 0},
+		{"explicit 2 → 2", ptr.To[int32](2), 2},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			s := &ValkeyClusterSpec{ReplicasPerShard: c.rps}
+			if got := s.GetReplicasPerShard(); got != c.want {
+				t.Fatalf("GetReplicasPerShard() = %d, want %d", got, c.want)
 			}
 		})
 	}

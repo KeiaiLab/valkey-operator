@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -148,7 +149,7 @@ func TestBackup_buildJob_ValkeyClusterUsesPerShardPrimaryHosts(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "vk", Namespace: "ns"},
 		Spec: cachev1alpha1.ValkeyClusterSpec{
 			Shards:           3,
-			ReplicasPerShard: 1,
+			ReplicasPerShard: ptr.To[int32](1),
 		},
 		Status: cachev1alpha1.ValkeyClusterStatus{
 			Shards: []cachev1alpha1.ShardStatus{
