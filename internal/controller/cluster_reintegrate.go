@@ -187,6 +187,27 @@ func (r *ValkeyClusterReconciler) ensureClusterMembership(
 	addrByOrdinal := r.podIPByOrdinal(ctx, vc)
 
 	observed, nodeIDByOrdinal := buildObservedMembers(shards, rps, nodes, addrByOrdinal)
+
+	// 명백히 죽은 ghost(fail,noaddr / orphan) 정리 — 새 node id 로 재합류한 노드의
+	// 옛 id 가 gossip 에 fail,noaddr 로 남아 cluster_known_nodes 가 부풀려지는 것을
+	// 방지한다. 이 gated path(allReady && state=ok)에서만 실행해 bootstrap 와 레이스 없음.
+	// 보수적 — detectStaleNodes 가 myself / 현 멤버 / handshake 를 모두 제외한다.
+	expectedAddrs := make(map[string]bool, len(addrByOrdinal))
+	for _, addr := range addrByOrdinal {
+		if addr != "" {
+			expectedAddrs[addr] = true
+		}
+	}
+	if staleIDs := detectStaleNodes(nodes, expectedAddrs); len(staleIDs) > 0 {
+		logger.Info("Stale/ghost cluster nodes detected; forgetting",
+			"ghostCount", len(staleIDs),
+			"knownNodes", info.KnownNodes)
+		if _, fErr := r.forgetStaleNodes(ctx, vc, password, staleIDs, addrByOrdinal, nodeIDByOrdinal); fErr != nil {
+			// best-effort — forget 실패는 재합류를 막지 않는다. 다음 reconcile 재시도.
+			logger.Error(fErr, "Stale node forget pending — will retry")
+		}
+	}
+
 	actions := detectReintegration(shards, rps, observed)
 	if len(actions) == 0 {
 		return 0, nil
@@ -254,6 +275,121 @@ func (r *ValkeyClusterReconciler) reintegratePods(
 		done++
 	}
 	return done, nil
+}
+
+// detectStaleNodes — 순수 결정 로직. CLUSTER NODES 스냅샷에서 *명백히 죽은 ghost*
+// node id 들을 골라낸다 (CLUSTER FORGET 대상).
+//
+// 배경: 노드가 CLUSTER RESET HARD 등으로 새 node id 로 재합류하면, gossip 테이블에
+// 옛/죽은 node id 가 `fail,noaddr` (또는 `slave,fail,noaddr`) ghost 로 남아
+// cluster_known_nodes 가 valkey 의 느린 auto-eviction 전까지 부풀려진다. 본 함수는
+// 그런 ghost 만 보수적으로 골라 forget 대상으로 반환한다.
+//
+// 규칙 (보수적 · 멱등):
+//   - myself 는 절대 forget 하지 않는다.
+//   - 다음을 모두 만족하는 노드만 forget:
+//       1) `fail` flag 가 있다 (gossip 이 죽었다고 합의).
+//       2) `noaddr` flag 가 있거나, addr 가 *현재 기대 pod* 중 어느 것과도 매칭되지 않는다
+//          (= 이번 incarnation 에 속하지 않는 orphan).
+//   - addr 가 현재 기대 pod 와 매칭되면 (정당한 현 멤버) — 일시적 fail 이어도 건드리지 않는다.
+//   - `handshake` 노드는 *제외*: 아직 수렴 중일 수 있어 (MEET 직후) 성급히 forget 하면
+//     방금 재합류시킨 노드를 도로 쫓아낼 수 있다. handshake 는 valkey 가 자체 timeout 으로 정리.
+//
+// expectedAddrs: 현재 기대되는 pod 주소 집합 ("ip:port"). buildObservedMembers 가 쓰는
+// addrByOrdinal 의 값들과 동일.
+func detectStaleNodes(nodes []vk.NodeView, expectedAddrs map[string]bool) []string {
+	var stale []string
+	for i := range nodes {
+		n := &nodes[i]
+		if n.Flags["myself"] {
+			continue
+		}
+		if n.Flags["handshake"] {
+			// 수렴 중 — valkey 자체 timeout 에 위임.
+			continue
+		}
+		if !n.Flags["fail"] {
+			// gossip 이 죽었다고 합의하지 않음 — 정당한 멤버이거나 일시 장애.
+			continue
+		}
+		if n.Addr != "" && expectedAddrs[n.Addr] {
+			// 현 incarnation 의 정당한 pod — fail 이어도 forget 하지 않는다.
+			continue
+		}
+		// 여기 도달 = fail + (noaddr 이거나 addr 가 현재 기대 pod 와 매칭 안 됨).
+		// 둘 다 이번 incarnation 에 속하지 않는 명백한 ghost/orphan.
+		if n.ID == "" {
+			continue
+		}
+		stale = append(stale, n.ID)
+	}
+	return stale
+}
+
+// forgetStaleNodes — detectStaleNodes 가 고른 ghost id 들을 *모든 healthy primary* 에서
+// CLUSTER FORGET 한다 (scale-in / gracefulClusterTeardown 의 forget 패턴 미러링).
+//
+// forget 은 gossip 전파를 위해 살아있는 모든 노드에서 발행해야 효과가 지속된다 —
+// 한 노드에서만 forget 하면 다른 노드의 gossip 이 다시 알려준다. 여기선 현재 멤버인
+// 모든 ordinal(primary 우선 포함)에 발행한다. best-effort — 일부 실패는 다음 reconcile 재시도.
+func (r *ValkeyClusterReconciler) forgetStaleNodes(
+	ctx context.Context,
+	vc *cachev1alpha1.ValkeyCluster,
+	password string,
+	staleIDs []string,
+	addrByOrdinal map[int]string,
+	nodeIDByOrdinal map[int]string,
+) (int, error) {
+	if len(staleIDs) == 0 {
+		return 0, nil
+	}
+	tlsCfg, err := r.tlsConfigForCluster(ctx, vc)
+	if err != nil {
+		return 0, fmt.Errorf("tls config: %w", err)
+	}
+	// forget 대상 집합 (live 멤버 자신을 실수로 forget 하지 않도록 한 번 더 가드).
+	stale := make(map[string]bool, len(staleIDs))
+	liveIDs := make(map[string]bool, len(nodeIDByOrdinal))
+	for _, id := range nodeIDByOrdinal {
+		liveIDs[id] = true
+	}
+	for _, id := range staleIDs {
+		if id != "" && !liveIDs[id] {
+			stale[id] = true
+		}
+	}
+	if len(stale) == 0 {
+		return 0, nil
+	}
+
+	logger := log.FromContext(ctx)
+	var forgotten int
+	// 현재 멤버인 모든 ordinal 에서 발행.
+	for ord, id := range nodeIDByOrdinal {
+		if id == "" {
+			continue
+		}
+		addr := addrByOrdinal[ord]
+		if addr == "" {
+			continue
+		}
+		c := dialPod(addr, password, tlsCfg)
+		for sid := range stale {
+			if err := vk.ForgetNode(ctx, c, sid); err != nil {
+				// 이미 forget 됐거나(Unknown node) 일시 에러 — best-effort, 계속.
+				logger.V(1).Info("CLUSTER FORGET attempt failed (best-effort)",
+					"node", sid, "via", addr, "error", err.Error())
+				continue
+			}
+			forgotten++
+		}
+		_ = c.Close()
+	}
+	if forgotten > 0 {
+		logger.Info("Forgot stale/ghost cluster nodes",
+			"ghostIDs", len(stale), "forgetCallsSucceeded", forgotten)
+	}
+	return forgotten, nil
 }
 
 // firstMemberAddr — MEET 발행에 쓸 seed 주소. primary ordinal 중 멤버를 우선,

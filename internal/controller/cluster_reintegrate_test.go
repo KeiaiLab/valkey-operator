@@ -180,6 +180,95 @@ func TestBuildObservedMembers_missingPodIsNonMember(t *testing.T) {
 	}
 }
 
+// expectedAddrsFromMap — addrByOrdinal 의 값 집합 (detectStaleNodes 입력).
+func expectedAddrsFromMap(m map[int]string) map[string]bool {
+	out := make(map[string]bool, len(m))
+	for _, a := range m {
+		if a != "" {
+			out[a] = true
+		}
+	}
+	return out
+}
+
+func TestDetectStaleNodes_ghostForgotten(t *testing.T) {
+	// 3 healthy 멤버 + replica 가 CLUSTER RESET HARD 후 새 id 로 재합류 →
+	// 옛 id "deadghost" 가 slave,fail,noaddr 로 gossip 에 남음. 정확히 그 id 만 forget.
+	expected := expectedAddrsFromMap(map[int]string{
+		0: "10.0.0.1:6379", 1: "10.0.0.2:6379", 2: "10.0.0.3:6379",
+		3: "10.0.0.9:6379", // 새 incarnation 의 replica (새 id).
+	})
+	nodes := []vk.NodeView{
+		{ID: "p0", Addr: "10.0.0.1:6379", Flags: map[string]bool{"myself": true, "master": true}},
+		{ID: "p1", Addr: "10.0.0.2:6379", Flags: map[string]bool{"master": true}},
+		{ID: "p2", Addr: "10.0.0.3:6379", Flags: map[string]bool{"master": true}},
+		{ID: "rnew", Addr: "10.0.0.9:6379", Flags: map[string]bool{"slave": true}, MasterID: "p0"},
+		// ghost: 옛 replica id, addr 사라짐.
+		{ID: "deadghost", Addr: "", Flags: map[string]bool{"slave": true, "fail": true, "noaddr": true}},
+	}
+	got := detectStaleNodes(nodes, expected)
+	want := []string{"deadghost"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
+func TestDetectStaleNodes_healthyOnly_noop(t *testing.T) {
+	expected := expectedAddrsFromMap(map[int]string{
+		0: "10.0.0.1:6379", 1: "10.0.0.2:6379", 2: "10.0.0.3:6379",
+	})
+	nodes := []vk.NodeView{
+		{ID: "p0", Addr: "10.0.0.1:6379", Flags: map[string]bool{"myself": true, "master": true}},
+		{ID: "p1", Addr: "10.0.0.2:6379", Flags: map[string]bool{"master": true}},
+		{ID: "p2", Addr: "10.0.0.3:6379", Flags: map[string]bool{"master": true}},
+	}
+	if got := detectStaleNodes(nodes, expected); len(got) != 0 {
+		t.Fatalf("healthy-only snapshot must forget nothing, got %v", got)
+	}
+}
+
+func TestDetectStaleNodes_neverForgetMyselfOrCurrentPod(t *testing.T) {
+	// myself 가 fail,noaddr 로 잘못 표기돼도(이론상) 절대 forget 안 함.
+	// 현재 기대 pod 가 일시적 fail 이어도(주소는 그대로) forget 안 함.
+	expected := expectedAddrsFromMap(map[int]string{
+		0: "10.0.0.1:6379", 1: "10.0.0.2:6379",
+	})
+	nodes := []vk.NodeView{
+		{ID: "p0", Addr: "10.0.0.1:6379", Flags: map[string]bool{"myself": true, "master": true, "fail": true, "noaddr": true}},
+		// 현 멤버지만 일시 fail (주소 유지) — 정당한 pod, forget 금지.
+		{ID: "p1", Addr: "10.0.0.2:6379", Flags: map[string]bool{"master": true, "fail": true}},
+	}
+	if got := detectStaleNodes(nodes, expected); len(got) != 0 {
+		t.Fatalf("must never forget myself or current-pod-backed node, got %v", got)
+	}
+}
+
+func TestDetectStaleNodes_handshakeExcluded(t *testing.T) {
+	// 방금 MEET 한 노드가 handshake 중 (아직 수렴) — forget 하면 도로 쫓아냄. 제외.
+	expected := expectedAddrsFromMap(map[int]string{0: "10.0.0.1:6379"})
+	nodes := []vk.NodeView{
+		{ID: "p0", Addr: "10.0.0.1:6379", Flags: map[string]bool{"myself": true, "master": true}},
+		{ID: "hs", Addr: "10.0.0.7:6379", Flags: map[string]bool{"handshake": true, "fail": true}},
+	}
+	if got := detectStaleNodes(nodes, expected); len(got) != 0 {
+		t.Fatalf("handshake node must be excluded, got %v", got)
+	}
+}
+
+func TestDetectStaleNodes_orphanWithAddrNotInExpected(t *testing.T) {
+	// fail 인데 addr 가 남아있지만 현재 기대 pod 어디에도 없음 (옛 incarnation IP) → forget.
+	expected := expectedAddrsFromMap(map[int]string{0: "10.0.0.1:6379"})
+	nodes := []vk.NodeView{
+		{ID: "p0", Addr: "10.0.0.1:6379", Flags: map[string]bool{"myself": true, "master": true}},
+		{ID: "orphan", Addr: "10.0.99.99:6379", Flags: map[string]bool{"slave": true, "fail": true}},
+	}
+	got := detectStaleNodes(nodes, expected)
+	want := []string{"orphan"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
 func TestOrdinalFromPodName(t *testing.T) {
 	cases := []struct {
 		name, prefix string
