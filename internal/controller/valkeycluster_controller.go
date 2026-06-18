@@ -370,6 +370,25 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
+	// 10.6 partial-slot outage 자가복구 (결함 ⑤) — slot 레벨 health gate (cluster_state
+	//      =ok && slots_assigned=16384) 를 통과해도 *slots_ok<16384 또는 fail master 가
+	//      slot 을 소유* 하면 키스페이스 일부가 DOWN 이다. node churn 후 fail master 의
+	//      slot 이 stuck 인 경우, 그 master 의 healthy replica 에 CLUSTER FAILOVER TAKEOVER
+	//      를 발행해 slot 소유권을 승계시킨다. 보수적: `fail` flag 는 node-timeout 경과
+	//      후에만 설정되므로 converging cluster 를 thrash 하지 않으며, 멱등(복구되면 no-op).
+	if allReady && info != nil {
+		if healed, hErr := r.reconcileStuckSlots(ctx, vc, password, info, nodes); hErr != nil {
+			logger.Error(hErr, "Partial-slot outage heal pending — will retry")
+		} else if healed > 0 {
+			logger.Info("Healed partial-slot outage via takeover", "count", healed)
+			// takeover 직후 NODES/INFO 를 다시 읽어 status 정확도를 높인다 (slot 소유권
+			// 승계가 막 일어났다).
+			if i2, n2, e2 := r.pollClusterState(ctx, vc, password); e2 == nil && i2 != nil {
+				info, nodes = i2, n2
+			}
+		}
+	}
+
 	// 11. Shard status 빌드 + metrics 갱신.
 	//     ADR-0004 후속: NODES 응답이 있으면 *실제 토폴로지* 기반 — failover 정확.
 	//     없으면 spec 기반 fallback (부트스트랩 직후 / NODES 조회 실패 시).
@@ -499,8 +518,11 @@ func applyClusterConditions(
 		ObservedGeneration: vc.Generation,
 	})
 
-	// ClusterReady — cluster_state=ok && 16384 slot.
-	clusterReady := info != nil && info.State == "ok" && info.SlotsAssigned == 16384
+	// ClusterReady — cluster_state=ok && 16384 slot assigned && 모든 slot 이 ok.
+	// 결함 ⑤: slots_assigned=16384 이지만 slots_ok<16384 (fail master 소유 slot) 인
+	// partial-slot outage 를 Ready 로 오판하지 않도록 slots_ok 도 게이트에 포함.
+	clusterReady := info != nil && info.State == "ok" &&
+		info.SlotsAssigned == vk.ClusterTotalSlots && info.SlotsOK == vk.ClusterTotalSlots
 	clusterReason := "ClusterStateOK"
 	clusterMsg := ""
 	if !clusterReady {
@@ -508,8 +530,12 @@ func applyClusterConditions(
 		if info == nil {
 			clusterMsg = "Cluster info not yet polled"
 		} else {
-			clusterMsg = fmt.Sprintf("state=%s slots_assigned=%d ready_replicas=%d/%d",
-				info.State, info.SlotsAssigned, readyReplicas, totalReplicas)
+			if info.State == "ok" && info.SlotsAssigned == vk.ClusterTotalSlots &&
+				info.SlotsOK < vk.ClusterTotalSlots {
+				clusterReason = "PartialSlotOutage"
+			}
+			clusterMsg = fmt.Sprintf("state=%s slots_assigned=%d slots_ok=%d ready_replicas=%d/%d",
+				info.State, info.SlotsAssigned, info.SlotsOK, readyReplicas, totalReplicas)
 		}
 	}
 	setCondition(conds, metav1.Condition{
@@ -606,7 +632,12 @@ func decidePhase(vc *cachev1alpha1.ValkeyCluster, readyReplicas, totalReplicas i
 		return cachev1alpha1.ClusterPhaseInitializing
 	case info == nil || info.State != "ok":
 		return cachev1alpha1.ClusterPhaseInitializing
-	case info.SlotsAssigned != 16384:
+	case info.SlotsAssigned != vk.ClusterTotalSlots:
+		return cachev1alpha1.ClusterPhaseResharding
+	case info.SlotsOK < vk.ClusterTotalSlots:
+		// 결함 ⑤ partial-slot outage: state=ok + slots_assigned=16384 이지만
+		// 일부 slot 이 ok 가 아님 (fail master 소유). Running 으로 오판하지 않고
+		// 빠른 requeue(Resharding cadence)로 self-heal(takeover)을 재시도시킨다.
 		return cachev1alpha1.ClusterPhaseResharding
 	default:
 		return cachev1alpha1.ClusterPhaseRunning

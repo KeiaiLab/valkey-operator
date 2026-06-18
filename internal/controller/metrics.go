@@ -129,6 +129,18 @@ var (
 		labelNamespaceName,
 	)
 
+	// MetricStuckSlotTakeoverTotal — 결함 ⑤ partial-slot outage 자가복구로 발행한
+	// CLUSTER FAILOVER TAKEOVER 카운터. fail master 의 slot 이 healthy replica 로
+	// 승계될 때 (성공 분기) 증가.
+	MetricStuckSlotTakeoverTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Subsystem: metricSubsystem,
+			Name:      "stuck_slot_takeover_total",
+			Help:      "Total CLUSTER FAILOVER TAKEOVER events to heal partial-slot outages (Cluster mode)",
+		},
+		labelNamespaceName,
+	)
+
 	// MetricCapabilityActive — CR 의 활성 optional capability 추적 (PR #62 Status.Capabilities
 	// 의 Prometheus 측 노출). fleet-wide 채택 추적 용:
 	//   sum by (capability) (valkey_cluster_capability_active) → namespace 별 채택 CR 수
@@ -169,6 +181,7 @@ func init() {
 		MetricBackupTotal,
 		MetricRestoreTotal,
 		MetricFailoverTotal,
+		MetricStuckSlotTakeoverTotal,
 		MetricCapabilityActive,
 		MetricBuildInfo,
 	)

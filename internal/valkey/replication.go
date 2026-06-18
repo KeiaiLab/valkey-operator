@@ -48,6 +48,22 @@ func PromoteToPrimary(ctx context.Context, c *redis.Client) error {
 	return nil
 }
 
+// ClusterFailoverTakeover — replica 에서 CLUSTER FAILOVER TAKEOVER 발행 (결함 ⑤).
+//
+// 일반 CLUSTER FAILOVER 는 master 와의 handshake (offset 동기 + 합의)를 요구하므로
+// master 가 *이미 fail* 인 partial-slot outage 에서는 동작하지 않는다. TAKEOVER 옵션은
+// 합의 없이 replica 가 즉시 slot 소유권 + epoch 를 승계해 stuck slot 을 ok 로 되돌린다.
+//
+// 주의: TAKEOVER 는 split-brain 위험이 있어 *master 가 확실히 fail* 일 때만 호출해야
+// 한다 (caller 의 보수적 게이트 책임). go-redis 의 ClusterFailover 는 옵션 인자를
+// 받지 않으므로 raw Do 로 발행한다. 본 명령은 replica 노드에 직접 보내야 한다.
+func ClusterFailoverTakeover(ctx context.Context, c *redis.Client) error {
+	if err := c.Do(ctx, "CLUSTER", "FAILOVER", "TAKEOVER").Err(); err != nil {
+		return fmt.Errorf("cluster failover takeover: %w", err)
+	}
+	return nil
+}
+
 // ParseReplicationOffset — INFO replication 응답에서 master_repl_offset 또는
 // slave_repl_offset 추출. ADR-0017 의 failover 후보 선출에 사용.
 //

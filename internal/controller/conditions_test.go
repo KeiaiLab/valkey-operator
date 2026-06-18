@@ -29,7 +29,7 @@ func TestApplyClusterConditions_running_state(t *testing.T) {
 	vc.Generation = 5
 	vc.Status.Phase = cachev1alpha1.ClusterPhaseRunning
 	conds := []metav1.Condition{}
-	info := &vk.ClusterInfo{State: "ok", SlotsAssigned: 16384}
+	info := &vk.ClusterInfo{State: "ok", SlotsAssigned: 16384, SlotsOK: 16384}
 
 	applyClusterConditions(&conds, vc, info, 6, 6)
 
@@ -96,6 +96,25 @@ func TestApplyClusterConditions_resharding(t *testing.T) {
 	}
 }
 
+// 결함 ⑤ — partial-slot outage 는 ClusterReady=False (Reason=PartialSlotOutage).
+func TestApplyClusterConditions_partialSlotOutage(t *testing.T) {
+	vc := &cachev1alpha1.ValkeyCluster{}
+	vc.Status.Phase = cachev1alpha1.ClusterPhaseResharding
+	conds := []metav1.Condition{}
+	// state=ok + assigned=16384 이지만 slots_ok<16384.
+	info := &vk.ClusterInfo{State: "ok", SlotsAssigned: 16384, SlotsOK: 10922}
+
+	applyClusterConditions(&conds, vc, info, 6, 6)
+
+	c := findCondition(conds, CondTypeClusterReady)
+	if c.Status != metav1.ConditionFalse {
+		t.Errorf("ClusterReady during partial outage must be False: %v", c.Status)
+	}
+	if c.Reason != "PartialSlotOutage" {
+		t.Errorf("Reason: %q want PartialSlotOutage", c.Reason)
+	}
+}
+
 func TestApplyClusterConditions_scalePending(t *testing.T) {
 	vc := &cachev1alpha1.ValkeyCluster{}
 	vc.Status.Phase = cachev1alpha1.ClusterPhaseRunning
@@ -106,7 +125,7 @@ func TestApplyClusterConditions_scalePending(t *testing.T) {
 	}
 	conds := []metav1.Condition{}
 
-	applyClusterConditions(&conds, vc, &vk.ClusterInfo{State: "ok", SlotsAssigned: 16384}, 6, 6)
+	applyClusterConditions(&conds, vc, &vk.ClusterInfo{State: "ok", SlotsAssigned: 16384, SlotsOK: 16384}, 6, 6)
 
 	c := findCondition(conds, CondTypeScalePending)
 	if c.Status != metav1.ConditionTrue {

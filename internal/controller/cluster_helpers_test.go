@@ -207,8 +207,13 @@ func TestDecidePhase_matrix(t *testing.T) {
 		vc.Status.Version = status
 		return vc
 	}
+	// 기본적으로 slots_ok == slots_assigned (healthy). partial-outage 케이스는
+	// mkInfoOK 로 별도 구성.
 	mkInfo := func(state string, slots int32) *vk.ClusterInfo {
-		return &vk.ClusterInfo{State: state, SlotsAssigned: slots}
+		return &vk.ClusterInfo{State: state, SlotsAssigned: slots, SlotsOK: slots}
+	}
+	mkInfoOK := func(state string, slots, slotsOK int32) *vk.ClusterInfo {
+		return &vk.ClusterInfo{State: state, SlotsAssigned: slots, SlotsOK: slotsOK}
 	}
 	cases := []struct {
 		name         string
@@ -224,6 +229,8 @@ func TestDecidePhase_matrix(t *testing.T) {
 		{"sts ready, cluster not ok", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfo("fail", 0), cachev1alpha1.ClusterPhaseInitializing},
 		{"resharding", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfo("ok", 8192), cachev1alpha1.ClusterPhaseResharding},
 		{"running", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfo("ok", 16384), cachev1alpha1.ClusterPhaseRunning},
+		// 결함 ⑤: state=ok + assigned=16384 이지만 slots_ok<16384 → Running 아님(Resharding cadence).
+		{"partial-slot outage", mkVC("8.1.6", "8.1.6"), 6, 6, mkInfoOK("ok", 16384, 10922), cachev1alpha1.ClusterPhaseResharding},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
