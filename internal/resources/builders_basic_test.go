@@ -231,6 +231,52 @@ func TestBuildClientService(t *testing.T) {
 	}
 }
 
+func TestBuildPrimaryService(t *testing.T) {
+	t.Parallel()
+	svc := BuildPrimaryService("rs", "ns", false)
+	if svc.Name != "rs-primary" {
+		t.Errorf("name: %q, want rs-primary", svc.Name)
+	}
+	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
+		t.Errorf("type: %v, want ClusterIP", svc.Spec.Type)
+	}
+	// selector 는 role=primary 를 *반드시* 포함 → master pod 만 가린다 (write 항상 master).
+	if svc.Spec.Selector[LabelValkeyRole] != RolePrimary {
+		t.Errorf("selector 에 %s=%s 누락: %v", LabelValkeyRole, RolePrimary, svc.Spec.Selector)
+	}
+	if svc.Spec.Selector[LabelInstanceName] != "rs" || svc.Spec.Selector[LabelAppName] != "valkey" {
+		t.Errorf("selector 에 base 라벨(app/instance) 누락: %v", svc.Spec.Selector)
+	}
+	if len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != PortClient {
+		t.Error("client 포트 1개여야 함")
+	}
+	if tlsSvc := BuildPrimaryService("rs", "ns", true); len(tlsSvc.Spec.Ports) != 2 {
+		t.Errorf("tls primary service ports=%d, want 2", len(tlsSvc.Spec.Ports))
+	}
+	custom := &cachev1alpha1.ServiceSpec{
+		Annotations: map[string]string{"k": "v"},
+		Labels:      map[string]string{"traffic": "internal"},
+	}
+	c := BuildPrimaryService("rs", "ns", false, custom)
+	if c.Annotations["k"] != "v" || c.Labels["traffic"] != "internal" {
+		t.Errorf("custom serviceSpec 병합 실패: ann=%v labels=%v", c.Annotations, c.Labels)
+	}
+}
+
+func TestPrimarySelectorLabels(t *testing.T) {
+	t.Parallel()
+	sel := PrimarySelectorLabels("my-valkey")
+	if sel[LabelValkeyRole] != RolePrimary {
+		t.Errorf("PrimarySelectorLabels 에 role=primary 누락: %v", sel)
+	}
+	if sel[LabelAppName] != "valkey" || sel[LabelInstanceName] != "my-valkey" {
+		t.Errorf("PrimarySelectorLabels base 라벨 누락: %v", sel)
+	}
+	if len(sel) != 3 {
+		t.Errorf("PrimarySelectorLabels 는 app+instance+role 3개여야: %v", sel)
+	}
+}
+
 // BuildCertificateForValkey + PortIntOrString 회귀 보호 (cycle 128) — 잔여
 // pure helper 망라.
 func TestBuildCertificateForValkey(t *testing.T) {

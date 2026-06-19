@@ -26,6 +26,10 @@ const (
 	ManagedByValue = "valkey-operator"
 	PartOfValue    = "valkey"
 
+	// LabelValkeyRole 값 — Replication primary-only Service 의 selector 매칭용.
+	RolePrimary = "primary"
+	RoleReplica = "replica"
+
 	PortClient     = 6379
 	PortClusterBus = 16379
 	PortTLS        = 6380
@@ -63,10 +67,21 @@ func SelectorLabels(instanceName string) map[string]string {
 	}
 }
 
+// PrimarySelectorLabels — Replication primary-only Service 의 selector.
+// SelectorLabels + role=primary — 컨트롤러가 Status.CurrentPrimary pod 에 부여하는
+// LabelValkeyRole=primary 와 매칭. failover relabel 시 Service endpoints 자동 추종
+// (polling/manual Endpoints 불요 — kube endpoints controller 가 pod 라벨 watch).
+func PrimarySelectorLabels(instanceName string) map[string]string {
+	l := SelectorLabels(instanceName)
+	l[LabelValkeyRole] = RolePrimary
+	return l
+}
+
 // StatefulSetName — Valkey CR name → STS name.
 func StatefulSetName(crName string) string     { return crName }
 func HeadlessServiceName(crName string) string { return crName + "-headless" }
 func ClientServiceName(crName string) string   { return crName }
+func PrimaryServiceName(crName string) string  { return crName + "-primary" }
 func MetricsServiceName(crName string) string  { return crName + "-metrics" }
 func ConfigMapName(crName string) string       { return crName + "-config" }
 func DefaultSecretName(crName string) string   { return crName + "-auth" }

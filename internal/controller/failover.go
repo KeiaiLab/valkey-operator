@@ -19,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -236,4 +237,42 @@ func selectFailoverCandidate(offsets map[int]int64) (ordinal int, ok bool) {
 		}
 	}
 	return bestIdx, true
+}
+
+// reconcilePrimaryPodLabels — Status.CurrentPrimary pod 에 LabelValkeyRole=primary,
+// 나머지 replica pod 에 =replica 를 patch. BuildPrimaryService(selector role=primary)
+// 가 이 라벨로 현재 master 를 가린다. failover 로 CurrentPrimary 가 바뀌면 다음 reconcile
+// 이 relabel → kube endpoints controller 가 primary Service endpoints 를 즉시 갱신
+// (polling/manual Endpoints 불요). idempotent — 이미 일치하면 patch 생략(no-op write 회피).
+func (r *ValkeyReconciler) reconcilePrimaryPodLabels(ctx context.Context, v *cachev1alpha1.Valkey) error {
+	primary := v.Status.CurrentPrimary
+	if primary == "" {
+		return nil
+	}
+	for i := int32(0); i < v.Spec.Replicas; i++ {
+		podName := fmt.Sprintf("%s-%d", v.Name, i)
+		role := resources.RoleReplica
+		if podName == primary {
+			role = resources.RolePrimary
+		}
+		pod := &corev1.Pod{}
+		if err := r.Get(ctx, types.NamespacedName{Name: podName, Namespace: v.Namespace}, pod); err != nil {
+			if errors.IsNotFound(err) {
+				continue // pod 미생성 — 다음 reconcile.
+			}
+			return err
+		}
+		if pod.Labels[resources.LabelValkeyRole] == role {
+			continue // 이미 정확.
+		}
+		patch := client.MergeFrom(pod.DeepCopy())
+		if pod.Labels == nil {
+			pod.Labels = map[string]string{}
+		}
+		pod.Labels[resources.LabelValkeyRole] = role
+		if err := r.Patch(ctx, pod, patch); err != nil {
+			return err
+		}
+	}
+	return nil
 }
