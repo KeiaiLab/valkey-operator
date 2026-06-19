@@ -115,6 +115,40 @@ func BuildClientService(
 	}
 }
 
+// BuildPrimaryService — Replication primary-only ClusterIP Service.
+//
+// selector 에 role=primary 라벨 포함 → 컨트롤러(reconcilePrimaryPodLabels)가
+// Status.CurrentPrimary pod 에 부여한 LabelValkeyRole=primary 와 매칭. 쓰기 클라이언트
+// (세션/락/queue)가 이 안정 이름(<cr>-primary)으로 접속하면 *항상 현재 master* 도달 →
+// RR Client Service(master+replica 양쪽 endpoint)의 write-to-replica READONLY 갭
+// (phpredis 무한 세션락 행 등) 해소. failover 시 컨트롤러가 relabel → kube endpoints
+// controller 가 즉시 endpoints 갱신 (polling/수동 Endpoints 불요 — 자동 추종).
+func BuildPrimaryService(
+	crName, namespace string,
+	tlsEnabled bool,
+	serviceSpec ...*cachev1alpha1.ServiceSpec,
+) *corev1.Service {
+	ports := clientPorts(tlsEnabled)
+	opts := firstServiceSpec(serviceSpec)
+	labels := CommonLabels(crName, "valkey-primary")
+	maps.Copy(labels, opts.Labels)
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        PrimaryServiceName(crName),
+			Namespace:   namespace,
+			Labels:      labels,
+			Annotations: maps.Clone(opts.Annotations),
+		},
+		Spec: corev1.ServiceSpec{
+			Type:           corev1.ServiceTypeClusterIP,
+			IPFamilyPolicy: opts.IPFamilyPolicy,
+			IPFamilies:     opts.IPFamilies,
+			Selector:       PrimarySelectorLabels(crName),
+			Ports:          ports,
+		},
+	}
+}
+
 func firstServiceSpec(specs []*cachev1alpha1.ServiceSpec) *cachev1alpha1.ServiceSpec {
 	if len(specs) == 0 || specs[0] == nil {
 		return &cachev1alpha1.ServiceSpec{}

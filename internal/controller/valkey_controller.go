@@ -59,6 +59,7 @@ type ValkeyReconciler struct {
 // +kubebuilder:rbac:groups=cache.keiailab.io,resources=valkeys/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services;configmaps;secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch;update
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
@@ -172,6 +173,15 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	cs := resources.BuildClientService(v.Name, v.Namespace, tlsEnabled, v.Spec.Service)
 	if err := commonsapply.Service(ctx, r.Client, r.Scheme, v, cs); err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "ClientService", err, r.Recorder)
+	}
+	// 5b. Replication primary-only Service — selector role=primary. 쓰기 클라이언트가
+	//     항상 현재 master 도달 (RR Client Service 의 write-to-replica READONLY 갭 해소).
+	//     pod role 라벨은 reconcilePrimaryPodLabels (status 단계) 가 부여 → failover 자동 추종.
+	if v.Spec.Mode == cachev1alpha1.ModeReplication && v.Spec.Replicas > 1 {
+		ps := resources.BuildPrimaryService(v.Name, v.Namespace, tlsEnabled, v.Spec.Service)
+		if err := commonsapply.Service(ctx, r.Client, r.Scheme, v, ps); err != nil {
+			return applyErrorCondition(ctx, r.Client, v, "PrimaryService", err, r.Recorder)
+		}
 	}
 
 	// 6a. TLS Issuer (cert-manager) — AutoSelfSigned=true 시 namespace-scope SelfSigned
@@ -354,6 +364,15 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	v.Status.Version = v.Spec.Version.Version
 	v.Status.Endpoint = fmt.Sprintf("%s.%s.svc:%d", resources.ClientServiceName(v.Name), v.Namespace, resources.PortClient)
 	v.Status.CurrentPrimary = r.determinePrimary(v)
+
+	// 10a. Replication primary-only Service 의 pod role 라벨 reconcile — CurrentPrimary
+	//      pod 에 role=primary, 나머지 role=replica. selector 기반 primary Service 가
+	//      failover relabel 시 자동 추종. best-effort (실패 시 다음 reconcile 재시도).
+	if v.Spec.Mode == cachev1alpha1.ModeReplication && v.Spec.Replicas > 1 && stsObj.readyReplicas > 0 {
+		if err := r.reconcilePrimaryPodLabels(ctx, v); err != nil {
+			logger.Info("primary pod label reconcile pending", "error", err.Error())
+		}
+	}
 
 	switch {
 	case stsObj.readyReplicas == 0:
