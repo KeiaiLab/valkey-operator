@@ -222,9 +222,10 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	// 컨테이너 command 에서 $POD_IP 를 셸 확장한다. CLI flag 가 valkey.conf 보다
 	// 우선하므로 ConfigMap 의 기타 directive 는 그대로 유효.
 	// announce-port=client(6379/tls 6380 무관 — 6379 는 평문/내부 dial 기준),
-	// announce-bus-port=cluster-bus(16379).
+	// announce-bus-port=tls-cluster 시 tls-port+10000(16380) / 아니면 port+10000(16379)
+	// — 실제 bus listen 포트와 일치해야 gossip 성립 (clusterAnnounceCommand 참조).
 	if p.ClusterMode {
-		containers[0].Command, containers[0].Args = clusterAnnounceCommand(containers[0].Args)
+		containers[0].Command, containers[0].Args = clusterAnnounceCommand(containers[0].Args, p.TLSSecretName != "")
 	}
 
 	podSpec := corev1.PodSpec{
@@ -374,12 +375,20 @@ func buildRestrictedContainerSecurityContext() *corev1.SecurityContext {
 // CLI flag 가 valkey.conf 보다 우선하므로 ConfigMap 의 cluster-* directive 는
 // 유효하게 유지된다. `exec` 로 PID 1 을 valkey-server 로 교체해 signal/graceful
 // shutdown 의미를 보존한다.
-func clusterAnnounceCommand(serverArgs []string) ([]string, []string) {
+func clusterAnnounceCommand(serverArgs []string, tlsEnabled bool) ([]string, []string) {
+	// cluster-bus 는 tls-cluster 시 tls-port(6380)+10000, 아니면 port(6379)+10000 에
+	// listen 한다. announce-bus-port 가 실제 listen 포트와 어긋나면 peer 가 닫힌 포트로
+	// gossip 을 시도해 모든 노드가 fail?/disconnected → cluster_state:fail, slots_ok:0.
+	// (TLS 클러스터에서 PortClusterBus(16379) 를 그대로 announce 하던 회귀 사고.)
+	busPort := PortClient + 10000
+	if tlsEnabled {
+		busPort = PortTLS + 10000
+	}
 	parts := append([]string{"exec", "valkey-server"}, serverArgs...)
 	parts = append(parts,
 		"--cluster-announce-ip", `"$POD_IP"`,
 		"--cluster-announce-port", fmt.Sprintf("%d", PortClient),
-		"--cluster-announce-bus-port", fmt.Sprintf("%d", PortClusterBus),
+		"--cluster-announce-bus-port", fmt.Sprintf("%d", busPort),
 	)
 	return []string{"sh", "-c", strings.Join(parts, " ")}, nil
 }

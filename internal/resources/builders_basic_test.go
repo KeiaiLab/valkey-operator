@@ -406,6 +406,37 @@ func TestBuildStatefulSet(t *testing.T) {
 			t.Error("cluster mode → cluster-bus port (16379) 누락")
 		}
 	})
+	t.Run("cluster mode TLS announces bus port = tls-port+10000 (gossip 단절 회귀가드)", func(t *testing.T) {
+		t.Parallel()
+		// 회귀 사고: tls-cluster 에서 bus 는 tls-port(6380)+10000=16380 에 listen 하나
+		// operator 가 16379(=비-TLS port+10000) 를 announce → peer 가 닫힌 16379 로
+		// gossip 시도 → 전 노드 disconnected → cluster_state:fail, slots_ok:0 (23일 고착).
+		p := makeParams()
+		p.ClusterMode = true
+		p.TLSSecretName = "rs-tls" // TLS 활성
+		sts := BuildStatefulSet(p)
+		c := sts.Spec.Template.Spec.Containers[0]
+		if len(c.Command) != 3 || c.Command[0] != "sh" || c.Command[1] != "-c" {
+			t.Fatalf("cluster mode 는 sh -c 래핑 command 기대, got %v", c.Command)
+		}
+		shCmd := c.Command[2]
+		if !strings.Contains(shCmd, "--cluster-announce-bus-port 16380") {
+			t.Errorf("TLS cluster 는 announce-bus-port 16380 기대 (tls-port+10000), got: %s", shCmd)
+		}
+		if strings.Contains(shCmd, "--cluster-announce-bus-port 16379") {
+			t.Errorf("TLS cluster 가 비-TLS bus port 16379 announce — gossip 실패: %s", shCmd)
+		}
+	})
+	t.Run("cluster mode non-TLS announces bus port = port+10000 (16379)", func(t *testing.T) {
+		t.Parallel()
+		p := makeParams()
+		p.ClusterMode = true // TLS 미설정 → bus = port(6379)+10000 = 16379
+		sts := BuildStatefulSet(p)
+		shCmd := sts.Spec.Template.Spec.Containers[0].Command[2]
+		if !strings.Contains(shCmd, "--cluster-announce-bus-port 16379") {
+			t.Errorf("non-TLS cluster 는 announce-bus-port 16379 기대, got: %s", shCmd)
+		}
+	})
 	t.Run("password env via SecretKeyRef", func(t *testing.T) {
 		t.Parallel()
 		sts := BuildStatefulSet(makeParams())
