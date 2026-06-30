@@ -21,6 +21,13 @@ jobs:
       pull-requests: write   # comment the diff summary inline
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      # 보안 tradeoff (의도적): dependency-review-action 은 GitHub Dependency graph
+      # 가 *반드시* 있어야 동작한다. 본 org/repo 는 graph 가 미가용이라 action 이
+      # review 전에 hard-error 한다(게이트가 동작하지 못하고 실패 알림 메일만 양산).
+      # 따라서 graph 가용 시에만 review 를 실행(fail-closed, 아래 if), 미가용 시엔 skip.
+      # 이는 fail-open 이 아니다: (1) graph 가용 시 review 는 그대로 차단 게이트로 동작,
+      # (2) CVE 차단은 graph 불요인 govulncheck(security-scan.yml)가 fail-closed backstop
+      # 으로 상시 enforce. dependency-review 는 graph 기반 *보충* 커버리지(전 의존 + 라이선스)다.
       - name: Check dependency graph availability
         id: dependency_graph
         env:
