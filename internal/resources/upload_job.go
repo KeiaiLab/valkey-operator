@@ -13,7 +13,8 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonsbatchjob "github.com/keiailab/keiailab-commons/pkg/batchjob"
 )
 
 // UploadJobName — 업로드 Job 이름. ValkeyBackup CR 이름 + "-upload".
@@ -95,46 +96,35 @@ func BuildUploadJob(p UploadJobParams) *batchv1.Job {
 		},
 	}
 
-	backoff := int32(2)
-	ttl := int32(86400) // 24h
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      UploadJobName(p.BackupName),
-			Namespace: p.Namespace,
-			Labels:    BackupLabels(p.BackupName),
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoff,
-			TTLSecondsAfterFinished: &ttl,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: BackupLabels(p.BackupName)},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					Containers: []corev1.Container{{
-						Name:  "upload",
-						Image: p.OperatorImage,
-						Args:  args,
-						Env:   env,
-						VolumeMounts: []corev1.VolumeMount{
-							{Name: "backup", MountPath: BackupVolumeMountPath, ReadOnly: true},
-						},
-						SecurityContext: buildRestrictedContainerSecurityContext(),
-					}},
-					Volumes: []corev1.Volume{
-						{Name: "backup", VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: p.PVCName,
-								ReadOnly:  true,
-							},
-						}},
-					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: new(true),
-						RunAsUser:    new(int64(65532)),
-						FSGroup:      new(int64(65532)),
-					},
-				},
+	// Job 엔벨로프는 keiailab-commons/pkg/batchjob.Build 에 위임. 컨테이너(업로드)/볼륨은 잔류.
+	return commonsbatchjob.Build(commonsbatchjob.Params{
+		Name:                    UploadJobName(p.BackupName),
+		Namespace:               p.Namespace,
+		Labels:                  BackupLabels(p.BackupName),
+		BackoffLimit:            new(int32(2)),
+		TTLSecondsAfterFinished: new(int32(86400)), // 24h
+		Containers: []corev1.Container{{
+			Name:  "upload",
+			Image: p.OperatorImage,
+			Args:  args,
+			Env:   env,
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: "backup", MountPath: BackupVolumeMountPath, ReadOnly: true},
 			},
+			SecurityContext: buildRestrictedContainerSecurityContext(),
+		}},
+		Volumes: []corev1.Volume{
+			{Name: "backup", VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: p.PVCName,
+					ReadOnly:  true,
+				},
+			}},
 		},
-	}
+		PodSecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: new(true),
+			RunAsUser:    new(int64(65532)),
+			FSGroup:      new(int64(65532)),
+		},
+	})
 }

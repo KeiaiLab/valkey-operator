@@ -18,6 +18,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonsbatchjob "github.com/keiailab/keiailab-commons/pkg/batchjob"
 )
 
 // RestoreSourcePVCName — ValkeyRestore 가 생성하는 임시 source PVC 이름.
@@ -114,48 +116,37 @@ func BuildDownloadJob(p DownloadJobParams) *batchv1.Job {
 	env := s3EnvForJob(p.Endpoint, p.Region, p.ForcePathStyle,
 		p.CredentialsSecretName, p.AccessKeyIDSecretKey, p.SecretAccessKeySecretKey)
 
-	backoff := int32(2)
-	ttl := int32(86400)
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      DownloadJobName(p.RestoreName),
-			Namespace: p.Namespace,
-			Labels:    RestoreLabels(p.RestoreName),
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoff,
-			TTLSecondsAfterFinished: &ttl,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: RestoreLabels(p.RestoreName)},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					Containers: []corev1.Container{{
-						Name:  "download",
-						Image: p.OperatorImage,
-						Args:  args,
-						Env:   env,
-						VolumeMounts: []corev1.VolumeMount{
-							// download 는 write 필요 — ReadOnly=false.
-							{Name: "backup", MountPath: BackupVolumeMountPath},
-						},
-						SecurityContext: buildRestrictedContainerSecurityContext(),
-					}},
-					Volumes: []corev1.Volume{
-						{Name: "backup", VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: p.PVCName,
-							},
-						}},
-					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: new(true),
-						RunAsUser:    new(int64(65532)),
-						FSGroup:      new(int64(65532)),
-					},
-				},
+	// Job 엔벨로프는 keiailab-commons/pkg/batchjob.Build 에 위임.
+	return commonsbatchjob.Build(commonsbatchjob.Params{
+		Name:                    DownloadJobName(p.RestoreName),
+		Namespace:               p.Namespace,
+		Labels:                  RestoreLabels(p.RestoreName),
+		BackoffLimit:            new(int32(2)),
+		TTLSecondsAfterFinished: new(int32(86400)),
+		Containers: []corev1.Container{{
+			Name:  "download",
+			Image: p.OperatorImage,
+			Args:  args,
+			Env:   env,
+			VolumeMounts: []corev1.VolumeMount{
+				// download 는 write 필요 — ReadOnly=false.
+				{Name: "backup", MountPath: BackupVolumeMountPath},
 			},
+			SecurityContext: buildRestrictedContainerSecurityContext(),
+		}},
+		Volumes: []corev1.Volume{
+			{Name: "backup", VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: p.PVCName,
+				},
+			}},
 		},
-	}
+		PodSecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: new(true),
+			RunAsUser:    new(int64(65532)),
+			FSGroup:      new(int64(65532)),
+		},
+	})
 }
 
 // s3EnvForJob — Upload/Download Job 공통 env 빌더 (DRY).
