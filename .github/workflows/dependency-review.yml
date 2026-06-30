@@ -21,7 +21,21 @@ jobs:
       pull-requests: write   # comment the diff summary inline
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Check dependency graph availability
+        id: dependency_graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/dependency-graph/sbom" >/dev/null 2>"${RUNNER_TEMP}/dependency-graph.err"; then
+            echo "supported=true" >>"${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "supported=false" >>"${GITHUB_OUTPUT}"
+          echo "::notice::Dependency graph is unavailable for this repository; skipping dependency review until GitHub enables it."
+          cat "${RUNNER_TEMP}/dependency-graph.err" || true
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v4
+        if: steps.dependency_graph.outputs.supported == 'true'
         with:
           fail-on-severity: high
           # See https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/using-the-dependency-review-action
