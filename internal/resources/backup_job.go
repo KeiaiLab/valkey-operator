@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonsbatchjob "github.com/keiailab/keiailab-commons/pkg/batchjob"
 	"github.com/keiailab/keiailab-commons/pkg/security"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
@@ -112,50 +113,36 @@ func BuildBackupJob(p BackupJobParams) *batchv1.Job {
 		})
 	}
 
-	backoff := int32(2)
-	ttl := int32(86400) // 24h — Job 자체 는 24시간 후 자동 정리, PVC 는 보존.
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      BackupJobName(p.BackupName),
-			Namespace: p.Namespace,
-			Labels:    BackupLabels(p.BackupName),
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoff,
-			TTLSecondsAfterFinished: &ttl,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: BackupLabels(p.BackupName)},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					Containers: []corev1.Container{{
-						Name:    "rdb-copy",
-						Image:   p.Image,
-						Command: cmd,
-						Env: []corev1.EnvVar{{
-							Name: "VALKEY_PASSWORD",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: p.PasswordSecret,
-							},
-						}},
-						VolumeMounts: volumeMounts,
-						// iteration 37 (cluster incident fix): PodSecurity restricted invariant.
-						// data ns 의 enforce=restricted 가 admission 단계에서 capabilities.drop /
-						// seccompProfile / allowPrivilegeEscalation 미설정 pod 거부 → backup
-						// job-controller 가 매 5-15s 재시도하며 ValkeyBackup Phase=Copying stuck.
-						// commons.RestrictedContainer 위임 — RunAsUser=999 (postgres-user 와 분리,
-						// valkey 표준).
-						SecurityContext: security.RestrictedContainer(security.WithRunAsUser(999)),
-					}},
-					Volumes: volumes,
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: new(true),
-						RunAsUser:    new(int64(999)),
-						FSGroup:      new(int64(999)),
-					},
+	// Job 엔벨로프(BackoffLimit/TTL/RestartPolicy/라벨전파)는 keiailab-commons/pkg/batchjob.Build
+	// 에 위임. 컨테이너(valkey-cli --rdb)/볼륨/SecurityContext 조립은 valkey 도메인 잔류.
+	return commonsbatchjob.Build(commonsbatchjob.Params{
+		Name:                    BackupJobName(p.BackupName),
+		Namespace:               p.Namespace,
+		Labels:                  BackupLabels(p.BackupName),
+		BackoffLimit:            new(int32(2)),
+		TTLSecondsAfterFinished: new(int32(86400)), // 24h — Job 자동 정리, PVC 보존.
+		Containers: []corev1.Container{{
+			Name:    "rdb-copy",
+			Image:   p.Image,
+			Command: cmd,
+			Env: []corev1.EnvVar{{
+				Name: "VALKEY_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: p.PasswordSecret,
 				},
-			},
+			}},
+			VolumeMounts: volumeMounts,
+			// PodSecurity restricted invariant (data ns enforce=restricted admission 통과).
+			// commons.RestrictedContainer 위임 — RunAsUser=999 (valkey 표준).
+			SecurityContext: security.RestrictedContainer(security.WithRunAsUser(999)),
+		}},
+		Volumes: volumes,
+		PodSecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: new(true),
+			RunAsUser:    new(int64(999)),
+			FSGroup:      new(int64(999)),
 		},
-	}
+	})
 }
 
 func buildBackupShellCommand(p BackupJobParams) string {
