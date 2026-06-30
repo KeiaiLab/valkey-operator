@@ -26,7 +26,7 @@ maintainers:
     email: support@keiailab.com
     url: https://keiailab.com
 
-icon: https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png
+icon: https://valkey.io/img/valkey-horizontal.svg
 
 annotations:
   artifacthub.io/license: MIT

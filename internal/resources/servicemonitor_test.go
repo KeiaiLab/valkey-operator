@@ -6,9 +6,10 @@ Licensed under the MIT License. See the LICENSE file for details.
 package resources
 
 import (
-	"k8s.io/utils/ptr"
 	"strings"
 	"testing"
+
+	"k8s.io/utils/ptr"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
