@@ -217,7 +217,8 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 	// announce-bus-port=tls-cluster 시 tls-port+10000(16380) / 아니면 port+10000(16379)
 	// — 실제 bus listen 포트와 일치해야 gossip 성립 (clusterAnnounceCommand 참조).
 	if p.ClusterMode {
-		containers[0].Command, containers[0].Args = clusterAnnounceCommand(containers[0].Args, p.TLSSecretName != "")
+		containers[0].Command = clusterAnnounceCommand(containers[0].Args, p.TLSSecretName != "")
+		containers[0].Args = nil
 	}
 
 	podSpec := corev1.PodSpec{
@@ -359,15 +360,15 @@ func buildRestrictedContainerSecurityContext() *corev1.SecurityContext {
 
 // clusterAnnounceCommand — cluster mode 컨테이너 command 를 셸 래핑하여
 // cluster-announce-ip 를 $POD_IP(downward API)로 확장한다. 입력은 기존
-// valkey-server args (config path + --loadmodule 등). 반환은 (command, args)
-// 쌍: command 는 `sh -c '...'`, args 는 nil (셸 명령에 모두 인라인).
+// valkey-server args (config path + --loadmodule 등). 반환은 command (`sh -c '...'`)
+// — 셸 명령에 모두 인라인되므로 호출 측은 컨테이너 Args 를 nil 로 설정한다.
 //
 // cluster-announce-ip 는 valkey-server 시작 시점에 literal 이어야 하므로
 // ConfigMap directive 로 표현할 수 없다 (pod IP 는 ConfigMap 렌더 시점 미확정).
 // CLI flag 가 valkey.conf 보다 우선하므로 ConfigMap 의 cluster-* directive 는
 // 유효하게 유지된다. `exec` 로 PID 1 을 valkey-server 로 교체해 signal/graceful
 // shutdown 의미를 보존한다.
-func clusterAnnounceCommand(serverArgs []string, tlsEnabled bool) ([]string, []string) {
+func clusterAnnounceCommand(serverArgs []string, tlsEnabled bool) []string {
 	// cluster-bus 는 tls-cluster 시 tls-port(6380)+10000, 아니면 port(6379)+10000 에
 	// listen 한다. announce-bus-port 가 실제 listen 포트와 어긋나면 peer 가 닫힌 포트로
 	// gossip 을 시도해 모든 노드가 fail?/disconnected → cluster_state:fail, slots_ok:0.
@@ -382,7 +383,7 @@ func clusterAnnounceCommand(serverArgs []string, tlsEnabled bool) ([]string, []s
 		"--cluster-announce-port", fmt.Sprintf("%d", PortClient),
 		"--cluster-announce-bus-port", fmt.Sprintf("%d", busPort),
 	)
-	return []string{"sh", "-c", strings.Join(parts, " ")}, nil
+	return []string{"sh", "-c", strings.Join(parts, " ")}
 }
 
 // PortIntOrString — helper for Probe/Service ports.

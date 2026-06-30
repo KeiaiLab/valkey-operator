@@ -83,7 +83,7 @@ func detectReintegration(shards, replicasPerShard int, observed map[int]observed
 	total := shards * (1 + replicasPerShard)
 	var primaries, replicas []reintegrationAction
 
-	for ord := 0; ord < total; ord++ {
+	for ord := range total {
 		m, seen := observed[ord]
 		isReplica := ord >= shards
 		if !isReplica {
@@ -130,7 +130,7 @@ func buildObservedMembers(
 	}
 	// nodeID → ordinal (master 매핑 역참조용).
 	idToOrdinal := make(map[string]int, total)
-	for ord := 0; ord < total; ord++ {
+	for ord := range total {
 		if addr := addrByOrdinal[ord]; addr != "" {
 			if nv := byAddr[addr]; nv != nil {
 				idToOrdinal[nv.ID] = ord
@@ -140,7 +140,7 @@ func buildObservedMembers(
 
 	observed := make(map[int]observedMember, total)
 	nodeIDByOrdinal := make(map[int]string, total)
-	for ord := 0; ord < total; ord++ {
+	for ord := range total {
 		addr := addrByOrdinal[ord]
 		nv := byAddr[addr]
 		if addr == "" || nv == nil {
@@ -397,7 +397,7 @@ func (r *ValkeyClusterReconciler) forgetStaleNodes(
 func (r *ValkeyClusterReconciler) firstMemberAddr(
 	addrByOrdinal, nodeIDByOrdinal map[int]string, shards int,
 ) string {
-	for ord := 0; ord < shards; ord++ {
+	for ord := range shards {
 		if nodeIDByOrdinal[ord] != "" {
 			return addrByOrdinal[ord]
 		}
