@@ -7,8 +7,8 @@ package resources
 
 import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonshpa "github.com/keiailab/keiailab-commons/pkg/hpa"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -23,60 +23,34 @@ func HPAName(crName string) string { return crName }
 //   - target: StatefulSet (CRName)
 //   - mode=Replication 만 사용 의도 — caller 가 사전 검증 (webhook + reconciler).
 //   - CPU + Memory metric source (HPA v2 표준).
+//
+// 빌드 골격(ScaleTargetRef / MinReplicas clamp / Max 보정)은 keiailab-commons/pkg/hpa.Build
+// 에 위임. metric 조립은 valkey 도메인(CPU 기본 70 + opt-in Memory)으로 잔류 —
+// commons CPUUtilization/MemoryUtilization 헬퍼 사용. MinFloor=2 (valkey 정책).
 func BuildHorizontalPodAutoscaler(v *cachev1alpha1.Valkey) *autoscalingv2.HorizontalPodAutoscaler {
 	if v.Spec.Autoscaling == nil || !v.Spec.Autoscaling.Enabled {
 		return nil
 	}
 	a := v.Spec.Autoscaling
 
-	minR := max(a.MinReplicas, int32(2))
-	maxR := max(a.MaxReplicas, minR)
-
 	cpuTarget := a.TargetCPUUtilizationPercentage
 	if cpuTarget == 0 {
 		cpuTarget = 70
 	}
-
-	metrics := []autoscalingv2.MetricSpec{
-		{
-			Type: autoscalingv2.ResourceMetricSourceType,
-			Resource: &autoscalingv2.ResourceMetricSource{
-				Name: corev1.ResourceCPU,
-				Target: autoscalingv2.MetricTarget{
-					Type:               autoscalingv2.UtilizationMetricType,
-					AverageUtilization: new(cpuTarget),
-				},
-			},
-		},
-	}
+	metrics := []autoscalingv2.MetricSpec{commonshpa.CPUUtilization(cpuTarget)}
 	if a.TargetMemoryUtilizationPercentage > 0 {
-		metrics = append(metrics, autoscalingv2.MetricSpec{
-			Type: autoscalingv2.ResourceMetricSourceType,
-			Resource: &autoscalingv2.ResourceMetricSource{
-				Name: corev1.ResourceMemory,
-				Target: autoscalingv2.MetricTarget{
-					Type:               autoscalingv2.UtilizationMetricType,
-					AverageUtilization: new(a.TargetMemoryUtilizationPercentage),
-				},
-			},
-		})
+		metrics = append(metrics, commonshpa.MemoryUtilization(a.TargetMemoryUtilizationPercentage))
 	}
 
-	return &autoscalingv2.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      HPAName(v.Name),
-			Namespace: v.Namespace,
-			Labels:    CommonLabels(v.Name, "valkey"),
-		},
-		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
-			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
-				APIVersion: "apps/v1",
-				Kind:       "StatefulSet",
-				Name:       StatefulSetName(v.Name),
-			},
-			MinReplicas: new(minR),
-			MaxReplicas: maxR,
-			Metrics:     metrics,
-		},
-	}
+	return commonshpa.Build(commonshpa.Params{
+		Name:        HPAName(v.Name),
+		Namespace:   v.Namespace,
+		Labels:      CommonLabels(v.Name, "valkey"),
+		TargetKind:  "StatefulSet",
+		TargetName:  StatefulSetName(v.Name),
+		MinReplicas: a.MinReplicas,
+		MaxReplicas: a.MaxReplicas,
+		MinFloor:    2,
+		Metrics:     metrics,
+	})
 }
