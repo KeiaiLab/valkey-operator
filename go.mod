@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/storage v1.62.2
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.7.0
-	github.com/keiailab/keiailab-commons v0.12.0
+	github.com/keiailab/keiailab-commons v0.12.1-0.20260630004504-13e0976fc111
 	github.com/minio/minio-go/v7 v7.2.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0

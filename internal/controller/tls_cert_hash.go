@@ -7,13 +7,13 @@ package controller
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/keiailab/keiailab-commons/pkg/secrethash"
 )
 
 // hashTLSSecret — TLS Secret data (tls.crt + tls.key + ca.crt) 의 SHA256 (hex)
@@ -43,12 +43,8 @@ func hashTLSSecret(ctx context.Context, c client.Client, namespace, secretName s
 		}
 		return "", err
 	}
-	h := sha256.New()
-	// 결정적 순서로 누적 (map 순회 비결정성 회피).
-	for _, key := range []string{"tls.crt", "tls.key", "ca.crt"} {
-		// key 자체도 누적해 빈 값/누락을 구분 (예: ca.crt 만 변경되어도 hash 변경).
-		h.Write([]byte(key))
-		h.Write(s.Data[key])
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	// 결정적 키 순서 누적은 keiailab-commons/pkg/secrethash.Hash 에 위임. key 자체도
+	// 누적되어 빈 값/누락을 구분한다 (예: ca.crt 만 변경되어도 hash 변경). 기존 거동과
+	// byte-identical (동일 키 순서 + full hex).
+	return secrethash.Hash(s.Data, "tls.crt", "tls.key", "ca.crt"), nil
 }
