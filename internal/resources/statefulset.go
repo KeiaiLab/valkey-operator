@@ -18,9 +18,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/keiailab/keiailab-commons/pkg/probes"
+	commonspvc "github.com/keiailab/keiailab-commons/pkg/pvc"
 	"github.com/keiailab/keiailab-commons/pkg/security"
-	"github.com/keiailab/keiailab-commons/pkg/storageclass"
 	commonstopology "github.com/keiailab/keiailab-commons/pkg/topology"
+	commonsvolume "github.com/keiailab/keiailab-commons/pkg/volume"
 
 	cachev1alpha1 "github.com/keiailab/valkey-operator/api/v1alpha1"
 )
@@ -78,29 +79,20 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 		storageSize = resource.MustParse("8Gi")
 	}
 
-	accessModes := p.Storage.AccessModes
-	if len(accessModes) == 0 {
-		accessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-	}
-	dataPVC := corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "data",
-			Labels:      maps.Clone(p.Storage.Labels),
-			Annotations: maps.Clone(p.Storage.Annotations),
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: accessModes,
-			Resources: corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{corev1.ResourceStorage: storageSize},
-			},
-		},
-	}
 	storageClass := p.StorageClass
 	if p.Storage.StorageClassName != "" {
 		storageClass = p.Storage.StorageClassName
 	}
-	// commons storageclass.Normalize — 빈 값 = nil (cluster default StorageClass).
-	dataPVC.Spec.StorageClassName = storageclass.Normalize(storageClass)
+	// 빌드 골격은 keiailab-commons/pkg/pvc.BuildDataPVC 에 위임 (accessModes 기본 RWO +
+	// storageclass.Normalize 빈 값→nil). StorageClass 우선순위는 valkey 도메인 잔류.
+	dataPVC := commonspvc.BuildDataPVC(commonspvc.DataPVCParams{
+		Name:         "data",
+		Labels:       maps.Clone(p.Storage.Labels),
+		Annotations:  maps.Clone(p.Storage.Annotations),
+		AccessModes:  p.Storage.AccessModes,
+		StorageClass: storageClass,
+		Size:         storageSize,
+	})
 
 	// POD_IP — downward API 로 pod 의 실제 IP 주입. cluster mode 에서
 	// cluster-announce-ip 로 사용 (Defect ②: pod 재시작 후 새 IP 를 gossip 에
@@ -402,20 +394,15 @@ func tlsVolumeMounts(secretName string) []corev1.VolumeMount {
 	if secretName == "" {
 		return nil
 	}
-	return []corev1.VolumeMount{{Name: "tls", MountPath: TLSDir, ReadOnly: true}}
+	// 0o400/readonly cert 불변식은 keiailab-commons/pkg/volume.TLSSecretMount 에 위임.
+	_, mount := commonsvolume.TLSSecretMount("tls", secretName, TLSDir)
+	return []corev1.VolumeMount{mount}
 }
 
 func tlsVolumes(secretName string) []corev1.Volume {
 	if secretName == "" {
 		return nil
 	}
-	return []corev1.Volume{{
-		Name: "tls",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  secretName,
-				DefaultMode: new(int32(0o400)),
-			},
-		},
-	}}
+	vol, _ := commonsvolume.TLSSecretMount("tls", secretName, TLSDir)
+	return []corev1.Volume{vol}
 }
