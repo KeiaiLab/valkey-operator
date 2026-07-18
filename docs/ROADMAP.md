@@ -177,9 +177,13 @@ file used to confirm the checkbox.
     chart hook 순서 chicken-egg, 별도 이슈)
   - [x] Chart module-list exposure (v1.2.0) — `charts/valkey-operator/values.yaml`
     module preset 문서 + `config/samples/cache_v1alpha1_valkey.yaml` modules 예시
-  - [ ] e2e — `valkey-search` `FT.SEARCH` round-trip — `test/e2e`
-  - Verify: apply a Valkey CR with a `valkey-search` preset under
-    `modules`, then `valkey-cli MODULE LIST` shows the module loaded
+  - [x] e2e — `valkey-search` vector KNN round-trip —
+    `test/e2e/module_search_test.go` (MODULE LIST → FT.CREATE HNSW/FLOAT32
+    vector index → HSET → FT.SEARCH KNN). NOTE: valkey-search 는 벡터 검색
+    엔진 — 인덱스에 VECTOR 필드 필수, SCHEMA TEXT 미지원(실측)
+  - Verify: `KIND_CLUSTER=<c> CERT_MANAGER_INSTALL_SKIP=true go test -tags=e2e
+    ./test/e2e/ -ginkgo.focus="module preset valkey-search"` — 1 Passed
+    (라이브 실측 2026-07-18, valkey-bundle:9.0 libsearch.so 로드 + KNN v:1)
 
 ### Operations and delivery
 
