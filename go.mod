@@ -2,7 +2,7 @@ module github.com/keiailab/valkey-operator
 
 go 1.26.0
 
-toolchain go1.26.4
+toolchain go1.26.5
 
 require (
 	cloud.google.com/go/storage v1.63.1
