@@ -85,7 +85,7 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 > **MIT-licensed Valkey Operator for Kubernetes — Standalone + Cluster + Backup/Restore, BSD-3 license-clean**
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/<license placeholder>-blue.svg" alt="License"/></a>
   <!-- 기존 shield.io badges 유지 + 정합 -->
 </p>
 
@@ -101,7 +101,11 @@ GitHub README 的 shield.io badge 建议使用上述 hex。
 
 所有 README 与根级 .md 文件的末尾须附以下 footer (Wave 3 标准):
 
-```markdown```
+```markdown
+---
+
+<p align="center">© 2026 keiailab · <license placeholder> · <a href="https://keiailab.com">keiailab.com</a></p>
+```
 
 ## 8. Badges 标准顺序
 
