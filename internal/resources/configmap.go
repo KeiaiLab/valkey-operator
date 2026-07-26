@@ -20,8 +20,14 @@ import (
 
 // ConfigData — valkey.conf 템플릿 입력.
 type ConfigData struct {
-	DataDir                  string
-	RequirePass              string
+	DataDir string
+	// RequirePass — auth 활성 판정 입력. **valkey.conf 에 렌더되지 않는다** —
+	// 평문 노출 차단(§AuthConfMountPath 주석)을 위해 requirepass / masterauth 는
+	// AuthConfPath 가 가리키는 Secret 볼륨 파일로만 공급된다.
+	RequirePass string
+	// AuthConfPath — valkey.conf 가 include 할 인증 조각 파일 경로.
+	// 비어 있으면 auth 미사용 (include 미렌더).
+	AuthConfPath             string
 	PersistenceMode          string // RDB | AOF | Both | None
 	RDBSchedule              string
 	AOFFsync                 string
@@ -136,6 +142,7 @@ func configDataFromValkey(vk *cachev1alpha1.Valkey, password, externalReplicaPas
 	d := ConfigData{
 		DataDir:         DataDir,
 		RequirePass:     password,
+		AuthConfPath:    authConfPathFor(password),
 		PersistenceMode: "RDB",
 		RDBSchedule:     "3600 1 300 100 60 10000",
 		AOFFsync:        "everysec",
@@ -172,6 +179,7 @@ func configDataFromCluster(vc *cachev1alpha1.ValkeyCluster, password string) Con
 	d := ConfigData{
 		DataDir:                  DataDir,
 		RequirePass:              password,
+		AuthConfPath:             authConfPathFor(password),
 		PersistenceMode:          "RDB",
 		RDBSchedule:              "3600 1 300 100 60 10000",
 		AOFFsync:                 "everysec",

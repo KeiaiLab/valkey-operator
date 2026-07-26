@@ -164,6 +164,18 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return applyErrorCondition(ctx, r.Client, v, "ConfigMap", err, r.Recorder)
 	}
 
+	// 4-bis. 인증 조각 Secret (requirepass / masterauth). ConfigMap 은 내장 `view`
+	// 역할이 읽으므로 평문 렌더 금지 — valkey.conf 는 이 Secret 파일을 include 한다.
+	authConf := resources.BuildAuthConfSecret(
+		v.Name, v.Namespace, "valkey", password, isExternalReplica(v), externalReplicaPassword)
+	if err := applyAuthConfSecret(ctx, r.Client, r.Scheme, v, authConf); err != nil {
+		return applyErrorCondition(ctx, r.Client, v, "AuthConfSecret", err, r.Recorder)
+	}
+	authConfSecretName := ""
+	if authConf != nil {
+		authConfSecretName = authConf.Name
+	}
+
 	// 5. Headless + Client Service (TLS 활성 시 6380 port 추가 expose)
 	tlsEnabled := v.Spec.TLS != nil && v.Spec.TLS.Enabled
 	hs := resources.BuildHeadlessService(v.Name, v.Namespace, false, tlsEnabled, v.Spec.Service)
@@ -225,6 +237,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		StorageSize:          v.Spec.Storage.Size,
 		Storage:              v.Spec.Storage,
 		PasswordRef:          secretRef,
+		AuthConfSecretName:   authConfSecretName,
 		ClusterMode:          false,
 		Pod:                  v.Spec.Pod,
 		AuthSecretHash:       hashAuthSecret(password),

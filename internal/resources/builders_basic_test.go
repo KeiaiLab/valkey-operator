@@ -740,8 +740,11 @@ func TestBuildConfigMapForValkeyCluster(t *testing.T) {
 		if !strings.Contains(conf, "cluster-node-timeout 15000") {
 			t.Error("default cluster-node-timeout 15000ms 누락")
 		}
-		if !strings.Contains(conf, "requirepass secretpass") {
-			t.Error("requirepass injection 누락")
+		if !strings.Contains(conf, "include "+AuthConfMountPath+"/"+AuthConfFileName) {
+			t.Error("auth.conf include directive 누락")
+		}
+		if strings.Contains(conf, "secretpass") {
+			t.Errorf("ConfigMap 에 평문 password 노출 금지: %s", conf)
 		}
 	})
 	t.Run("autoFailover=false → cluster-replica-no-failover yes", func(t *testing.T) {
@@ -797,8 +800,11 @@ func TestBuildConfigMapForValkey(t *testing.T) {
 			t.Errorf("name/ns: %q/%q", cm.Name, cm.Namespace)
 		}
 		conf := cm.Data[ConfigFileName]
-		if !strings.Contains(conf, "requirepass secretpass") {
-			t.Error("requirepass injection 누락")
+		if !strings.Contains(conf, "include "+AuthConfMountPath+"/"+AuthConfFileName) {
+			t.Error("auth.conf include directive 누락")
+		}
+		if strings.Contains(conf, "secretpass") {
+			t.Errorf("ConfigMap 에 평문 password 노출 금지: %s", conf)
 		}
 		if !strings.Contains(conf, "save 3600 1 300 100 60 10000") {
 			t.Error("default RDB schedule 누락")
@@ -849,11 +855,19 @@ func TestBuildConfigMapForValkey(t *testing.T) {
 		if !strings.Contains(conf, "replicaof redis-master.example.com 6380") {
 			t.Fatalf("external replicaof directive 누락: %s", conf)
 		}
-		if !strings.Contains(conf, "masterauth external-pass") {
-			t.Fatalf("external masterauth 누락: %s", conf)
+		if strings.Contains(conf, "external-pass") || strings.Contains(conf, "local-pass") {
+			t.Fatalf("ConfigMap 에 평문 password 노출 금지: %s", conf)
 		}
-		if strings.Contains(conf, "masterauth local-pass") {
-			t.Fatalf("external replica mode 에서 local masterauth 사용 금지: %s", conf)
+		// masterauth 는 Secret(auth.conf) 로 공급 — external primary 의 password 여야 한다.
+		authConf := RenderAuthConf("local-pass", true, "external-pass")
+		if !strings.Contains(authConf, "requirepass local-pass") {
+			t.Fatalf("auth.conf requirepass 누락: %s", authConf)
+		}
+		if !strings.Contains(authConf, "masterauth external-pass") {
+			t.Fatalf("auth.conf external masterauth 누락: %s", authConf)
+		}
+		if strings.Contains(authConf, "masterauth local-pass") {
+			t.Fatalf("external replica mode 에서 local masterauth 사용 금지: %s", authConf)
 		}
 	})
 }

@@ -28,16 +28,20 @@ import (
 
 // STSParams — Valkey / ValkeyCluster 양쪽이 공유하는 STS 빌드 파라미터.
 type STSParams struct {
-	CRName               string
-	Namespace            string
-	Replicas             int32
-	Image                string
-	PullPolicy           corev1.PullPolicy
-	Resources            corev1.ResourceRequirements
-	StorageClass         string
-	StorageSize          resource.Quantity
-	Storage              cachev1alpha1.StorageSpec
-	PasswordRef          *corev1.SecretKeySelector
+	CRName       string
+	Namespace    string
+	Replicas     int32
+	Image        string
+	PullPolicy   corev1.PullPolicy
+	Resources    corev1.ResourceRequirements
+	StorageClass string
+	StorageSize  resource.Quantity
+	Storage      cachev1alpha1.StorageSpec
+	PasswordRef  *corev1.SecretKeySelector
+	// AuthConfSecretName — 비어 있지 않으면 해당 Secret (key=auth.conf) 을
+	// AuthConfMountPath 에 readOnly 마운트한다. valkey.conf 가 이 파일을
+	// include 하여 requirepass / masterauth 를 얻는다 (ConfigMap 평문 노출 차단).
+	AuthConfSecretName   string
 	ClusterMode          bool
 	ExporterImg          string                      // 비어 있으면 sidecar 없음
 	ExporterResources    corev1.ResourceRequirements // metrics sidecar 의 resources (cycle 21 stop hook 15차 — IaC drift 0 진정 도달)
@@ -123,10 +127,10 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			Env:             podEnv,
 			Resources:       p.Resources,
 			SecurityContext: buildRestrictedContainerSecurityContext(),
-			VolumeMounts: append([]corev1.VolumeMount{
+			VolumeMounts: append(append([]corev1.VolumeMount{
 				{Name: "data", MountPath: DataDir},
 				{Name: "config", MountPath: ConfigMapMountPath},
-			}, tlsVolumeMounts(p.TLSSecretName)...),
+			}, authConfVolumeMounts(p.AuthConfSecretName)...), tlsVolumeMounts(p.TLSSecretName)...),
 			// commons probes.Builder — Exec ping probe. FailureThreshold 는 builder
 			// 기본값 3 동일. SuccessThreshold 는 builder 가 명시 1 (이전 인라인은
 			// 미설정 0 — API server 가 동일 값 1 로 default 하므로 라이브 무변경).
@@ -194,6 +198,7 @@ func BuildStatefulSet(p STSParams) *appsv1.StatefulSet {
 			},
 		})
 	}
+	volumes = append(volumes, authConfVolumes(p.AuthConfSecretName)...)
 	volumes = append(volumes, tlsVols...)
 
 	// 모듈 init-container + emptyDir + --loadmodule (ADR-0032, BuildModuleInitContainers).
@@ -391,6 +396,31 @@ func PortIntOrString(p int32) intstr.IntOrString { return intstr.FromInt(int(p))
 
 // tlsVolumeMounts / tlsVolumes — TLSSecretName 이 비어 있지 않을 때만 활성화.
 // /tls 에 readOnly 로 cert-manager 가 발급한 Secret 마운트.
+// authConfVolumeMounts — 인증 조각(auth.conf) Secret 의 readOnly 마운트.
+// valkey.conf 의 `include /etc/valkey-auth/auth.conf` 가 이 파일을 읽는다.
+func authConfVolumeMounts(secretName string) []corev1.VolumeMount {
+	if secretName == "" {
+		return nil
+	}
+	return []corev1.VolumeMount{{Name: "authconf", MountPath: AuthConfMountPath, ReadOnly: true}}
+}
+
+func authConfVolumes(secretName string) []corev1.Volume {
+	if secretName == "" {
+		return nil
+	}
+	mode := int32(0o400)
+	return []corev1.Volume{{
+		Name: "authconf",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  secretName,
+				DefaultMode: &mode,
+			},
+		},
+	}}
+}
+
 func tlsVolumeMounts(secretName string) []corev1.VolumeMount {
 	if secretName == "" {
 		return nil
