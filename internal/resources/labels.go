@@ -39,6 +39,15 @@ const (
 	ConfigFileName     = "valkey.conf"
 	DataDir            = "/data"
 	TLSDir             = "/tls"
+
+	// AuthConfMountPath / AuthConfFileName — 인증 directive (requirepass /
+	// masterauth) 전용 config 조각. ConfigMap 은 RBAC 내장 `view` 역할이 읽을 수
+	// 있으므로 (secrets 는 제외되지만 configmaps 는 허용) 평문 password 를
+	// valkey.conf 에 렌더하면 읽기전용 계정에 마스터 자격이 유출된다. 따라서
+	// 인증 directive 만 Secret 볼륨 파일로 분리하고 valkey.conf 는
+	// `include <AuthConfPath>` 로 참조한다.
+	AuthConfMountPath = "/etc/valkey-auth"
+	AuthConfFileName  = "auth.conf"
 )
 
 // CommonLabels — Valkey 인스턴스의 공통 라벨.
@@ -85,6 +94,7 @@ func PrimaryServiceName(crName string) string  { return crName + "-primary" }
 func MetricsServiceName(crName string) string  { return crName + "-metrics" }
 func ConfigMapName(crName string) string       { return crName + "-config" }
 func DefaultSecretName(crName string) string   { return crName + "-auth" }
+func AuthConfSecretName(crName string) string  { return crName + "-authconf" }
 func PDBName(crName string) string             { return crName }
 func NetworkPolicyName(crName string) string   { return crName }
 func ServiceMonitorName(crName string) string  { return crName }
