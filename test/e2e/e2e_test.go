@@ -62,20 +62,18 @@ var _ = Describe("Manager", Ordered, func() {
 		// 밖의 spec 이 CRD 없이 돌 수 있다.
 	})
 
-	// After all tests have been executed, clean up by undeploying the controller, uninstalling CRDs,
-	// and deleting the namespace.
+	// 이 컨테이너가 만든 것만 정리한다 (공유 자원은 건드리지 않는다 — 아래 주석 참조).
 	AfterAll(func() {
 		By("cleaning up the curl pod for metrics")
 		cmd := exec.Command("kubectl", "delete", "pod", "curl-metrics", "-n", namespace)
 		_, _ = utils.Run(cmd)
 
-		// undeploy/uninstall 은 하지 않는다 — operator/CRD 는 스위트 전체가 공유하므로
-		// 여기서 지우면 뒤에 뽑힌 컨테이너가 전부 깨진다. kind 클러스터는 make test-e2e
-		// 종료 시 통째로 삭제되므로 정리는 그쪽이 담당한다.
-
-		By("removing manager namespace")
-		cmd = exec.Command("kubectl", "delete", "ns", namespace)
-		_, _ = utils.Run(cmd)
+		// operator/CRD/네임스페이스는 **스위트 전체가 공유**하므로 여기서 아무것도
+		// 지우지 않는다. undeploy/uninstall 뿐 아니라 `kubectl delete ns` 도 마찬가지다 —
+		// manager 네임스페이스를 지우면 operator Deployment 와 webhook Service·인증서가
+		// 통째로 사라져, 뒤에 뽑힌 컨테이너의 CR apply 가 webhook 실패로 막힌다
+		// (실측: 이 삭제 직후 38분간 진전 0 → 45m 타임아웃 panic).
+		// 정리는 make test-e2e 종료 시 kind 클러스터 통째 삭제가 담당한다.
 	})
 
 	// After each test, check for failures and collect logs, events,
