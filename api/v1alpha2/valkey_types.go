@@ -107,6 +107,11 @@ type ValkeySpec struct {
 	// +optional
 	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
 
+	// SlowLog — Valkey SLOWLOG 임계값 + 보존 entry 수 설정.
+	// nil 이면 valkey 기본값 (10ms / 128 entries) 사용.
+	// +optional
+	SlowLog *SlowLogSpec `json:"slowLog,omitempty"`
+
 	// +optional
 	ExternalReplica *ExternalReplicaSpec `json:"externalReplica,omitempty"`
 

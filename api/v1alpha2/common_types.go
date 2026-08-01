@@ -485,3 +485,22 @@ type PersistencePolicy struct {
 	// +kubebuilder:default="everysec"
 	AOFAppendFsync string `json:"aofAppendFsync,omitempty"`
 }
+
+// SlowLogSpec — Valkey SLOWLOG 임계값 + 보존 entry 수.
+//
+// Threshold 보다 오래 걸린 명령은 SLOWLOG 에 기록 — `valkey-cli SLOWLOG GET` 로 조회.
+// redis_exporter sidecar 가 자동으로 redis_slowlog_length metric 으로 노출.
+//
+// v1alpha1 에 있으나 Hub 에 없어 변환 시 조용히 유실되던 타입이다
+// (conversion 은 JSON byte-copy 라 대응 태그가 없으면 그냥 사라진다).
+type SlowLogSpec struct {
+	// 단위: microseconds. 0 = SLOWLOG 비활성. -1 = 모든 명령 기록 (debug 만).
+	// +kubebuilder:default=10000
+	// +optional
+	ThresholdMicros int64 `json:"thresholdMicros,omitempty"`
+
+	// 보존 entry 수 — FIFO. 초과 시 가장 오래된 entry 폐기.
+	// +kubebuilder:default=128
+	// +optional
+	MaxEntries int32 `json:"maxEntries,omitempty"`
+}
