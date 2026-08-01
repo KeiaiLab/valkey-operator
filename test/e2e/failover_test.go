@@ -62,6 +62,8 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "Valkey CR apply")
 	})
 
+	AfterEach(func() { dumpNamespaceOnFailure(failoverNamespace) })
+
 	AfterAll(func() {
 		_, _ = utils.Run(exec.Command("kubectl", "delete", "valkey",
 			failoverCRName, "-n", failoverNamespace, "--ignore-not-found"))

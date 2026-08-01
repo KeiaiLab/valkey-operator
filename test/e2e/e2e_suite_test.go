@@ -202,3 +202,41 @@ func teardownPrometheusOperatorCRDs() {
 	By("uninstalling Prometheus Operator CRDs")
 	utils.UninstallPrometheusOperatorCRDs()
 }
+
+// dumpNamespaceOnFailure — spec 이 실패했을 때 해당 namespace 의 상태를 남긴다.
+//
+// 각 spec 의 AfterAll 이 namespace 를 지우므로, 워크플로 말미의 `kubectl get pods -A`
+// 덤프에는 **테스트 파드가 하나도 남지 않는다** — 실측으로 확인했다(실패 덤프에
+// kube-system 과 operator 만 있었다). 그래서 진단은 실패 *직후* 여기서 해야 한다.
+//
+// 남은 타임아웃 실패(backup 이 Completed 에 못 감 / failover 가 primary 를 못 바꿈)가
+// 러너 자원 부족인지 제품 결함인지 가르려면 이 정보가 필요하다.
+func dumpNamespaceOnFailure(ns string) {
+	if !CurrentSpecReport().Failed() {
+		return
+	}
+	for _, probe := range []struct {
+		label string
+		args  []string
+	}{
+		{"pods", []string{"get", "pods", "-n", ns, "-o", "wide"}},
+		{"pvc", []string{"get", "pvc", "-n", ns}},
+		{"jobs", []string{"get", "jobs", "-n", ns}},
+		{"valkey CRs", []string{"get", "valkey,valkeycluster,valkeybackup,valkeyrestore", "-n", ns, "-o", "wide"}},
+		{"events", []string{"get", "events", "-n", ns, "--sort-by=.lastTimestamp"}},
+	} {
+		out, err := utils.Run(exec.Command("kubectl", probe.args...))
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "[dump] %s (%s): %v\n", probe.label, ns, err)
+			continue
+		}
+		_, _ = fmt.Fprintf(GinkgoWriter, "[dump] %s (%s):\n%s\n", probe.label, ns, out)
+	}
+
+	// operator 로그 tail — reconcile 이 왜 멈췄는지의 1차 단서.
+	out, err := utils.Run(exec.Command("kubectl", "-n", "valkey-operator-system", "logs",
+		"deploy/valkey-operator-controller-manager", "--tail=120"))
+	if err == nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "[dump] operator logs (tail 120):\n%s\n", out)
+	}
+}
