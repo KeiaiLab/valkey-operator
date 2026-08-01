@@ -194,46 +194,46 @@ spec:
 	// ROADMAP P0 차단요인 2 (iteration 7 진단) 의 narrow scope 검증 — *fresh*
 	// 시나리오는 iteration 7 에서 정상 동작 확인됨. *restored 인스턴스* 의
 	// version patch 시 STS image propagate + Pod rotation + RDB 호환성 회귀 가드.
-	Context("Restored 인스턴스의 8.1.6 → 9.0.4 version patch chain (V2)", func() {
-		It("spec.version.version 8.1.6 → 9.0.4 patch (restored 후)", func() {
-			patch := `{"spec":{"version":{"version":"9.0.4","image":"docker.io/valkey/valkey"}}}`
+	Context("Restored 인스턴스의 8.1.6 → 8.1.7 version patch chain (V2)", func() {
+		It("spec.version.version 8.1.6 → 8.1.7 patch (restored 후)", func() {
+			patch := `{"spec":{"version":{"version":"8.1.7","image":"docker.io/valkey/valkey"}}}`
 			_, err := utils.Run(exec.Command("kubectl", "patch", "valkey",
 				brValkey, "-n", brNamespace,
 				"--type=merge", "-p", patch))
-			Expect(err).NotTo(HaveOccurred(), "patch valkey to 9.0.4 (restored 인스턴스)")
+			Expect(err).NotTo(HaveOccurred(), "patch valkey to 8.1.7 (restored 인스턴스)")
 		})
 
-		It("STS image propagate to 9.0.4 (가설 A 회귀 가드)", func() {
+		It("STS image propagate to 8.1.7 (가설 A 회귀 가드)", func() {
 			Eventually(func() string {
 				out, _ := utils.Run(exec.Command("kubectl", "get", "sts",
 					brValkey, "-n", brNamespace,
 					"-o", "jsonpath={.spec.template.spec.containers[0].image}"))
 				return out
 			}, 60*time.Second, 5*time.Second).Should(
-				Equal("docker.io/valkey/valkey:9.0.4"),
-				"restored 인스턴스의 STS image 가 9.0.4 로 propagate (가설 A)")
+				Equal("docker.io/valkey/valkey:8.1.7"),
+				"restored 인스턴스의 STS image 가 8.1.7 로 propagate (가설 A)")
 		})
 
-		It("Pod 가 9.0.4 image 로 재생성 (가설 C 회귀 가드)", func() {
+		It("Pod 가 8.1.7 image 로 재생성 (가설 C 회귀 가드)", func() {
 			Eventually(func() string {
 				out, _ := utils.Run(exec.Command("kubectl", "get", "pod",
 					brValkey+"-0", "-n", brNamespace,
 					"-o", "jsonpath={.spec.containers[0].image}"))
 				return out
 			}, 3*time.Minute, 10*time.Second).Should(
-				Equal("docker.io/valkey/valkey:9.0.4"),
-				"restored 인스턴스의 Pod 가 9.0.4 로 재생성 (가설 C)")
+				Equal("docker.io/valkey/valkey:8.1.7"),
+				"restored 인스턴스의 Pod 가 8.1.7 로 재생성 (가설 C)")
 		})
 
-		It("CR spec.version.version 9.0.4 보존 (가설 B 회귀 가드)", func() {
+		It("CR spec.version.version 8.1.7 보존 (가설 B 회귀 가드)", func() {
 			Eventually(func() string {
 				out, _ := utils.Run(exec.Command("kubectl", "get", "valkey",
 					brValkey, "-n", brNamespace,
 					"-o", "jsonpath={.spec.version.version}"))
 				return out
 			}, 30*time.Second, 5*time.Second).Should(
-				Equal("9.0.4"),
-				"webhook defaulter 가 9.0.4 → 8.1.6 reverting 안함 (가설 B)")
+				Equal("8.1.7"),
+				"webhook defaulter 가 8.1.7 → 8.1.6 reverting 안함 (가설 B)")
 		})
 
 		It("Phase=Running 복귀 + 복원된 데이터 (foo=bar1) 보존 검증", func() {
@@ -248,8 +248,10 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 			pwd = strings.TrimSpace(pwd)
 
-			// 9.0.4 의 RDB 형식 호환성 확인 — 8.1.6 시점 데이터 (foo=bar1) 가
-			// 9.0.4 startup 시 정상 load 되어야 함 (RDB v80 마이그레이션).
+			// 8.1.7 의 RDB 형식 호환성 확인 — 8.1.6 시점 데이터 (foo=bar1) 가
+			// 8.1.7 startup 시 정상 load 되어야 함.
+			// (구 시나리오는 9.0.4 major 승급이었으나 webhook 이 정당하게 금지한다 —
+			//  AutoUpdate 는 patch/minor 만 자동화. major 는 명시적 마이그레이션 필요.)
 			Eventually(func() string {
 				out, _ := utils.Run(exec.Command("kubectl", "exec", "-n",
 					brNamespace, brValkey+"-0", "--",
@@ -257,7 +259,7 @@ spec:
 				return strings.TrimSpace(out)
 			}, 2*time.Minute, 5*time.Second).Should(
 				Equal("bar1"),
-				"8.1.6 → 9.0.4 upgrade 후 RDB v80 호환 (ROADMAP narrow scope)")
+				"8.1.6 → 8.1.7 upgrade 후 RDB 호환 (ROADMAP narrow scope)")
 		})
 	})
 })

@@ -324,12 +324,12 @@ var _ = Describe("Manager", Ordered, func() {
 			Eventually(verifyCAInjection).Should(Succeed())
 		})
 
-		It("should roll a Valkey pod when spec.version.version changes from 8.1.6 to 9.0.4", func() {
+		It("should roll a Valkey pod when spec.version.version changes from 8.1.6 to 8.1.7", func() {
 			const (
 				upgradeNamespace = "test-valkey-upgrade-20260507"
 				upgradeName      = "vk-upgrade-test"
 				oldImage         = "docker.io/valkey/valkey:8.1.6"
-				newImage         = "docker.io/valkey/valkey:9.0.4"
+				newImage         = "docker.io/valkey/valkey:8.1.7"
 			)
 
 			By("creating a dedicated namespace for upgrade test data")
@@ -405,11 +405,15 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 			Expect(initialUID).NotTo(BeEmpty())
 
-			By("patching spec.version.version to 9.0.4")
+			// 8.1.6 → 8.1.7 = patch 승급. 구 시나리오(9.0.4)는 major 승급이라 webhook 이
+			// 정당하게 거부한다 — "manual major version upgrade is prohibited;
+			// AutoUpdate automates patch/minor only". spec 의 목적(version patch 가 STS
+			// template image 로 전파되고 Pod 가 롤링되는지)은 patch 승급으로도 동일 달성.
+			By("patching spec.version.version to 8.1.7")
 			cmd = exec.Command("kubectl", "patch", "valkey", upgradeName,
 				"-n", upgradeNamespace,
 				"--type=merge",
-				"-p", `{"spec":{"version":{"version":"9.0.4"}}}`)
+				"-p", `{"spec":{"version":{"version":"8.1.7"}}}`)
 			_, err = utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred())
 

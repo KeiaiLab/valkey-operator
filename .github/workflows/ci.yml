@@ -45,6 +45,10 @@ jobs:
           go-version-file: go.mod
           check-latest: true
           cache: true
+      # e2e 가 정책상 금지된 major 버전 승급을 시도하지 않는지 정적 검사.
+      # 세 파일에 흩어져 있어 한 곳씩 고치다 두 번 놓쳤다 — 사람이 grep 할 일이 아니다.
+      - name: e2e version policy (major 승급 금지)
+        run: bash hack/check-e2e-version-policy.sh
       - name: Run tests
         run: make test
       - name: Coverage floor (ratchet)
