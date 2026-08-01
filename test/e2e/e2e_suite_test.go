@@ -90,16 +90,41 @@ var _ = BeforeSuite(func() {
 		"deploy/valkey-operator-controller-manager", "--timeout=180s"))
 	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "controller-manager rollout")
 
-	By("waiting for webhook endpoint to be serving")
+	// endpoint 에 주소가 잡혔다는 것만으로는 부족하다 — readiness probe 는 healthz(8081)
+	// 를 볼 뿐 webhook TLS 포트(9443)를 보지 않으므로, Pod 가 Ready 이고 endpoint 에
+	// 주소가 있어도 webhook 서버가 아직 안 듣고 있을 수 있다. 실측: endpoint 대기 통과
+	// **0.5초 뒤** 첫 CR apply 가 `connection refused` 로 죽었다.
+	//
+	// 그래서 **실제로 webhook 을 호출해** 응답하는지 본다. server-side dry-run 은
+	// admission 체인을 그대로 태우면서 아무것도 저장하지 않으므로 정확한 신호다.
+	// 검증 거부(4xx)는 "webhook 이 응답했다"는 뜻이라 성공으로 친다 — 연결 실패만 재시도.
+	By("waiting for the webhook to actually answer (server-side dry-run)")
+	probe := `apiVersion: cache.keiailab.io/v1alpha1
+kind: Valkey
+metadata:
+  name: webhook-readiness-probe
+  namespace: default
+spec:
+  mode: Standalone
+  replicas: 1
+`
 	EventuallyWithOffset(1, func() string {
-		out, err := utils.Run(exec.Command("kubectl", "-n", "valkey-operator-system", "get",
-			"endpoints", "valkey-operator-webhook-service",
-			"-o", "jsonpath={.subsets[0].addresses[0].ip}"))
-		if err != nil {
+		cmd := exec.Command("kubectl", "apply", "--dry-run=server", "-f", "-")
+		cmd.Stdin = strings.NewReader(probe)
+		out, err := utils.Run(cmd)
+		if err == nil {
 			return ""
 		}
-		return strings.TrimSpace(out)
-	}, 2*time.Minute, 3*time.Second).ShouldNot(BeEmpty(), "webhook endpoint never became ready")
+		msg := out + err.Error()
+		// webhook 에 닿지 못한 경우만 재시도 대상.
+		if strings.Contains(msg, "failed calling webhook") ||
+			strings.Contains(msg, "connection refused") ||
+			strings.Contains(msg, "context deadline exceeded") {
+			return msg
+		}
+		// 그 외(검증 거부 등)는 webhook 이 살아서 응답한 것 — 준비 완료로 본다.
+		return ""
+	}, 3*time.Minute, 3*time.Second).Should(BeEmpty(), "webhook never became reachable")
 })
 
 var _ = AfterSuite(func() {
