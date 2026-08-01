@@ -14,8 +14,8 @@ Licensed under the MIT License. See the LICENSE file for details.
 //     image 로 propagate 되지 않는 의심 (가설 A: server-side merge 의 immutable
 //     field 거부, 가설 B: webhook idempotency 누설, 가설 C: STS rolling update
 //     partition 보존).
-//   - iteration 7 진단 (2026-05-07): fresh 인스턴스의 8.1.6 → 9.0.4 patch 시나리오
-//     에서는 *재현 안됨*. STS image propagate + Pod rotation 모두 정상.
+//   - iteration 7 진단 (2026-05-07): fresh 인스턴스의 patch 승급 시나리오에서는
+//     *재현 안됨*. STS image propagate + Pod rotation 모두 정상.
 //   - envtest 의 fake client 는 server-side merge 거부 행동을 모사하지 못함 — 본
 //     e2e (real Kind API server) 가 정확한 회귀 가드.
 //
@@ -38,7 +38,14 @@ const (
 	versionUpgradeNamespace = "valkey-version-upgrade-e2e"
 	versionUpgradeCRName    = "vk-upgrade-test"
 	versionUpgradeFromTag   = "8.1.6"
-	versionUpgradeToTag     = "9.0.4"
+	// 8.1.6 → 8.1.7 = **patch** 업그레이드. 구 값 9.0.4 는 major 승급이라
+	// webhook 이 정당하게 거부한다 ("manual major version upgrade (8.1.6 → 9.0.4)
+	// is prohibited; AutoUpdate automates patch/minor only") — 이 spec 이 nightly
+	// 최초 실행에서 실패한 이유이며, **제품 정책이 맞고 테스트가 낡은 것**이었다.
+	// 이 spec 의 목적(version patch 가 STS template image 로 전파되는지)은 patch
+	// 승급으로도 동일하게 달성된다. 둘 다 지원 목록에 있다
+	// (SupportedValkeyVersions: 8.0.9 / 8.1.6 / 8.1.7 / 9.0.4 / 9.1.0).
+	versionUpgradeToTag = "8.1.7"
 )
 
 var _ = Describe("Version Upgrade Reconcile (ROADMAP P0 차단요인 2)", Ordered, func() {
