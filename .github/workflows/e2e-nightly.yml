@@ -1,0 +1,52 @@
+name: e2e (nightly)
+
+# test/e2e 스위트는 작성돼 있는데 **어떤 워크플로도 호출하지 않아** 한 번도
+# 게이트 역할을 하지 못했다 (`make test-e2e` 수동 실행 전용). 가장 비싼 테스트가
+# 죽어 있던 셈이라 여기서 되살린다.
+#
+# PR 이 아니라 nightly 인 이유: kind 클러스터 생성 + 이미지 빌드 + cert-manager
+# 설치까지 도는 스위트라 PR 지연이 크다. 회귀는 하루 안에 잡히면 충분하고,
+# 급할 땐 workflow_dispatch 로 즉시 돌린다.
+
+on:
+  schedule:
+    - cron: "37 18 * * *"   # 매일 03:37 KST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: kind e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install kind
+        run: |
+          set -euo pipefail
+          curl -fsSLo /tmp/kind https://kind.sigs.k8s.io/dl/v0.30.0/kind-linux-amd64
+          chmod +x /tmp/kind
+          sudo install /tmp/kind /usr/local/bin/kind
+          kind version
+      # 스위트가 BeforeSuite 에서 make docker-build + kind load 를 직접 수행하므로
+      # 여기서는 kind 바이너리만 깔면 된다. IMG 는 로컬 빌드·로드 전용이라
+      # 레지스트리에 도달할 필요가 없다 — 사설 호스트명 기본값을 피해 중립 태그를 준다.
+      - name: make test-e2e
+        env:
+          IMG: localhost/keiailab/valkey-operator:e2e-ci
+        run: make test-e2e
+      - name: Dump cluster state on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl describe pods -A | tail -200 || true
