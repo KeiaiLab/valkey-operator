@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -78,6 +80,26 @@ var _ = BeforeSuite(func() {
 	By("deploying the controller-manager")
 	_, err = utils.Run(exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", managerImage)))
 	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to deploy the controller-manager")
+
+	// deploy 직후 바로 CR 을 apply 하면 mutating webhook 이 아직 안 떠서
+	// `failed calling webhook "mvalkey-v1alpha1.kb.io": connection refused` 로
+	// 죽는다 (첫 CI 실행에서 failover/version_upgrade BeforeAll 이 이 이유로 실패).
+	// rollout 완료 + webhook endpoint 주소 확보까지 기다린다.
+	By("waiting for controller-manager rollout")
+	_, err = utils.Run(exec.Command("kubectl", "-n", "valkey-operator-system", "rollout", "status",
+		"deploy/valkey-operator-controller-manager", "--timeout=180s"))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "controller-manager rollout")
+
+	By("waiting for webhook endpoint to be serving")
+	EventuallyWithOffset(1, func() string {
+		out, err := utils.Run(exec.Command("kubectl", "-n", "valkey-operator-system", "get",
+			"endpoints", "valkey-operator-webhook-service",
+			"-o", "jsonpath={.subsets[0].addresses[0].ip}"))
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(out)
+	}, 2*time.Minute, 3*time.Second).ShouldNot(BeEmpty(), "webhook endpoint never became ready")
 })
 
 var _ = AfterSuite(func() {
