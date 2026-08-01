@@ -120,6 +120,18 @@ type ValkeyRestoreSpec struct {
 	// +kubebuilder:default="ReadWriteOnce"
 	// +optional
 	SourcePVCAccessMode SourcePVCAccessMode `json:"sourcePVCAccessMode,omitempty"`
+
+	// PointInTime — AOF replay 목표 시각 (PITR).
+	//
+	// 제약 (webhook validation):
+	//   - RestoreType=AOF 가 아니면 reject (RDB 는 PITR 불가)
+	//   - PointInTime 이 backup CompletedAt 이후이면 reject
+	//
+	// v1alpha1 에 있으나 Hub 에 없어 변환 시 조용히 유실되던 필드다 — 복원
+	// 목표 시각이 사라지면 의도와 다른 시점으로 복원된다.
+	//
+	// +optional
+	PointInTime *metav1.Time `json:"pointInTime,omitempty"`
 }
 
 // ValkeyRestoreStatus — 진행 상황.

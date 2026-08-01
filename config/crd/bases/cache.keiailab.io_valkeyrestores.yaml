@@ -317,6 +317,18 @@ spec:
                 - kind
                 - name
                 type: object
+              pointInTime:
+                description: |-
+                  PointInTime — AOF replay 목표 시각 (PITR).
+
+                  제약 (webhook validation):
+                    - RestoreType=AOF 가 아니면 reject (RDB 는 PITR 불가)
+                    - PointInTime 이 backup CompletedAt 이후이면 reject
+
+                  v1alpha1 에 있으나 Hub 에 없어 변환 시 조용히 유실되던 필드다 — 복원
+                  목표 시각이 사라지면 의도와 다른 시점으로 복원된다.
+                format: date-time
+                type: string
               restoreType:
                 default: RDB
                 description: RestoreType — RDB snapshot 또는 AOF (추후) 복원.
