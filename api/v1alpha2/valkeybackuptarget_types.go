@@ -89,6 +89,14 @@ type ValkeyBackupTargetSpec struct {
 	// +optional
 	S3 *S3Spec `json:"s3,omitempty"`
 
+	// Type=GCS 시 필수.
+	// +optional
+	GCS *GCSSpec `json:"gcs,omitempty"`
+
+	// Type=Azure 시 필수.
+	// +optional
+	Azure *AzureSpec `json:"azure,omitempty"`
+
 	// Retention — 이 target 을 참조하는 완료된 ValkeyBackup 의 자동 보존 정책
 	// (cross-region backup lifecycle, ROADMAP 2.x). v1alpha1 reconcile hub 미러.
 	// +optional
@@ -166,3 +174,65 @@ func init() {
 }
 
 func (t *ValkeyBackupTarget) GetConditions() *[]metav1.Condition { return &t.Status.Conditions }
+
+// 아래 GCS/Azure 계열 타입은 v1alpha1 에 있으나 Hub 에 없어 변환 시 조용히
+// 유실되던 것들이다 — 백업 target 이 GCS/Azure 면 대상 자체가 사라진다.
+// GCSSpec — Google Cloud Storage 외부 저장 정의 (cloud.google.com/go/storage v1.62.1).
+//
+// 자격증명: service account JSON key 를 Secret 에 저장. backup Job 의 환경변수
+// GOOGLE_APPLICATION_CREDENTIALS 가 가리키는 파일에 mount.
+type GCSSpec struct {
+	// 버킷 이름. 사전 생성 필요.
+	Bucket string `json:"bucket"`
+
+	// object key prefix. 예: "cluster-A/".
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+
+	// 자격증명 Secret 참조 (service account JSON).
+	CredentialsSecretRef GCSCredentialsSecretRef `json:"credentialsSecretRef"`
+}
+
+// GCSCredentialsSecretRef — service account JSON 이 들어 있는 Secret.
+type GCSCredentialsSecretRef struct {
+	// Secret 이름.
+	Name string `json:"name"`
+
+	// service account JSON 이 들어 있는 key 이름. 기본 "key.json".
+	// +kubebuilder:default="key.json"
+	// +optional
+	ServiceAccountJSONKey string `json:"serviceAccountJSONKey,omitempty"`
+}
+
+// AzureSpec — Azure Blob Storage 외부 저장 정의
+// (github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.x).
+type AzureSpec struct {
+	// storage account 이름. e.g. "mystorageacct".
+	AccountName string `json:"accountName"`
+
+	// container 이름 (S3 의 bucket 등가). 사전 생성 필요.
+	Container string `json:"container"`
+
+	// blob name prefix. 예: "cluster-A/".
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+
+	// service URL override. 기본: https://<accountName>.blob.core.windows.net.
+	// Azure China / Government cloud / Azurite (test) 용.
+	// +optional
+	ServiceURL string `json:"serviceURL,omitempty"`
+
+	// 자격증명 Secret 참조 (account key 또는 SAS token).
+	CredentialsSecretRef AzureCredentialsSecretRef `json:"credentialsSecretRef"`
+}
+
+// AzureCredentialsSecretRef — Azure storage account key 또는 SAS.
+type AzureCredentialsSecretRef struct {
+	// Secret 이름.
+	Name string `json:"name"`
+
+	// account key 가 들어 있는 key 이름. 기본 "AZURE_STORAGE_ACCOUNT_KEY".
+	// +kubebuilder:default="AZURE_STORAGE_ACCOUNT_KEY"
+	// +optional
+	AccountKeyKey string `json:"accountKeyKey,omitempty"`
+}

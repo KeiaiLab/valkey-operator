@@ -5883,6 +5883,23 @@ spec:
                     - LoadBalancer
                     type: string
                 type: object
+              slowLog:
+                description: |-
+                  SlowLog — Valkey SLOWLOG 임계값 + 보존 entry 수 설정.
+                  nil 이면 valkey 기본값 (10ms / 128 entries) 사용.
+                properties:
+                  maxEntries:
+                    default: 128
+                    description: 보존 entry 수 — FIFO. 초과 시 가장 오래된 entry 폐기.
+                    format: int32
+                    type: integer
+                  thresholdMicros:
+                    default: 10000
+                    description: '단위: microseconds. 0 = SLOWLOG 비활성. -1 = 모든 명령 기록
+                      (debug 만).'
+                    format: int64
+                    type: integer
+                type: object
               storage:
                 description: StorageSpec — Valkey 데이터 디렉터리(/data) 마운트용 PVC.
                 properties:
