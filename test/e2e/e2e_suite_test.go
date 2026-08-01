@@ -65,6 +65,19 @@ var _ = BeforeSuite(func() {
 	configureKubectlKubeRC()
 	setupCertManager()
 	setupPrometheusOperatorCRDs()
+
+	// CRD + operator 설치는 **모든 spec 보다 먼저** 일어나야 한다.
+	// 구 구조는 e2e_test.go 의 한 Ordered 컨테이너가 BeforeAll 에서 install/deploy 하고
+	// AfterAll 에서 undeploy/uninstall 까지 했다. Ginkgo 는 최상위 컨테이너 순서를
+	// 무작위화하므로 그 컨테이너보다 **먼저** 뽑힌 컨테이너는 CRD 없이 돌고,
+	// **나중에** 뽑힌 컨테이너는 방금 지워진 CRD 위에서 돈다 — 어느 쪽이든 깨진다.
+	By("installing CRDs")
+	_, err = utils.Run(exec.Command("make", "install"))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to install CRDs")
+
+	By("deploying the controller-manager")
+	_, err = utils.Run(exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", managerImage)))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to deploy the controller-manager")
 })
 
 var _ = AfterSuite(func() {
