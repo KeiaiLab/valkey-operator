@@ -101,7 +101,7 @@ spec:
 
 			_, err = utils.Run(exec.Command("kubectl", "exec", "-n",
 				brNamespace, brValkey+"-0", "--",
-				"valkey-cli", "-a", pwd, "set", "foo", "bar1"))
+				"valkey-cli", "--no-auth-warning", "-a", pwd, "set", "foo", "bar1"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -151,7 +151,7 @@ spec:
 
 			_, err = utils.Run(exec.Command("kubectl", "exec", "-n",
 				brNamespace, brValkey+"-0", "--",
-				"valkey-cli", "-a", pwd, "set", "foo", "bar2"))
+				"valkey-cli", "--no-auth-warning", "-a", pwd, "set", "foo", "bar2"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -193,7 +193,7 @@ spec:
 			Eventually(func() string {
 				out, _ := utils.Run(exec.Command("kubectl", "exec", "-n",
 					brNamespace, brValkey+"-0", "--",
-					"valkey-cli", "-a", pwd, "get", "foo"))
+					"valkey-cli", "--no-auth-warning", "-a", pwd, "get", "foo"))
 				return strings.TrimSpace(out)
 			}, 2*time.Minute, 5*time.Second).Should(Equal("bar1"))
 		})
@@ -264,7 +264,7 @@ spec:
 			Eventually(func() string {
 				out, _ := utils.Run(exec.Command("kubectl", "exec", "-n",
 					brNamespace, brValkey+"-0", "--",
-					"valkey-cli", "-a", pwd, "get", "foo"))
+					"valkey-cli", "--no-auth-warning", "-a", pwd, "get", "foo"))
 				return strings.TrimSpace(out)
 			}, 2*time.Minute, 5*time.Second).Should(
 				Equal("bar1"),
