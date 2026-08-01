@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -65,6 +67,39 @@ var _ = BeforeSuite(func() {
 	configureKubectlKubeRC()
 	setupCertManager()
 	setupPrometheusOperatorCRDs()
+
+	// CRD + operator 설치는 **모든 spec 보다 먼저** 일어나야 한다.
+	// 구 구조는 e2e_test.go 의 한 Ordered 컨테이너가 BeforeAll 에서 install/deploy 하고
+	// AfterAll 에서 undeploy/uninstall 까지 했다. Ginkgo 는 최상위 컨테이너 순서를
+	// 무작위화하므로 그 컨테이너보다 **먼저** 뽑힌 컨테이너는 CRD 없이 돌고,
+	// **나중에** 뽑힌 컨테이너는 방금 지워진 CRD 위에서 돈다 — 어느 쪽이든 깨진다.
+	By("installing CRDs")
+	_, err = utils.Run(exec.Command("make", "install"))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to install CRDs")
+
+	By("deploying the controller-manager")
+	_, err = utils.Run(exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", managerImage)))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to deploy the controller-manager")
+
+	// deploy 직후 바로 CR 을 apply 하면 mutating webhook 이 아직 안 떠서
+	// `failed calling webhook "mvalkey-v1alpha1.kb.io": connection refused` 로
+	// 죽는다 (첫 CI 실행에서 failover/version_upgrade BeforeAll 이 이 이유로 실패).
+	// rollout 완료 + webhook endpoint 주소 확보까지 기다린다.
+	By("waiting for controller-manager rollout")
+	_, err = utils.Run(exec.Command("kubectl", "-n", "valkey-operator-system", "rollout", "status",
+		"deploy/valkey-operator-controller-manager", "--timeout=180s"))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "controller-manager rollout")
+
+	By("waiting for webhook endpoint to be serving")
+	EventuallyWithOffset(1, func() string {
+		out, err := utils.Run(exec.Command("kubectl", "-n", "valkey-operator-system", "get",
+			"endpoints", "valkey-operator-webhook-service",
+			"-o", "jsonpath={.subsets[0].addresses[0].ip}"))
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(out)
+	}, 2*time.Minute, 3*time.Second).ShouldNot(BeEmpty(), "webhook endpoint never became ready")
 })
 
 var _ = AfterSuite(func() {
