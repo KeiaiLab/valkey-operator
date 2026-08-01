@@ -115,6 +115,17 @@ type ValkeyBackupSpec struct {
 	//
 	// +optional
 	Destination *BackupDestination `json:"destination,omitempty"`
+
+	// VolumeSnapshotClassName — Type=VolumeSnapshot 시 사용할
+	// snapshot.storage.k8s.io/v1 VolumeSnapshotClass 이름.
+	// 미명시 시 cluster default 사용 (CSI driver 별 동작).
+	// Type=RDB/AOF 일 때는 무시.
+	//
+	// v1alpha1 에 있으나 Hub 에 없어 변환 시 조용히 유실되던 필드다
+	// (conversion 은 JSON byte-copy 라 태그가 없으면 그냥 사라진다).
+	//
+	// +optional
+	VolumeSnapshotClassName string `json:"volumeSnapshotClassName,omitempty"`
 }
 
 // DefaultBackupObjectPath — Spec.Destination.TargetRef.Path 미명시 시 자동
