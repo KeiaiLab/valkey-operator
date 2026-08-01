@@ -17,6 +17,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/e2e-nightly.yml"
+      - "Makefile"          # test-e2e 레시피(타임아웃·kind 변수)가 여기 산다
 
 permissions:
   contents: read
