@@ -29,6 +29,13 @@ const (
 	brValkey    = "vk-br-test"
 	brBackup    = "vk-br-backup-1"
 	brRestore   = "vk-br-restore-1"
+
+	// 승급 대상 버전은 상수 하나로 둔다 — patch 본문과 이미지·CR 단언이 각자
+	// 리터럴을 들고 있으면 한 곳만 고쳤을 때 나머지가 조용히 어긋난다
+	// (형제 e2e_test.go 에서 실제로 그렇게 어긋나 status 단언이 타임아웃했다).
+	// major 승급은 webhook 이 금지하므로 patch 승급만 쓴다.
+	brUpgradeVersion = "8.1.7"
+	brUpgradeImage   = "docker.io/valkey/valkey:" + brUpgradeVersion
 )
 
 var _ = Describe("ValkeyBackup + ValkeyRestore (Standalone PVC)", Ordered, func() {
@@ -196,7 +203,7 @@ spec:
 	// version patch 시 STS image propagate + Pod rotation + RDB 호환성 회귀 가드.
 	Context("Restored 인스턴스의 8.1.6 → 8.1.7 version patch chain (V2)", func() {
 		It("spec.version.version 8.1.6 → 8.1.7 patch (restored 후)", func() {
-			patch := `{"spec":{"version":{"version":"8.1.7","image":"docker.io/valkey/valkey"}}}`
+			patch := fmt.Sprintf(`{"spec":{"version":{"version":%q,"image":"docker.io/valkey/valkey"}}}`, brUpgradeVersion)
 			_, err := utils.Run(exec.Command("kubectl", "patch", "valkey",
 				brValkey, "-n", brNamespace,
 				"--type=merge", "-p", patch))
@@ -210,7 +217,7 @@ spec:
 					"-o", "jsonpath={.spec.template.spec.containers[0].image}"))
 				return out
 			}, 60*time.Second, 5*time.Second).Should(
-				Equal("docker.io/valkey/valkey:8.1.7"),
+				Equal(brUpgradeImage),
 				"restored 인스턴스의 STS image 가 8.1.7 로 propagate (가설 A)")
 		})
 
@@ -221,7 +228,7 @@ spec:
 					"-o", "jsonpath={.spec.containers[0].image}"))
 				return out
 			}, 3*time.Minute, 10*time.Second).Should(
-				Equal("docker.io/valkey/valkey:8.1.7"),
+				Equal(brUpgradeImage),
 				"restored 인스턴스의 Pod 가 8.1.7 로 재생성 (가설 C)")
 		})
 
@@ -232,7 +239,7 @@ spec:
 					"-o", "jsonpath={.spec.version.version}"))
 				return out
 			}, 30*time.Second, 5*time.Second).Should(
-				Equal("8.1.7"),
+				Equal(brUpgradeVersion),
 				"webhook defaulter 가 8.1.7 → 8.1.6 reverting 안함 (가설 B)")
 		})
 
