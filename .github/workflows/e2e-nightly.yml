@@ -12,6 +12,11 @@ on:
   schedule:
     - cron: "37 18 * * *"   # 매일 03:37 KST
   workflow_dispatch:
+  # 이 워크플로 자신을 고칠 때는 PR 에서 실제로 돌려본다 — e2e 배선 변경을
+  # 검증 없이 머지하면 nightly 가 조용히 죽는다 (게이트의 자기 감시).
+  pull_request:
+    paths:
+      - ".github/workflows/e2e-nightly.yml"
 
 permissions:
   contents: read
