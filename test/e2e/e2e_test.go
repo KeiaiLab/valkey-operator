@@ -328,8 +328,13 @@ var _ = Describe("Manager", Ordered, func() {
 			const (
 				upgradeNamespace = "test-valkey-upgrade-20260507"
 				upgradeName      = "vk-upgrade-test"
-				oldImage         = "docker.io/valkey/valkey:8.1.6"
-				newImage         = "docker.io/valkey/valkey:8.1.7"
+				// 승급 대상 버전을 상수 하나로 둔다 — patch 본문·기대 이미지·status 단언이
+				// 각자 리터럴을 들고 있으면 한 곳만 고쳤을 때 나머지가 조용히 어긋난다
+				// (실제로 그렇게 어긋나 status 단언이 옛 9.0.4 를 기다리며 타임아웃했다).
+				oldVersion = "8.1.6"
+				newVersion = "8.1.7"
+				oldImage   = "docker.io/valkey/valkey:" + oldVersion
+				newImage   = "docker.io/valkey/valkey:" + newVersion
 			)
 
 			By("creating a dedicated namespace for upgrade test data")
@@ -409,11 +414,11 @@ spec:
 			// 정당하게 거부한다 — "manual major version upgrade is prohibited;
 			// AutoUpdate automates patch/minor only". spec 의 목적(version patch 가 STS
 			// template image 로 전파되고 Pod 가 롤링되는지)은 patch 승급으로도 동일 달성.
-			By("patching spec.version.version to 8.1.7")
+			By("patching spec.version.version to " + newVersion)
 			cmd = exec.Command("kubectl", "patch", "valkey", upgradeName,
 				"-n", upgradeNamespace,
 				"--type=merge",
-				"-p", `{"spec":{"version":{"version":"8.1.7"}}}`)
+				"-p", fmt.Sprintf(`{"spec":{"version":{"version":%q}}}`, newVersion))
 			_, err = utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -452,7 +457,7 @@ spec:
 					upgradeName, "-n", upgradeNamespace,
 					"-o", "jsonpath={.status.version}"))
 				return out
-			}, 2*time.Minute, 5*time.Second).Should(Equal("9.0.4"))
+			}, 2*time.Minute, 5*time.Second).Should(Equal(newVersion))
 
 			By("cleaning up upgrade test data before the operator is undeployed")
 			_, _ = utils.Run(exec.Command("kubectl", "delete", "valkey",
