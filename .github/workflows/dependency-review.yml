@@ -49,5 +49,7 @@ jobs:
           # The repo is Apache-2.0; accept compatible permissive licenses
           # explicitly. Reject GPL-family (copyleft) to keep the binary
           # safe to redistribute as a closed-source operator image.
-          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, Zlib, Unlicense, 0BSD, CC0-1.0
+          # LicenseRef-scancode-google-patent-license-golang is the PATENTS
+          # grant shipped with golang.org/x/* — an extra grant, not copyleft.
+          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, Zlib, Unlicense, 0BSD, CC0-1.0, LicenseRef-scancode-google-patent-license-golang
           comment-summary-in-pr: on-failure
