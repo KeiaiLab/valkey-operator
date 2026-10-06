@@ -5,28 +5,28 @@ Licensed under the MIT License. See the LICENSE file for details.
 */
 package controller
 
-import (
-	"crypto/sha256"
-	"encoding/hex"
-)
+import corev1 "k8s.io/api/core/v1"
 
-// hashAuthSecret — password 의 SHA256 (hex) hash. STS PodTemplate annotation
-// 으로 주입되어 *rotation 추적*. 사용자가 AuthSecret 의 password 값을 갱신하면
+// authRotationMark — STS PodTemplate annotation(auth-secret-hash) 값. 인증 Secret
+// 의 metadata.resourceVersion 을 그대로 쓴다. 비밀번호가 바뀌면 Secret 이 쓰이고
+// resourceVersion 이 바뀐다 → PodTemplate 변경 → STS rolling update.
 //
-//   - 다음 reconcile 에서 ensureAuthSecret 가 새 값을 read
-//   - 새 hash 가 STS Template 에 set
-//   - STS controller 가 PodTemplate 변경 감지 → rolling update 시작
-//   - 모든 pod 가 새 password 로 재시작
+// 비밀번호에서 유도한 값(해시)을 쓰지 않는다 — annotation 은 Secret 보다 넓게
+// 읽히고, 낮은 엔트로피 비밀번호의 해시는 오프라인 추측을 허용한다.
 //
-// 빈 password (Auth.Enabled=false 등) 시 빈 문자열 반환 → annotation 미설정.
-//
-// 보안: SHA256 의 *hash* 만 노출. 원본 password 는 K8s API 에 노출 안 됨.
-// 다만 hash 가 같다면 password 가 같다는 정보는 leak — 운영상 위협 없음 (hash
-// 가 다른 cluster 끼리 비교 의미 없음).
-func hashAuthSecret(password string) string {
+// 빈 password (Auth.Enabled=false 등) 시 빈 문자열 → annotation 미설정.
+func authRotationMark(password, secretVersion string) string {
 	if password == "" {
 		return ""
 	}
-	sum := sha256.Sum256([]byte(password))
-	return hex.EncodeToString(sum[:])
+	return secretVersion
+}
+
+// createdVersion — SecretIfNotExists 가 방금 만든 Secret 의 resourceVersion.
+// 이미 있어 build 가 불리지 않았으면 빈 문자열(다음 reconcile 이 채운다).
+func createdVersion(built *corev1.Secret) string {
+	if built == nil {
+		return ""
+	}
+	return built.ResourceVersion
 }

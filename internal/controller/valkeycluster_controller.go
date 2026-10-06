@@ -127,7 +127,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	r.applyDefaults(vc)
 
 	// 3. Auth Secret 보장.
-	password, secretRef, err := r.ensureAuthSecret(ctx, vc)
+	password, secretRef, secretVersion, err := r.ensureAuthSecret(ctx, vc)
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, vc, "AuthSecret", err, r.Recorder)
 	}
@@ -235,7 +235,7 @@ func (r *ValkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		AuthConfSecretName:   authConfSecretName,
 		ClusterMode:          true,
 		Pod:                  vc.Spec.Pod,
-		AuthSecretHash:       hashAuthSecret(password),
+		AuthSecretHash:       authRotationMark(password, secretVersion),
 		RevisionHistoryLimit: vc.Spec.RevisionHistoryLimit,
 		Modules:              vc.Spec.Modules,
 	}
@@ -700,20 +700,21 @@ func (r *ValkeyClusterReconciler) applyDefaults(vc *cachev1alpha1.ValkeyCluster)
 }
 
 // ensureAuthSecret — Valkey 컨트롤러와 동일 패턴: PasswordSecretRef 미지정 시 자동 생성.
+// 항상 (password, ref, Secret resourceVersion, err) 반환.
 func (r *ValkeyClusterReconciler) ensureAuthSecret(
 	ctx context.Context, vc *cachev1alpha1.ValkeyCluster,
-) (string, *corev1.SecretKeySelector, error) {
+) (string, *corev1.SecretKeySelector, string, error) {
 	if vc.Spec.Auth.PasswordSecretRef != nil {
 		ref := vc.Spec.Auth.PasswordSecretRef
 		s := &corev1.Secret{}
 		if err := r.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: vc.Namespace}, s); err != nil {
-			return "", nil, fmt.Errorf("get user-provided secret: %w", err)
+			return "", nil, "", fmt.Errorf("get user-provided secret: %w", err)
 		}
 		key := ref.Key
 		if key == "" {
 			key = resources.SecretPasswordKey
 		}
-		return string(s.Data[key]), ref, nil
+		return string(s.Data[key]), ref, s.ResourceVersion, nil
 	}
 
 	secretName := resources.DefaultSecretName(vc.Name)
@@ -724,24 +725,29 @@ func (r *ValkeyClusterReconciler) ensureAuthSecret(
 				LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
 				Key:                  resources.SecretPasswordKey,
 			},
+			existing.ResourceVersion,
 			nil
 	} else if !errors.IsNotFound(err) {
-		return "", nil, err
+		return "", nil, "", err
 	}
 
 	password, err := resources.GeneratePassword()
 	if err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
+
+	// Create 가 built 의 resourceVersion 을 채운다 — 캐시 지연 없이 첫 판본 확보.
+	var built *corev1.Secret
 	if err := commonsreconcile.SecretIfNotExists(ctx, r.Client, r.Scheme, vc, secretName, func() *corev1.Secret {
-		return resources.BuildAuthSecret(vc.Name, vc.Namespace, password)
+		built = resources.BuildAuthSecret(vc.Name, vc.Namespace, password)
+		return built
 	}); err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
 	return password, &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
 		Key:                  resources.SecretPasswordKey,
-	}, nil
+	}, createdVersion(built), nil
 }
 
 // ensureClusterMeet — 모든 pod 가 Ready 일 때 CLUSTER MEET + ADDSLOTS + REPLICATE 1회 호출.
@@ -810,7 +816,7 @@ func (r *ValkeyClusterReconciler) gracefulClusterTeardown(ctx context.Context, v
 	teardownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	password, _, err := r.ensureAuthSecret(teardownCtx, vc)
+	password, _, _, err := r.ensureAuthSecret(teardownCtx, vc)
 	if err != nil {
 		logger.Info("Skipping graceful teardown — auth secret unavailable", "error", err.Error())
 		return nil
