@@ -5,6 +5,142 @@ entries:
       artifacthub.io/category: database
       artifacthub.io/changes: |
         - kind: security
+          description: "grpc pinned to v1.83.2 — v1.84.0 (shipped in 1.5.3) is affected by GO-2026-6443."
+        - kind: security
+          description: "Go toolchain 1.26.8 and dependency bumps (x/crypto 0.57.0, x/net 0.59.0, x/text 0.42.0, x/mod 0.41.0, otel 1.45.0, cel-go 0.30.0) — fixes stdlib, x/crypto/ssh, x/mod/sumdb, grpc and otel CVEs (carried from 1.5.3)."
+        - kind: security
+          description: "auth-secret-hash pod annotation no longer holds sha256(password); it tracks the auth Secret resourceVersion. StatefulSets from 1.5.2 or older roll once after upgrade (carried from 1.5.3)."
+        - kind: changed
+          description: "Default Valkey version 9.1.2 (carried from 1.5.3)."
+      artifacthub.io/containsSecurityUpdates: "true"
+      artifacthub.io/crds: |
+        - kind: Valkey
+          version: v1alpha1
+          name: valkeys.cache.keiailab.io
+          displayName: Valkey Instance
+          description: Deploys and manages a Valkey standalone or replica instance
+        - kind: ValkeyCluster
+          version: v1alpha1
+          name: valkeyclusters.cache.keiailab.io
+          displayName: Valkey Cluster
+          description: Deploys and manages a Valkey Cluster (Redis Cluster compatible)
+        - kind: ValkeyBackup
+          version: v1alpha1
+          name: valkeybackups.cache.keiailab.io
+          displayName: Valkey Backup
+          description: Creates point-in-time backups of Valkey instances/clusters
+        - kind: ValkeyBackupTarget
+          version: v1alpha1
+          name: valkeybackuptargets.cache.keiailab.io
+          displayName: Valkey Backup Target
+          description: Defines S3 / PVC backup destinations
+        - kind: ValkeyRestore
+          version: v1alpha1
+          name: valkeyrestores.cache.keiailab.io
+          displayName: Valkey Restore
+          description: Restores a Valkey instance/cluster from a backup
+      artifacthub.io/crdsExamples: |
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: Valkey
+          metadata:
+            name: my-valkey
+            namespace: cache
+          spec:
+            mode: Standalone
+            replicas: 1
+            version:
+              version: "9.1.2"
+            storage:
+              storageClassName: standard
+              size: 5Gi
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: ValkeyCluster
+          metadata:
+            name: my-valkey-cluster
+            namespace: cache
+          spec:
+            version:
+              version: "9.1.2"
+            shards: 3
+            replicasPerShard: 1
+            storage:
+              storageClassName: standard
+              size: 10Gi
+        - apiVersion: cache.keiailab.io/v1alpha1
+          kind: ValkeyBackup
+          metadata:
+            name: my-valkey-backup
+            namespace: cache
+          spec:
+            clusterRef:
+              name: my-valkey
+              kind: Valkey
+            type: RDB
+            destination:
+              type: TargetRef
+              targetRef:
+                name: s3-target
+      artifacthub.io/images: |
+        - name: valkey-operator
+          image: ghcr.io/keiailab/valkey-operator:1.5.4
+        - name: valkey
+          image: docker.io/valkey/valkey:9.1.2-alpine3.24
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/keiailab/valkey-operator/blob/main/README.md
+        - name: Source Code
+          url: https://github.com/keiailab/valkey-operator
+        - name: Valkey Project
+          url: https://valkey.io/
+        - name: Design Assets
+          url: https://github.com/KeiaiLab/valkey-operator/blob/main/docs/BRANDING.md
+      artifacthub.io/maturity: stable
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/prerelease: "false"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+      artifacthub.io/screenshots: |
+        - title: Keiailab Valkey Operator centered service symbol
+          url: https://raw.githubusercontent.com/KeiaiLab/valkey-operator/main/docs/branding/symbol.png
+    apiVersion: v2
+    appVersion: 1.5.4
+    created: "2026-10-06T03:26:37.894332782Z"
+    dependencies:
+    - name: keiailab-commons
+      repository: oci://ghcr.io/keiailab/charts
+      version: 0.8.0
+    description: A Kubernetes Operator for managing Valkey instances and Clusters
+      (Redis OSS fork, BSD-licensed)
+    digest: 1a30408eb837e7627e0bf932c04ed0e4842144de52b66b998a2015bdb8e78109
+    home: https://github.com/keiailab/valkey-operator
+    icon: https://valkey.io/img/valkey-horizontal.svg
+    keywords:
+    - valkey
+    - redis
+    - cache
+    - key-value
+    - in-memory
+    - operator
+    - cluster
+    - kubernetes
+    kubeVersion: '>=1.26.0-0'
+    maintainers:
+    - email: support@keiailab.com
+      name: Keiailab
+      url: https://keiailab.com
+    name: valkey-operator
+    sources:
+    - https://github.com/keiailab/valkey-operator
+    type: application
+    urls:
+    - https://github.com/KeiaiLab/valkey-operator/releases/download/valkey-operator-1.5.4/valkey-operator-1.5.4.tgz
+    version: 1.5.4
+  - annotations:
+      artifacthub.io/category: database
+      artifacthub.io/changes: |
+        - kind: security
           description: "Go toolchain 1.26.8 and dependency bumps (x/crypto 0.57.0, x/net 0.59.0, x/text 0.42.0, x/mod 0.41.0, grpc 1.84.0, otel 1.45.0, cel-go 0.30.0) — fixes stdlib, x/crypto/ssh, x/mod/sumdb, grpc and otel CVEs."
         - kind: security
           description: "auth-secret-hash pod annotation no longer holds sha256(password); it tracks the auth Secret resourceVersion. Existing StatefulSets roll once after upgrade."
@@ -2639,4 +2775,4 @@ entries:
     urls:
     - https://keiailab.github.io/valkey-operator/valkey-operator-0.1.0-alpha.1.tgz
     version: 0.1.0-alpha.1
-generated: "2026-10-06T02:45:56.866194467Z"
+generated: "2026-10-06T03:26:37.894498365Z"
