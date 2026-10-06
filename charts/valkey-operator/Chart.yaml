@@ -2,8 +2,8 @@ apiVersion: v2
 name: valkey-operator
 description: A Kubernetes Operator for managing Valkey instances and Clusters (Redis OSS fork, BSD-licensed)
 type: application
-version: 1.5.3
-appVersion: "1.5.3"
+version: 1.5.4
+appVersion: "1.5.4"
 kubeVersion: ">=1.26.0-0"
 
 keywords:
@@ -121,21 +121,19 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/images: |
     - name: valkey-operator
-      image: ghcr.io/keiailab/valkey-operator:1.5.3
+      image: ghcr.io/keiailab/valkey-operator:1.5.4
     - name: valkey
       image: docker.io/valkey/valkey:9.1.2-alpine3.24
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
     - kind: security
-      description: "Go toolchain 1.26.8 and dependency bumps (x/crypto 0.57.0, x/net 0.59.0, x/text 0.42.0, x/mod 0.41.0, grpc 1.84.0, otel 1.45.0, cel-go 0.30.0) — fixes stdlib, x/crypto/ssh, x/mod/sumdb, grpc and otel CVEs."
+      description: "grpc pinned to v1.83.2 — v1.84.0 (shipped in 1.5.3) is affected by GO-2026-6443."
     - kind: security
-      description: "auth-secret-hash pod annotation no longer holds sha256(password); it tracks the auth Secret resourceVersion. Existing StatefulSets roll once after upgrade."
+      description: "Go toolchain 1.26.8 and dependency bumps (x/crypto 0.57.0, x/net 0.59.0, x/text 0.42.0, x/mod 0.41.0, otel 1.45.0, cel-go 0.30.0) — fixes stdlib, x/crypto/ssh, x/mod/sumdb, grpc and otel CVEs (carried from 1.5.3)."
     - kind: security
-      description: "Supply chain: all GitHub Actions and base images pinned by digest, least-privilege workflow tokens, Dependabot enabled."
+      description: "auth-secret-hash pod annotation no longer holds sha256(password); it tracks the auth Secret resourceVersion. StatefulSets from 1.5.2 or older roll once after upgrade (carried from 1.5.3)."
     - kind: changed
-      description: "Default Valkey version 9.1.2 (was 9.1.0); module bundle image valkey-bundle:9.1."
-    - kind: fixed
-      description: "Release workflow: cosign v3 sign-blob produces the documented .sig/.pem assets again."
+      description: "Default Valkey version 9.1.2 (carried from 1.5.3)."
   artifacthub.io/recommendations: |
     - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
     - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
