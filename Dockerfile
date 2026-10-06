@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.26.8@sha256:0f063af2d465d8dcae54cce04278ada488b96f77b42449c8d071e47d016cc65a AS builder
+FROM golang:1.27.0@sha256:4013ae0f9e7994f8535c58c811f8f863fbed38b72e0d51e6592156f758d66146 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 # cycle 54 — release pipeline 이 `docker build --build-arg VERSION=vX.Y.Z` 등으로
