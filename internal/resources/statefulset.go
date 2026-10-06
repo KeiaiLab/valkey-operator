@@ -51,9 +51,9 @@ type STSParams struct {
 	// `/tls` 에 readOnly 마운트. configmap 의 tls-* 디렉티브 가 이 경로 를 참조.
 	TLSSecretName string
 
-	// AuthSecretHash — AuthSecret data 의 SHA256 (hex) hash. PodTemplate 의
-	// annotation `cache.keiailab.io/auth-secret-hash` 로 주입되어, hash 변경 시
-	// STS rolling update 가 자동 트리거 (pod 들이 새 password 로 재시작).
+	// AuthSecretHash — AuthSecret 의 metadata.resourceVersion (비밀번호 유도값 아님).
+	// PodTemplate 의 annotation `cache.keiailab.io/auth-secret-hash` 로 주입되어, 값
+	// 변경 시 STS rolling update 가 자동 트리거 (pod 들이 새 password 로 재시작).
 	// 빈 문자열이면 annotation 미설정 (rotation 추적 비활성).
 	AuthSecretHash string
 

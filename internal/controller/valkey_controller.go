@@ -129,7 +129,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	r.applyDefaults(v)
 
 	// 3. Auth Secret 보장 (자동 생성 시 멱등)
-	password, secretRef, err := r.ensureAuthSecret(ctx, v)
+	password, secretRef, secretVersion, err := r.ensureAuthSecret(ctx, v)
 	if err != nil {
 		return applyErrorCondition(ctx, r.Client, v, "AuthSecret", err, r.Recorder)
 	}
@@ -138,12 +138,13 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	//     user-provided secret(PasswordSecretRef)은 외부 소유 — 회전 대상에서 제외.
 	//     회전 시 password 를 재할당해 아래 ConfigMap + auth-secret-hash 에 반영(→ STS 롤링).
 	if v.Spec.Auth.RotationInterval != "" && v.Spec.Auth.PasswordSecretRef == nil && secretRef != nil {
-		newPw, rotated, rerr := r.rotatePasswordIfDue(ctx, v, password, secretRef, time.Now().UTC())
+		newPw, newVersion, rotated, rerr := r.rotatePasswordIfDue(ctx, v, password, secretRef, time.Now().UTC())
 		if rerr != nil {
 			return applyErrorCondition(ctx, r.Client, v, "PasswordRotation", rerr, r.Recorder)
 		}
 		if rotated {
 			password = newPw
+			secretVersion = newVersion
 			logger.Info("password rotated", "name", v.Name)
 			commonsevents.Emitf(r.Recorder, v, "PasswordRotated",
 				"auth 비밀번호 자동 로테이션 (interval=%s)", v.Spec.Auth.RotationInterval)
@@ -240,7 +241,7 @@ func (r *ValkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		AuthConfSecretName:   authConfSecretName,
 		ClusterMode:          false,
 		Pod:                  v.Spec.Pod,
-		AuthSecretHash:       hashAuthSecret(password),
+		AuthSecretHash:       authRotationMark(password, secretVersion),
 		RevisionHistoryLimit: v.Spec.RevisionHistoryLimit,
 		Modules:              v.Spec.Modules,
 	}
@@ -601,19 +602,22 @@ func exporterResources(m *cachev1alpha1.MonitoringSpec) corev1.ResourceRequireme
 	return buildResourceReq(m.Exporter.Resources)
 }
 
-// ensureAuthSecret — PasswordSecretRef 미지정 시 자동 생성. 항상 (password, ref, err) 반환.
-func (r *ValkeyReconciler) ensureAuthSecret(ctx context.Context, v *cachev1alpha1.Valkey) (string, *corev1.SecretKeySelector, error) {
+// ensureAuthSecret — PasswordSecretRef 미지정 시 자동 생성.
+// 항상 (password, ref, Secret resourceVersion, err) 반환.
+func (r *ValkeyReconciler) ensureAuthSecret(
+	ctx context.Context, v *cachev1alpha1.Valkey,
+) (string, *corev1.SecretKeySelector, string, error) {
 	if v.Spec.Auth.PasswordSecretRef != nil {
 		ref := v.Spec.Auth.PasswordSecretRef
 		s := &corev1.Secret{}
 		if err := r.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: v.Namespace}, s); err != nil {
-			return "", nil, fmt.Errorf("get user-provided secret: %w", err)
+			return "", nil, "", fmt.Errorf("get user-provided secret: %w", err)
 		}
 		key := ref.Key
 		if key == "" {
 			key = resources.SecretPasswordKey
 		}
-		return string(s.Data[key]), ref, nil
+		return string(s.Data[key]), ref, s.ResourceVersion, nil
 	}
 
 	secretName := resources.DefaultSecretName(v.Name)
@@ -621,24 +625,29 @@ func (r *ValkeyReconciler) ensureAuthSecret(ctx context.Context, v *cachev1alpha
 	if err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: v.Namespace}, existing); err == nil {
 		return string(existing.Data[resources.SecretPasswordKey]),
 			&corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: secretName}, Key: resources.SecretPasswordKey},
+			existing.ResourceVersion,
 			nil
 	} else if !errors.IsNotFound(err) {
-		return "", nil, err
+		return "", nil, "", err
 	}
 
 	password, err := resources.GeneratePassword()
 	if err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
+
+	// Create 가 built 의 resourceVersion 을 채운다 — 캐시 지연 없이 첫 판본 확보.
+	var built *corev1.Secret
 	if err := commonsreconcile.SecretIfNotExists(ctx, r.Client, r.Scheme, v, secretName, func() *corev1.Secret {
-		return resources.BuildAuthSecret(v.Name, v.Namespace, password)
+		built = resources.BuildAuthSecret(v.Name, v.Namespace, password)
+		return built
 	}); err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
 	return password, &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
 		Key:                  resources.SecretPasswordKey,
-	}, nil
+	}, createdVersion(built), nil
 }
 
 func isExternalReplica(v *cachev1alpha1.Valkey) bool {

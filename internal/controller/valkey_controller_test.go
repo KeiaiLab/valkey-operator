@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -121,6 +122,57 @@ var _ = Describe("Valkey Controller", func() {
 			By("STS pod template image가 9.0.4로 갱신된다")
 			Expect(k8sClient.Get(ctx, stsKey, sts)).To(Succeed())
 			Expect(sts.Spec.Template.Spec.Containers[0].Image).To(Equal(cachev1alpha1.DefaultValkeyImage + ":9.0.4"))
+		})
+	})
+	Context("When the auth Secret password changes", func() {
+		const resourceName = "test-valkey-auth-rotation-mark"
+
+		ctx := context.Background()
+		key := types.NamespacedName{Name: resourceName, Namespace: "default"}
+
+		AfterEach(func() {
+			resource := &cachev1alpha1.Valkey{}
+			if err := k8sClient.Get(ctx, key, resource); err == nil {
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+				reconciler := &ValkeyReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+				_, _ = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			}
+		})
+
+		It("pod template annotation 은 Secret resourceVersion 을 따른다 (비밀번호 유도값 아님)", func() {
+			reconciler := &ValkeyReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+			resource := &cachev1alpha1.Valkey{
+				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+				Spec: cachev1alpha1.ValkeySpec{
+					Version: cachev1alpha1.ValkeyVersion{Version: "8.1.6"},
+				},
+			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+
+			secKey := types.NamespacedName{Name: resources.DefaultSecretName(resourceName), Namespace: "default"}
+			stsKey := types.NamespacedName{Name: resources.StatefulSetName(resourceName), Namespace: "default"}
+			sec := &corev1.Secret{}
+			sts := &appsv1.StatefulSet{}
+
+			By("첫 reconcile — annotation = 생성된 Secret 의 resourceVersion")
+			Expect(k8sClient.Get(ctx, secKey, sec)).To(Succeed())
+			Expect(k8sClient.Get(ctx, stsKey, sts)).To(Succeed())
+			first := sts.Spec.Template.Annotations[resources.AnnotationAuthSecretHash]
+			Expect(first).To(Equal(sec.ResourceVersion))
+
+			By("비밀번호 변경 → annotation 이 새 resourceVersion 으로 바뀐다")
+			sec.Data[resources.SecretPasswordKey] = []byte("rotated-password")
+			Expect(k8sClient.Update(ctx, sec)).To(Succeed())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(k8sClient.Get(ctx, secKey, sec)).To(Succeed())
+			Expect(k8sClient.Get(ctx, stsKey, sts)).To(Succeed())
+			second := sts.Spec.Template.Annotations[resources.AnnotationAuthSecretHash]
+			Expect(second).To(Equal(sec.ResourceVersion))
+			Expect(second).NotTo(Equal(first))
 		})
 	})
 })
