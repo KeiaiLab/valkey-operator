@@ -1,0 +1,12 @@
+# OSV-Scanner config, also read by OpenSSF Scorecard (Vulnerabilities).
+# Every entry needs a reason and an expiry so it gets re-reviewed.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+ignoreUntil = 2027-01-06T00:00:00Z
+reason = """\
+golang.org/x/crypto/openpgp is unmaintained; the advisory has no \
+fixed version. The package is not in this module's build graph \
+(go list -deps -test ./... has no x/crypto/openpgp) and govulncheck \
+reports it only at module level. Re-check on expiry or when x/crypto \
+drops the package."""
