@@ -216,7 +216,7 @@ crds:
 valkey:
   # -- Default Valkey version (Redis OSS fork; AGPL-free baseline).
   # api/v1alpha1 ValkeyVersion default 와 동기 — 변경 시 양쪽 갱신.
-  version: "9.1.0"
+  version: "9.1.2"
   # -- Default storage class for persistent volumes
   storageClassName: ""
   # Supported BSD module presets (ADR-0032) — 활성화는 chart 가 아니라 개별
@@ -224,7 +224,7 @@ valkey:
   #   - valkey-search  # FT.*   (RediSearch 대체)
   #   - valkey-json    # JSON.* (RedisJSON 대체)
   #   - valkey-bloom   # BF.*   (RedisBloom 대체)
-  # 출처: docker.io/valkey/valkey-bundle:9.0 (BSD-3). 외부 Redis Stack
+  # 출처: docker.io/valkey/valkey-bundle:9.1 (BSD-3). 외부 Redis Stack
   # (redisearch/redisjson 등, RSALv2/SSPL)은 admission webhook 이 거부한다.
 
 # Logging configuration

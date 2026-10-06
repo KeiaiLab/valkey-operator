@@ -90,7 +90,7 @@ spec:
   mode: Standalone
   replicas: 1
   version:
-    version: "9.0.4"
+    version: "9.1.2"
   storage:
     storageClassName: standard
     size: 5Gi
@@ -111,7 +111,7 @@ metadata:
   namespace: cache
 spec:
   version:
-    version: "9.0.4"
+    version: "9.1.2"
   shards: 3
   replicasPerShard: 1
   storage:

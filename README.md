@@ -84,7 +84,7 @@ spec:
   replicas: 1
   version:
     image: docker.io/valkey/valkey
-    version: "9.0.4"
+    version: "9.1.2"
   storage:
     size: 8Gi
   resources:
@@ -116,7 +116,7 @@ spec:
   autoFailover: true
   version:
     image: docker.io/valkey/valkey
-    version: "9.0.4"
+    version: "9.1.2"
   storage:
     size: 8Gi
 ```
