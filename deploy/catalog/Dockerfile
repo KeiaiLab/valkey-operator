@@ -2,7 +2,7 @@
 #
 # OLM CatalogSource (image: ghcr.io/keiailab/valkey-operator-catalog:vX.Y.Z) 가
 # 본 image 를 pull. gRPC server `opm serve /configs` 가 OLM resolver 에 stream.
-FROM quay.io/operator-framework/opm:v1.42.0
+FROM quay.io/operator-framework/opm:v1.42.0@sha256:8872de9b8b7759776cee78d407866cab5db960c2045177ac0bac8dd41b9e7b93
 
 # OLM 1.27+ FBC 표준 — /configs 디렉토리 의 YAML/JSON 을 자동 인식.
 LABEL operators.operatorframework.io.index.configs.v1=/configs
