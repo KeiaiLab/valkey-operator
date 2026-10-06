@@ -2924,7 +2924,7 @@ spec:
                       image 패턴을 운영에서 그대로 사용할 때 쓴다.
                     type: string
                   version:
-                    default: 9.1.0
+                    default: 9.1.2
                     pattern: ^\d+\.\d+(\.\d+)?$
                     type: string
                 required:
@@ -6012,7 +6012,7 @@ spec:
                       명시 시 Image + Version 조합보다 우선한다.
                     type: string
                   version:
-                    default: 9.1.0
+                    default: 9.1.2
                     pattern: ^\d+\.\d+(\.\d+)?$
                     type: string
                 required:

@@ -22,7 +22,7 @@ import (
 //
 // NOTE(e2e 검증 의무): bundle 내 .so 경로는 9.x 기준. major 변경 시 SOPath 를
 // `valkey-cli MODULE LIST` e2e 로 재확인한다(ADR-0032 검증 항목).
-const DefaultBundleImage = "docker.io/valkey/valkey-bundle:9.0"
+const DefaultBundleImage = "docker.io/valkey/valkey-bundle:9.1"
 
 // ModulePreset — 공식 preset 의 출처 이미지 + 그 안의 .so 절대 경로.
 // init-container 가 Image 의 SOPath 를 공유 emptyDir(/modules/<name>.so)로 cp 하고,

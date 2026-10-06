@@ -20,8 +20,8 @@ kubectl -n valkey-operator-system port-forward \
 curl -k https://localhost:8443/metrics | grep valkey_cluster_state_ok
 ```
 
-Current default runtime version is Valkey `9.1.0`. Existing clusters on
-`9.0.4`, `8.1.7`, `8.1.6`, or `8.0.9` remain valid for compatibility and
+Current default runtime version is Valkey `9.1.2`. Existing clusters on
+`9.1.0`, `9.0.4`, `8.1.7`, `8.1.6`, or `8.0.9` remain valid for compatibility and
 controlled upgrade testing.
 
 ## 2. General failure response
