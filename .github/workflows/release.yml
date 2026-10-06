@@ -159,7 +159,11 @@ jobs:
           SBOM_FILE: valkey-operator-${{ needs.preflight.outputs.tag }}.spdx.json
         run: |
           set -euo pipefail
+          # cosign v3 defaults to the new bundle format, which ignores
+          # --output-signature/--output-certificate and fails without
+          # --bundle. Keep the .sig/.pem assets SECURITY.md documents.
           cosign sign-blob --yes \
+            --new-bundle-format=false --use-signing-config=false \
             --output-signature   "${SBOM_FILE}.sig" \
             --output-certificate "${SBOM_FILE}.pem" \
             "${SBOM_FILE}"
@@ -215,7 +219,9 @@ jobs:
         run: |
           set -euo pipefail
           CHART_TGZ="out/valkey-operator-${VERSION}.tgz"
+          # Legacy .sig/.pem outputs — see the SBOM step above.
           cosign sign-blob --yes \
+            --new-bundle-format=false --use-signing-config=false \
             --output-signature   "${CHART_TGZ}.sig" \
             --output-certificate "${CHART_TGZ}.pem" \
             "${CHART_TGZ}"
@@ -271,13 +277,29 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Fork push + upstream PR need COMMUNITY_OPERATORS_PAT. Without it
+      # the job cannot do anything; skip with a warning instead of
+      # failing a release whose artifacts are already published.
+      - name: Check COMMUNITY_OPERATORS_PAT
+        id: pat
+        env:
+          PAT: ${{ secrets.COMMUNITY_OPERATORS_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "::warning::COMMUNITY_OPERATORS_PAT not set; skipping community-operators sync"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
       - name: Checkout release repo
+        if: steps.pat.outputs.present == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: keiailab/valkey-operator
           ref: ${{ needs.preflight.outputs.tag }}
           path: source
       - name: Checkout community-operators fork
+        if: steps.pat.outputs.present == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: eightynine01/community-operators
@@ -285,6 +307,7 @@ jobs:
           path: community-operators
           fetch-depth: 0
       - name: Sync fork main with upstream
+        if: steps.pat.outputs.present == 'true'
         working-directory: community-operators
         run: |
           git remote add upstream https://github.com/k8s-operatorhub/community-operators.git
@@ -292,6 +315,7 @@ jobs:
           git reset --hard upstream/main
           git push origin main --force
       - name: Stage bundle for new version
+        if: steps.pat.outputs.present == 'true'
         working-directory: community-operators
         run: |
           V="${{ needs.preflight.outputs.version }}"
@@ -300,6 +324,7 @@ jobs:
           cp -r ../source/bundle/metadata "operators/valkey-operator/$V/"
           cp ../source/bundle.Dockerfile "operators/valkey-operator/$V/"
       - name: Commit + push fork branch + open upstream PR
+        if: steps.pat.outputs.present == 'true'
         working-directory: community-operators
         env:
           GH_TOKEN: ${{ secrets.COMMUNITY_OPERATORS_PAT }}
