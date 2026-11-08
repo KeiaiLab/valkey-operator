@@ -57,7 +57,7 @@ jobs:
         run: bash hack/coverage-floor.sh cover.out
       - name: Upload coverage
         if: always()
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v6
         with:
           files: ./cover.out
           fail_ci_if_error: false
