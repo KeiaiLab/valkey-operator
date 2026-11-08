@@ -66,7 +66,7 @@ jobs:
             echo "✓ chart version aligned with tag ($VERSION)"
           fi
 
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
           version: latest
 
@@ -77,7 +77,7 @@ jobs:
 
       # 1) gh-pages HTTP helm repo publish
       #    이미 존재하는 버전(재실행/백필)은 skip 하여 멱등 보장
-      - uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
+      - uses: helm/chart-releaser-action@92c6b97fa9f664492a2592e0d1d80bc6bf378957 # v1.9.0
         with:
           charts_dir: charts
           # chart-releaser publishes to ./_releases by default; gh-pages branch
