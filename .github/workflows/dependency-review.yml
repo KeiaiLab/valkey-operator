@@ -20,7 +20,7 @@ jobs:
       contents: read
       pull-requests: write   # comment the diff summary inline
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       # 보안 tradeoff (의도적): dependency-review-action 은 GitHub Dependency graph
       # 가 *반드시* 있어야 동작한다. 본 org/repo 는 graph 가 미가용이라 action 이
       # review 전에 hard-error 한다(게이트가 동작하지 못하고 실패 알림 메일만 양산).
