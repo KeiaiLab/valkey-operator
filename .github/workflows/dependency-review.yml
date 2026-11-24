@@ -41,7 +41,7 @@ jobs:
           echo "supported=false" >>"${GITHUB_OUTPUT}"
           echo "::notice::Dependency graph is unavailable for this repository; skipping dependency review until GitHub enables it."
           cat "${RUNNER_TEMP}/dependency-graph.err" || true
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v4
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v4
         if: steps.dependency_graph.outputs.supported == 'true'
         with:
           fail-on-severity: high
